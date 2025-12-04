@@ -15,6 +15,12 @@
   </ItemGroup>
 
   <ItemGroup>
+        <ProjectReference Include="..\TestcontainersAutoSetup.Core\TestcontainersAutoSetup.Core.csproj" />
+        <ProjectReference Include="..\TestcontainersAutoSetup.MySql\TestcontainersAutoSetup.MySql.csproj" />
+        <ProjectReference Include="..\TestcontainersAutoSetup.SqlServer\TestcontainersAutoSetup.SqlServer.csproj" />
+    </ItemGroup>
+
+  <ItemGroup>
     <Using Include="Xunit" />
   </ItemGroup>
 
