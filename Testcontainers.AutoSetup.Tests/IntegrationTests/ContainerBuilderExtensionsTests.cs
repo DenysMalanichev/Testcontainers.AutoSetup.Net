@@ -29,10 +29,12 @@ public class ContainerBuilderExtensionsTests
         ).Callback((IContainer container, string _, CancellationToken _) => createdContainer = container);
 
         // Act
-        System.Console.WriteLine(dockerEndpoint);
-        var container = new MsSqlBuilder()
-            .WithName("MsSQL-testcontainer")
-            .WithDockerEndpoint(dockerEndpoint)
+        var builder = new MsSqlBuilder();
+        if(dockerEndpoint is not null)
+        {
+            builder = builder.WithDockerEndpoint(dockerEndpoint);
+        }
+        var container = builder.WithName("MsSQL-testcontainer")
             .WithPassword("#AdminPass123")
             .WithReuse(reuse: !DockerAddressHelper.IsCiRun())
             .WithLabel("reuse-id", "MsSQL-testcontainer-reuse-hash")
