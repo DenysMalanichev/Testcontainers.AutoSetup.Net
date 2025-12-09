@@ -7,8 +7,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Testcontainers.AutoSetup.Co
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Testcontainers.AutoSetup.EntityFramework", "Testcontainers.AutoSetup.EntityFramework", "{E98B419B-7C94-4939-09BD-90B9BA269A57}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Testcontainers.AutoSetup.Entityframework", "Testcontainers.AutoSetup.EntityFramework\Testcontainers.AutoSetup.Entityframework.csproj", "{42703439-F256-431E-8ADE-7813BA692518}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Testcontainers.AutoSetup.Tests", "Testcontainers.AutoSetup.Tests\Testcontainers.AutoSetup.Tests.csproj", "{A739377E-E298-46F5-925B-DCD299D33752}"
 EndProject
 Global
