@@ -29,6 +29,7 @@ public class ContainerBuilderExtensionsTests
         ).Callback((IContainer container, string _, CancellationToken _) => createdContainer = container);
 
         // Act
+        System.Console.WriteLine(dockerEndpoint);
         var container = new MsSqlBuilder()
             .WithName("MsSQL-testcontainer")
             .WithDockerEndpoint(dockerEndpoint)
