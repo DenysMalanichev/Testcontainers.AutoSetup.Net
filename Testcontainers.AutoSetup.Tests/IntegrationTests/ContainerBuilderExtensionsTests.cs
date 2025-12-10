@@ -4,7 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Moq;
 using Testcontainers.AutoSetup.Core.Abstractions;
 using Testcontainers.AutoSetup.Core.Extensions;
-using Testcontainers.AutoSetup.Tests.Helpers;
+using Testcontainers.AutoSetup.Core.Helpers;
 using Testcontainers.MsSql;
 
 namespace Testcontainers.AutoSetup.Tests;
@@ -12,7 +12,7 @@ namespace Testcontainers.AutoSetup.Tests;
 [Trait("Category", "Integration")]
 public class ContainerBuilderExtensionsTests
 {
-    private readonly string? dockerEndpoint = DockerAddressHelper.GetDockerEndpoint();
+    private readonly string? dockerEndpoint = DockerHelper.GetDockerEndpoint();
     private readonly IServiceProvider emptyServiceProvider = new ServiceCollection().BuildServiceProvider();
 
     [Fact]
@@ -37,7 +37,7 @@ public class ContainerBuilderExtensionsTests
         }
         var container = builder.WithName("MsSQL-testcontainer")
             .WithPassword("#AdminPass123")
-            .WithReuse(reuse: !DockerAddressHelper.IsCiRun())
+            .WithReuse(reuse: !DockerHelper.IsCiRun())
             .WithLabel("reuse-id", "MsSQL-testcontainer-reuse-hash")
             .WithDbSeeder(
                 seederMock.Object, (c) => c.GetConnectionString())
@@ -77,7 +77,7 @@ public class ContainerBuilderExtensionsTests
             .WithPortBinding(1433, systemPort)
             .WithEnvironment("ACCEPT_EULA", "Y")
             .WithEnvironment("SA_PASSWORD", "YourStrongPassword123!")
-            .WithReuse(reuse: !DockerAddressHelper.IsCiRun())
+            .WithReuse(reuse: !DockerHelper.IsCiRun())
             .WithDbSeeder(
                 seederMock.Object,
                 _ => $"Server=localhost,{systemPort};Database=master;User ID=sa;Password=YourStrongPassword123!;Encrypt=False;")

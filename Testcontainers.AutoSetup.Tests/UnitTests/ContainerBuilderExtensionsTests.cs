@@ -5,10 +5,12 @@ using DotNet.Testcontainers.Containers;
 using Moq;
 using Testcontainers.AutoSetup.Core.Abstractions;
 using Testcontainers.AutoSetup.Core.Extensions;
+using Testcontainers.AutoSetup.Tests.TestCollections;
 
 namespace Testcontainers.AutoSetup.Tests.UnitTests;
 
 [Trait("Category", "Unit")]
+[Collection(nameof(ParallelTests))]
 public class ContainerBuilderExtensionsTests
 {
     // Dummy interface that matches the generic constraints of extension method.
