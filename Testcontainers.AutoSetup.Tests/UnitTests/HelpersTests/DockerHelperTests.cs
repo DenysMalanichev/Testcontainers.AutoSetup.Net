@@ -127,7 +127,7 @@ public class DockerHelperTests : IDisposable
     private void ResetState()
     { 
         ClearEnvironmentVars();
-        DockerHelper.SetCustomCiCheck(() => false);
+        DockerHelper.SetCustomCiCheck(null!);
         DockerHelper.SetDockerPort(2375);
         DockerHelper.SetCustomDockerEndpoint(null!); // Clear custom endpoint
         
