@@ -41,12 +41,13 @@ public class EntityFrameworkMigrationTests
         }
         if(!DockerHelper.IsCiRun())
         {
-            builder = builder.WithName("MsSQL-testcontainer");
+            builder = builder.WithName("MsSQL-testcontainer")
+                .WithLabel("reuse-id", "MsSQL-testcontainer-reuse-hash");
         }
         var container = builder
             .WithPassword("#AdminPass123")
             .WithReuse(reuse: !DockerHelper.IsCiRun())
-            .WithLabel("reuse-id", "MsSQL-testcontainer-reuse-hash")
+            
             .WithDbSeeder(
                 seeder, (c) => c.GetConnectionString())
             .Build();
@@ -90,7 +91,8 @@ public class EntityFrameworkMigrationTests
         var builder = new MsSqlBuilder();
         if(dockerEndpoint is not null)
         {
-            builder = builder.WithDockerEndpoint(dockerEndpoint);
+            builder = builder.WithDockerEndpoint(dockerEndpoint)
+                .WithLabel("reuse-id", "MsSQL-testcontainer-reuse-hash");
         }
         if(!DockerHelper.IsCiRun())
         {
@@ -98,8 +100,7 @@ public class EntityFrameworkMigrationTests
         }
         var container = builder
             .WithPassword("#AdminPass123")
-            .WithReuse(reuse: !DockerHelper.IsCiRun())
-            .WithLabel("reuse-id", "MsSQL-testcontainer-reuse-hash")
+            .WithReuse(reuse: !DockerHelper.IsCiRun())            
             .WithDbSeeder(
                 seeder, (c) => c.GetConnectionString())
             .Build();
@@ -150,7 +151,8 @@ public class EntityFrameworkMigrationTests
         }
         if(!DockerHelper.IsCiRun())
         {
-            builder = builder.WithName("GenericMsSQL-testcontainer");
+            builder = builder.WithName("GenericMsSQL-testcontainer")
+                .WithLabel("reuse-id", "GenericMsSQL-testcontainer-reuse-hash");
         }
         var container = builder
             .WithImage("mcr.microsoft.com/mssql/server:2025-latest")
@@ -158,7 +160,6 @@ public class EntityFrameworkMigrationTests
             .WithEnvironment("ACCEPT_EULA", "Y")
             .WithEnvironment("SA_PASSWORD", "YourStrongPassword123!")
             .WithReuse(reuse: !DockerHelper.IsCiRun())
-            .WithLabel("reuse-id", "GenericMsSQL-testcontainer-reuse-hash")
             .WithDbSeeder(seeder, _ => connectionString)
             .Build();
         await container.StartAsync();
