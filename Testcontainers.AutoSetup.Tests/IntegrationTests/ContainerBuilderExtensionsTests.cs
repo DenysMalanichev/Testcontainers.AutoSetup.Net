@@ -10,93 +10,90 @@ using Testcontainers.MsSql;
 
 namespace Testcontainers.AutoSetup.Tests.IntegrationTests;
 
-// [Trait("Category", "Integration")]
-// [Collection(nameof(SequentialTests))]
-// public class ContainerBuilderExtensionsTests
-// {
-//     private readonly string? dockerEndpoint = DockerHelper.GetDockerEndpoint();
-//     private readonly IServiceProvider emptyServiceProvider = new ServiceCollection().BuildServiceProvider();
+[Trait("Category", "Integration")]
+[Collection(nameof(SequentialTests))]
+public class ContainerBuilderExtensionsTests
+{
+    private readonly string? dockerEndpoint = DockerHelper.GetDockerEndpoint();
+    private readonly IServiceProvider emptyServiceProvider = new ServiceCollection().BuildServiceProvider();
 
-//     [Fact]
-//     public async Task ContainerBuilderExtensions_WithDbSeeder_HooksInsideTheContainer_WriteAfterTheStartup()
-//     {
-//         // Arrange 
-//         IContainer createdContainer = null!;
-//         var seederMock = new Mock<IDbSeeder>();
-//         seederMock.Setup(
-//             (seeder) =>
-//                 seeder.SeedAsync(
-//                     It.IsAny<IContainer>(),
-//                     It.IsAny<string>(),
-//                     It.IsAny<CancellationToken>())
-//         ).Callback((IContainer container, string _, CancellationToken _) => createdContainer = container);
+    [Fact]
+    public async Task ContainerBuilderExtensions_WithDbSeeder_HooksInsideTheContainer_WriteAfterTheStartup()
+    {
+        // Arrange 
+        IContainer createdContainer = null!;
+        var seederMock = new Mock<IDbSeeder>();
+        seederMock.Setup(
+            (seeder) =>
+                seeder.SeedAsync(
+                    It.IsAny<IContainer>(),
+                    It.IsAny<string>(),
+                    It.IsAny<CancellationToken>())
+        ).Callback((IContainer container, string _, CancellationToken _) => createdContainer = container);
 
-//         // Act
-//         var builder = new MsSqlBuilder();
-//         if(dockerEndpoint is not null)
-//         {
-//             builder = builder.WithDockerEndpoint(dockerEndpoint);
-//         }
-//         if(!DockerHelper.IsCiRun())
-//         {
-//             builder = builder.WithName("MsSQL-testcontainer")
-//                 .WithLabel("reuse-id", "MsSQL-testcontainer-reuse-hash");
-//         }
-//         var container = builder
-//             .WithPassword("#AdminPass123")
-//             .WithReuse(reuse: !DockerHelper.IsCiRun())
-//             .WithDbSeeder(
-//                 seederMock.Object, (c) => c.GetConnectionString())
-//             .Build();
-//         await container.StartAsync();
+        // Act
+        var builder = new MsSqlBuilder();
+        if(dockerEndpoint is not null)
+        {
+            builder = builder.WithDockerEndpoint(dockerEndpoint);
+        }
+        if(!DockerHelper.IsCiRun())
+        {
+            builder = builder.WithName("MsSQL-testcontainer")
+                .WithLabel("reuse-id", "MsSQL-testcontainer-reuse-hash");
+        }
+        var container = builder
+            .WithPassword("#AdminPass123")
+            .WithReuse(reuse: !DockerHelper.IsCiRun())
+            .Build();
+        await container.StartWithSeedAsync(seederMock.Object, (c) => c.GetConnectionString());
 
-//         // Assert
-//         Assert.Single(seederMock.Invocations);
-//         Assert.NotNull(createdContainer);
-//         Assert.Equal(TestcontainersStates.Running, createdContainer.State);
-//     }
+        // Assert
+        Assert.Single(seederMock.Invocations);
+        Assert.NotNull(createdContainer);
+        Assert.Equal(TestcontainersStates.Running, createdContainer.State);
+    }
 
-//     [Fact]
-//     public async Task ContainerBuilderExtensions_WithDbSeeder_HooksInsideTheGenericContainer()
-//     {
-//         // Arrange 
-//         const int systemPort = 23724;
-//         IContainer createdContainer = null!;
-//         var seederMock = new Mock<IDbSeeder>();
-//         seederMock.Setup(
-//             (seeder) =>
-//                 seeder.SeedAsync(
-//                     It.IsAny<IContainer>(),
-//                     It.IsAny<string>(),
-//                     It.IsAny<CancellationToken>())
-//         ).Callback((IContainer container, string _, CancellationToken _) => createdContainer = container);
+    [Fact]
+    public async Task ContainerBuilderExtensions_WithDbSeeder_HooksInsideTheGenericContainer()
+    {
+        // Arrange 
+        const int systemPort = 23724;
+        IContainer createdContainer = null!;
+        var seederMock = new Mock<IDbSeeder>();
+        seederMock.Setup(
+            (seeder) =>
+                seeder.SeedAsync(
+                    It.IsAny<IContainer>(),
+                    It.IsAny<string>(),
+                    It.IsAny<CancellationToken>())
+        ).Callback((IContainer container, string _, CancellationToken _) => createdContainer = container);
 
-//         // Act
-//         var builder = new ContainerBuilder();
-//         if(dockerEndpoint is not null)
-//         {
-//             builder = builder.WithDockerEndpoint(dockerEndpoint);
-//         }
-//         if(!DockerHelper.IsCiRun())
-//         {
-//             builder = builder.WithName("GenericMsSQL-testcontainer")
-//                 .WithLabel("reuse-id", "GenericMsSQL-testcontainer-reuse-hash");
-//         }
-//         var container = builder
-//             .WithImage("mcr.microsoft.com/mssql/server:2025-latest")
-//             .WithPortBinding(systemPort, 1433)
-//             .WithEnvironment("ACCEPT_EULA", "Y")
-//             .WithEnvironment("SA_PASSWORD", "YourStrongPassword123!")
-//             .WithReuse(reuse: !DockerHelper.IsCiRun())
-//             .WithDbSeeder(
-//                 seederMock.Object,
-//                 _ => $"Server=localhost,{systemPort};Database=master;User ID=sa;Password=YourStrongPassword123!;Encrypt=False;")
-//             .Build();
-//         await container.StartAsync();
+        // Act
+        var builder = new ContainerBuilder();
+        if(dockerEndpoint is not null)
+        {
+            builder = builder.WithDockerEndpoint(dockerEndpoint);
+        }
+        if(!DockerHelper.IsCiRun())
+        {
+            builder = builder.WithName("GenericMsSQL-testcontainer")
+                .WithLabel("reuse-id", "GenericMsSQL-testcontainer-reuse-hash");
+        }
+        var container = builder
+            .WithImage("mcr.microsoft.com/mssql/server:2025-latest")
+            .WithPortBinding(systemPort, 1433)
+            .WithEnvironment("ACCEPT_EULA", "Y")
+            .WithEnvironment("SA_PASSWORD", "YourStrongPassword123!")
+            .WithReuse(reuse: !DockerHelper.IsCiRun())
+            .Build();
+                
+        await container.StartWithSeedAsync(seederMock.Object,
+                _ => $"Server=localhost,{systemPort};Database=master;User ID=sa;Password=YourStrongPassword123!;Encrypt=False;");
 
-//         // Assert
-//         Assert.Single(seederMock.Invocations);
-//         Assert.NotNull(createdContainer);
-//         Assert.Equal(TestcontainersStates.Running, createdContainer.State);
-//     }
-// }
+        // Assert
+        Assert.Single(seederMock.Invocations);
+        Assert.NotNull(createdContainer);
+        Assert.Equal(TestcontainersStates.Running, createdContainer.State);
+    }
+}
