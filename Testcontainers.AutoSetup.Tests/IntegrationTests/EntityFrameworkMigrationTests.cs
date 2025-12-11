@@ -14,7 +14,7 @@ using Testcontainers.MsSql;
 namespace Testcontainers.AutoSetup.Tests.IntegrationTests;
 
 [Trait("Category", "Integration")]
-[Collection(nameof(ParallelTests))]
+[Collection(nameof(SequentialTests))]
 public class EntityFrameworkMigrationTests
 {
     private readonly string? dockerEndpoint = DockerHelper.GetDockerEndpoint();
