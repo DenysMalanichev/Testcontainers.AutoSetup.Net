@@ -26,7 +26,7 @@ public static class DockerHelper
     private static int _dockerPort = 2375;
     private static string? _customDockerEndpoint = null;
     private static readonly Lazy<string> _dockerHostAddressLazy = new(GetDockerHostAddress);
-    private static Func<bool> _customCiCheck = () => false;
+    private static Func<bool>? _customCiCheck = null!;
 
     /// <summary>
     /// Gets the resolved IP address of the Docker host.
@@ -118,9 +118,9 @@ public static class DockerHelper
     /// </summary>
     public static bool IsCiRun()
     {
-        if (_customCiCheck())
+        if (_customCiCheck is not null)
         {
-            return true;
+            return _customCiCheck();
         }
 
         var conversionResult = bool.TryParse(

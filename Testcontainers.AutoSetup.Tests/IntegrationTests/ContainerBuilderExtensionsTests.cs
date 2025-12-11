@@ -1,4 +1,5 @@
 ﻿using DotNet.Testcontainers.Builders;
+using DotNet.Testcontainers.Configurations;
 using DotNet.Testcontainers.Containers;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
@@ -8,7 +9,7 @@ using Testcontainers.AutoSetup.Core.Helpers;
 using Testcontainers.AutoSetup.Tests.TestCollections;
 using Testcontainers.MsSql;
 
-namespace Testcontainers.AutoSetup.Tests;
+namespace Testcontainers.AutoSetup.Tests.IntegrationTests;
 
 [Trait("Category", "Integration")]
 [Collection(nameof(ParallelTests))]
@@ -37,14 +38,18 @@ public class ContainerBuilderExtensionsTests
         {
             builder = builder.WithDockerEndpoint(dockerEndpoint);
         }
-        var container = builder.WithName("MsSQL-testcontainer")
+        if(!DockerHelper.IsCiRun())
+        {
+            builder = builder
+                .WithName("MsSQL-testcontainer")
+                .WithReuse(reuse: true)
+                .WithLabel("reuse-id", "MsSQL-testcontainer-reuse-hash");
+        }
+        var container = builder
             .WithPassword("#AdminPass123")
-            .WithReuse(reuse: !DockerHelper.IsCiRun())
-            .WithLabel("reuse-id", "MsSQL-testcontainer-reuse-hash")
-            .WithDbSeeder(
-                seederMock.Object, (c) => c.GetConnectionString())
             .Build();
         await container.StartAsync();
+        await container.SeedAsync(seederMock.Object, (c) => c.GetConnectionString());
 
         // Assert
         Assert.Single(seederMock.Invocations);
@@ -56,7 +61,6 @@ public class ContainerBuilderExtensionsTests
     public async Task ContainerBuilderExtensions_WithDbSeeder_HooksInsideTheGenericContainer()
     {
         // Arrange 
-        const int systemPort = 23724;
         IContainer createdContainer = null!;
         var seederMock = new Mock<IDbSeeder>();
         seederMock.Setup(
@@ -73,22 +77,55 @@ public class ContainerBuilderExtensionsTests
         {
             builder = builder.WithDockerEndpoint(dockerEndpoint);
         }
+        if(!DockerHelper.IsCiRun())
+        {
+            builder = builder
+                .WithName("GenericMsSQL-testcontainer")
+                .WithReuse(reuse: true)
+                .WithLabel("reuse-id", "GenericMsSQL-testcontainer-reuse-hash")
+                .WithPortBinding(23578, 1433);
+        }
+        else
+        {
+            builder = builder.WithPortBinding(1433, assignRandomHostPort: true);
+        }
         var container = builder
-            .WithName("GenericMsSQL-testcontainer")
-            .WithImage("mcr.microsoft.com/mssql/server:2025-latest")
-            .WithPortBinding(1433, systemPort)
+            .WithImage("mcr.microsoft.com/mssql/server:2019-CU18-ubuntu-20.04")
             .WithEnvironment("ACCEPT_EULA", "Y")
-            .WithEnvironment("SA_PASSWORD", "YourStrongPassword123!")
-            .WithReuse(reuse: !DockerHelper.IsCiRun())
-            .WithDbSeeder(
-                seederMock.Object,
-                _ => $"Server=localhost,{systemPort};Database=master;User ID=sa;Password=YourStrongPassword123!;Encrypt=False;")
+            .WithEnvironment("MSSQL_SA_PASSWORD", "YourStrongPassword123!")
+            .WithEnvironment("SQLCMDPASSWORD", "YourStrongPassword123!")
+            .WithWaitStrategy(Wait.ForUnixContainer().AddCustomWaitStrategy(new WaitUntil()))
             .Build();
-        await container.StartAsync();
+
+        await container.StartAsync();  
+        var mappedPort = container.GetMappedPublicPort(1433);
+        string connectionString = $"Server={DockerHelper.DockerHostAddress},{mappedPort};User ID=sa;Password=YourStrongPassword123!;Encrypt=False;";
+                
+        await container.SeedAsync(seederMock.Object,
+                _ => connectionString);
 
         // Assert
         Assert.Single(seederMock.Invocations);
         Assert.NotNull(createdContainer);
         Assert.Equal(TestcontainersStates.Running, createdContainer.State);
+    }
+
+    /// <inheritdoc cref="IWaitUntil" />
+    /// <remarks>
+    /// Uses the sqlcmd utility scripting variables to detect readiness of the MsSql container:
+    /// https://learn.microsoft.com/en-us/sql/tools/sqlcmd/sqlcmd-utility?view=sql-server-linux-ver15#sqlcmd-scripting-variables.
+    /// </remarks>
+    private sealed class WaitUntil : IWaitUntil
+    {
+        private readonly string[] _command = { "/opt/mssql-tools/bin/sqlcmd", "-Q", "SELECT 1;", "-U", "sa" };
+
+        /// <inheritdoc />
+        public async Task<bool> UntilAsync(IContainer container)
+        {
+            var execResult = await container.ExecAsync(_command)
+                .ConfigureAwait(false);
+
+            return 0L.Equals(execResult.ExitCode);
+        }
     }
 }

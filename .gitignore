@@ -16,6 +16,10 @@
 !.vscode/*.code-snippets
 !*.code-workspace
 
+# VS ignore
+.vs/*
+Generated\ Files/
+
 # Built Visual Studio Code Extensions
 *.vsix
 
