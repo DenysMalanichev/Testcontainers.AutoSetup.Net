@@ -12,7 +12,7 @@ public record DbSetup
             containerConnStr = containerConnStr.Replace("Database=master", $"Database={DbName}");            
         }
 
-        containerConnStr += ";TrustServerCertificate=true";
+        containerConnStr += ";Encrypt=False";
 
         return containerConnStr;
     }
