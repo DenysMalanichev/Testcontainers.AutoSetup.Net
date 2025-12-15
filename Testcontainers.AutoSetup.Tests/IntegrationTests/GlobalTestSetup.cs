@@ -43,15 +43,17 @@ public class GlobalTestSetup : GenericTestBase
 
         // 2. Register containers within the environment
         var dbSetup = MsSqlDbSetup;
-        MsSqlContainerFromSpecificBuilderConnection = new SqlConnection(dbSetup.BuildConnectionString(MsSqlContainerFromSpecificBuilder.GetConnectionString()));
+        MsSqlContainerFromSpecificBuilderConnection = new SqlConnection(
+            dbSetup.BuildConnectionString(MsSqlContainerFromSpecificBuilder.GetConnectionString()));
         Environment.Register(MsSqlContainerFromSpecificBuilder, 
             new DbSetupStrategy(new EfSeeder(), new MsSqlDbRestorer(), dbSetup), 
             c => c.GetConnectionString());
-            
+
         var genericDbSetup = GenericMsSqlDbSetup;
         var mappedPort = MsSqlContainerFromGenericBuilder.GetMappedPublicPort(1433);    
         var genericContainerConnStr = $"Server={EnvironmentHelper.DockerHostAddress},{mappedPort};Database={genericDbSetup.DbName};User ID=sa;Password=YourStrongPassword123!;Encrypt=False;";
-        MsSqlContainerFromGenericBuilderConnection = new SqlConnection(genericDbSetup.BuildConnectionString(genericContainerConnStr));
+        MsSqlContainerFromGenericBuilderConnection = new SqlConnection(
+            genericDbSetup.BuildConnectionString(genericContainerConnStr));
         Environment.Register(MsSqlContainerFromGenericBuilder, 
             new DbSetupStrategy(new EfSeeder(), new MsSqlDbRestorer(), genericDbSetup), 
             c => genericContainerConnStr);

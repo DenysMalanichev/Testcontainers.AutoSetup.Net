@@ -12,7 +12,7 @@ public class MsSqlRestorationTests(ContainersFixture fixture) : IntegrationTests
     [Fact]
     public async Task EfSeeder_WithMSSQLContainerBuilder_MigratesDatabase()
     {
-        // Arrange & Act stages of the test are done within the GlobalTestSetup
+        // Arrange & Act stages (containers setup nad seeding) of the test are done within the GlobalTestSetup
         // Assert
         Assert.NotNull(Setup.MsSqlContainerFromSpecificBuilder);
         Assert.Equal(TestcontainersStates.Running, Setup.MsSqlContainerFromSpecificBuilder.State);
@@ -26,7 +26,7 @@ public class MsSqlRestorationTests(ContainersFixture fixture) : IntegrationTests
     [Fact]
     public async Task EfSeeder_WithGenericContainerBuilder_MigratesDatabase()
     {
-        // Arrange & Act stages of the test are done within the GlobalTestSetup
+        // Arrange & Act stages (containers setup nad seeding) of the test are done within the GlobalTestSetup
         // Assert
         Assert.NotNull(Setup.MsSqlContainerFromGenericBuilder);
         Assert.Equal(TestcontainersStates.Running, Setup.MsSqlContainerFromGenericBuilder.State);
