@@ -8,6 +8,6 @@ public interface IDbSeeder
     Task SeedAsync(
         DbSetup dbSetup,
         IContainer container,
-        string connectionString,
+        string containerConnectionString,
         CancellationToken cancellationToken);
 }

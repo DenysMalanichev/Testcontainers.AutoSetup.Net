@@ -10,25 +10,20 @@ using Testcontainers.MsSql;
 using DotNet.Testcontainers.Configurations;
 using DotNet.Testcontainers.Containers;
 using Testcontainers.AutoSetup.Core;
-using Microsoft.Data.SqlClient;
 
 namespace Testcontainers.AutoSetup.Tests.IntegrationTests;
 
 public class GlobalTestSetup : GenericTestBase
 {
     public MsSqlContainer MsSqlContainerFromSpecificBuilder = null!;
-    public SqlConnection MsSqlContainerFromSpecificBuilderConnection {  get; private set; } = null!;
+    public string? MsSqlContainerFromSpecificBuilderConnStr { get; private set; } = null!;
     public IContainer MsSqlContainerFromGenericBuilder = null!;
-    public SqlConnection MsSqlContainerFromGenericBuilderConnection {  get; private set; } = null!;
+    public string? MsSqlContainerFromGenericBuilderConnStr { get; private set; } = null!;
 
-
-    private static readonly TestEnvironment Environment = new();
 
     public readonly string? DockerEndpoint = EnvironmentHelper.GetDockerEndpoint();
 
-    public GlobalTestSetup() : base(Environment)
-    {
-    }
+    public GlobalTestSetup() : base(new TestEnvironment()) { }
 
     public async Task InitializeEnvironmentAsync()
     {
@@ -43,29 +38,34 @@ public class GlobalTestSetup : GenericTestBase
 
         // 2. Register containers within the environment
         var dbSetup = MsSqlDbSetup;
-        MsSqlContainerFromSpecificBuilderConnection = new SqlConnection(
-            dbSetup.BuildConnectionString(MsSqlContainerFromSpecificBuilder.GetConnectionString()));
-        Environment.Register(MsSqlContainerFromSpecificBuilder, 
-            new DbSetupStrategy(new EfSeeder(), new MsSqlDbRestorer(), dbSetup), 
+        MsSqlContainerFromSpecificBuilderConnStr = dbSetup.BuildConnectionString(MsSqlContainerFromSpecificBuilder.GetConnectionString());
+        Environment.Register(dbSetup,
+            MsSqlContainerFromSpecificBuilder,
+            new DbSetupStrategy(
+                new EfSeeder(),
+                new MsSqlDbRestorer(
+                    MsSqlDbSetup,
+                    MsSqlContainerFromSpecificBuilder,
+                    MsSqlContainerFromSpecificBuilderConnStr)
+            ), 
             c => c.GetConnectionString());
 
         var genericDbSetup = GenericMsSqlDbSetup;
         var mappedPort = MsSqlContainerFromGenericBuilder.GetMappedPublicPort(1433);    
-        var genericContainerConnStr = $"Server={EnvironmentHelper.DockerHostAddress},{mappedPort};Database={genericDbSetup.DbName};User ID=sa;Password=YourStrongPassword123!;Encrypt=False;";
-        MsSqlContainerFromGenericBuilderConnection = new SqlConnection(
-            genericDbSetup.BuildConnectionString(genericContainerConnStr));
-        Environment.Register(MsSqlContainerFromGenericBuilder, 
-            new DbSetupStrategy(new EfSeeder(), new MsSqlDbRestorer(), genericDbSetup), 
-            c => genericContainerConnStr);
+        MsSqlContainerFromGenericBuilderConnStr = genericDbSetup.BuildConnectionString($"Server={EnvironmentHelper.DockerHostAddress},{mappedPort};Database={genericDbSetup.DbName};User ID=sa;Password=YourStrongPassword123!;Encrypt=False;");
+        Environment.Register(genericDbSetup,
+            MsSqlContainerFromGenericBuilder,
+            new DbSetupStrategy(
+                new EfSeeder(),
+                new MsSqlDbRestorer(
+                    GenericMsSqlDbSetup,
+                    MsSqlContainerFromGenericBuilder,
+                    MsSqlContainerFromGenericBuilderConnStr)
+            ), 
+            c => MsSqlContainerFromGenericBuilderConnStr);
 
         // 3. Execute Cold Start (Seed + Snapshot)
         await Environment.InitializeAsync();
-
-        // 4. Open connections
-        await Task.WhenAll(
-            MsSqlContainerFromSpecificBuilderConnection.OpenAsync(),
-            MsSqlContainerFromGenericBuilderConnection.OpenAsync()
-        );
     }
 
     private MsSqlContainer CreateMsSqlContainerFromSpecificBuilder()
@@ -113,7 +113,7 @@ public class GlobalTestSetup : GenericTestBase
             .WithEnvironment("ACCEPT_EULA", "Y")            
             .WithEnvironment("MSSQL_SA_PASSWORD", "YourStrongPassword123!")
             .WithEnvironment("SQLCMDPASSWORD", "YourStrongPassword123!")
-            .WithWaitStrategy(Wait.ForUnixContainer().AddCustomWaitStrategy(new WaitUntil()))          
+            .WithWaitStrategy(Wait.ForUnixContainer().AddCustomWaitStrategy(new WaitUntil()))       
             .Build();
 
         return container;

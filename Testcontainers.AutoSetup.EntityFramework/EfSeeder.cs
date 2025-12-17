@@ -1,4 +1,3 @@
-using System.Globalization;
 using DotNet.Testcontainers.Containers;
 using Microsoft.EntityFrameworkCore;
 using Testcontainers.AutoSetup.Core.Abstractions;
@@ -58,7 +57,7 @@ public class EfSeeder : IDbSeeder
         // }
     }
 
-    private async Task ApplyEFMigrationsAsync(
+    private static async Task ApplyEFMigrationsAsync(
         EfDbSetup dbSetup,
         string connectionString,
         CancellationToken cancellationToken = default)

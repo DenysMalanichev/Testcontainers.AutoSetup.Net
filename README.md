@@ -111,3 +111,7 @@ Standard Standard: Checks if CI=true (GitHub Actions, GitLab, Travis).
 Vendor Specific: Checks for existence of variables like TF_BUILD (Azure), JENKINS_URL, TEAMCITY_VERSION, etc.
 
 If any of these are true, GetDockerEndpoint() returns null. This is the desired behavior, as CI agents typically mount the Docker socket (/var/run/docker.sock) directly, which Testcontainers handles automatically without needing a TCP address.
+
+## DB Restore Logic
+
+> NOTE: if you experience delays (5-10 seconds) between tests with MS SQL DB - most likely it is an issue with Reverse DNS lookup. The easiest workaround here is to register the IP of WSL in Windows hosts file.

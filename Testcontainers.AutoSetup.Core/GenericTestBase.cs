@@ -2,14 +2,13 @@ using Testcontainers.AutoSetup.Core.Common;
 
 namespace Testcontainers.AutoSetup.Core;
 
-// A truly generic base class
 public abstract class GenericTestBase
 {
-    private readonly TestEnvironment _environment;
+    public readonly TestEnvironment Environment;
 
     protected GenericTestBase(TestEnvironment environment)
     {
-        _environment = environment;
+        Environment = environment;
     }
 
     // The method to call before every test
@@ -20,7 +19,7 @@ public abstract class GenericTestBase
 
         if (ShouldReset())
         {
-            await _environment.ResetAsync();
+            await Environment.ResetAsync();
         }
     }
 
