@@ -13,8 +13,8 @@ ExecStart=
 ExecStart=/usr/bin/dockerd --host=tcp://0.0.0.0:2375 --host=unix:///var/run/docker.sock
 ```
 
-## DockerHelper
-**DockerHelper** is a static utility class designed to simplify Docker connectivity configuration for Testcontainers.AutoSetup.
+## EnvironmentHelper
+**EnvironmentHelper** is a static utility class designed to simplify Docker connectivity configuration for Testcontainers.AutoSetup.
 
 It automatically handles networking quirks—specifically resolving the correct IP address when running Docker inside WSL2 on Windows—while providing safe defaults for Linux, macOS, and CI/CD environments.
 
@@ -64,7 +64,7 @@ In most local development scenarios (especially on Windows with WSL2), you simpl
 using Testcontainers.AutoSetup.Core.Helpers;
 using DotNet.Testcontainers.Builders;
 
-var endpoint = DockerHelper.GetDockerEndpoint();
+var endpoint = EnvironmentHelper.GetDockerEndpoint();
 
 var builder = new ContainerBuilder()
     .WithImage("postgres:15-alpine")
@@ -83,7 +83,7 @@ public class GlobalSetup
     public GlobalSetup()
     {
         // Override default 2375
-        DockerHelper.SetDockerPort(5000);
+        EnvironmentHelper.SetDockerPort(5000);
     }
 }
 ```
@@ -92,14 +92,14 @@ If you need to detect a specific custom environment (e.g., a local containerized
 
 ```C#
 // Force CI mode if a specific file exists on disk
-DockerHelper.SetCustomCiCheck(() => File.Exists("/.dockerenv"));
+EnvironmentHelper.SetCustomCiCheck(() => File.Exists("/.dockerenv"));
 
 // OR: Force CI mode based on a custom company variable
-DockerHelper.SetCustomCiCheck(() => Environment.GetEnvironmentVariable("MY_COMPANY_BUILD_AGENT") == "true");
+EnvironmentHelper.SetCustomCiCheck(() => Environment.GetEnvironmentVariable("MY_COMPANY_BUILD_AGENT") == "true");
 ```
 #### How It Works
 WSL2 Resolution
-On Windows, Docker Desktop often runs inside a hidden WSL2 VM. Validating localhost often fails for TCP connections. DockerHelper executes the command wsl hostname -I to fetch the actual IP address of the VM bridging the connection.
+On Windows, Docker Desktop often runs inside a hidden WSL2 VM. Validating localhost often fails for TCP connections. EnvironmentHelper executes the command wsl hostname -I to fetch the actual IP address of the VM bridging the connection.
 
 CI Detection strategy
 The library checks for CI environments in the following order:
