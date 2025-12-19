@@ -92,14 +92,12 @@ public class DbSetupStrategy<TSeeder, TRestorer> : IDbStrategy
         ], cancellationToken);
 
         if (result.ExitCode == 0 && result.Stderr.IsNullOrEmpty())
-        if (result.ExitCode == 0 && result.Stderr.IsNullOrEmpty())
         {
             Console.WriteLine("Snapshot is up to date (No newer migrations found).");
             return true; 
         }
         else if (result.ExitCode == 1)
         {
-            Console.WriteLine("No up-to-date snapshot exists, recreation required.");
             Console.WriteLine("No up-to-date snapshot exists, recreation required.");
             return false;
         }
@@ -120,7 +118,6 @@ public class DbSetupStrategy<TSeeder, TRestorer> : IDbStrategy
             "/bin/bash", 
             "-c", 
             $"findmnt {_restorer.RestorationStateFilesDirectory}",
-            $"findmnt {_restorer.RestorationStateFilesDirectory}",
         ], cancellationToken);
 
         if (result.ExitCode == 0)
@@ -129,7 +126,6 @@ public class DbSetupStrategy<TSeeder, TRestorer> : IDbStrategy
         }
         else if (result.ExitCode == 1)
         {
-            Console.WriteLine($"[WARNING] No mount found at {_restorer.RestorationStateFilesDirectory}. Skipping initial restoration.");
             Console.WriteLine($"[WARNING] No mount found at {_restorer.RestorationStateFilesDirectory}. Skipping initial restoration.");
             return false;
         }
