@@ -15,4 +15,10 @@ public abstract record DbSetup
     /// </summary>
     /// <param name="containerConnStr">Connection string to DB's container</param>
     public abstract string BuildConnectionString(string containerConnStr);
+
+    /// <summary>
+    /// Returns a <see cref="DateTime"/> identifying the last time migrations files changed
+    /// </summary>
+    /// <param name="cancellationToken"></param>
+    public abstract Task<DateTime> GetMigrationsLastModificationDateAsync(CancellationToken cancellationToken = default);
 }

@@ -1,4 +1,5 @@
 using DotNet.Testcontainers.Containers;
+using Microsoft.IdentityModel.Tokens;
 using Testcontainers.AutoSetup.Core.Abstractions;
 using Testcontainers.AutoSetup.Core.Common.Entities;
 
@@ -12,11 +13,13 @@ public class DbSetupStrategy<TSeeder, TRestorer> : IDbStrategy
     private readonly TRestorer _restorer;
 
     private readonly IContainer _container;
+    private readonly bool _tryInitialRestoreFromSnapshot = true;
 
     public DbSetupStrategy(
         DbSetup dbSetup,
         IContainer container,
         string containerConnectionString,
+        bool tryInitialRestoreFromSnapshot = true,
         string? restorationStateFilesPath = null!)
     {
         _seeder = new TSeeder() ?? throw new ArgumentException($"Failed to instantiate a seeder of type {typeof(TSeeder)}");
@@ -26,15 +29,19 @@ public class DbSetupStrategy<TSeeder, TRestorer> : IDbStrategy
                 ?? throw new ArgumentException($"Failed to instantiate a restorer of type {typeof(TRestorer)}");
         
         _container = container ?? throw new ArgumentNullException(nameof(container));
+        _tryInitialRestoreFromSnapshot = tryInitialRestoreFromSnapshot;
     }
 
+    /// <inheritdoc/>
     public async Task InitializeGlobalAsync(
         DbSetup dbSetup,
         IContainer container,
         string containerConnectionString,
         CancellationToken cancellationToken = default)
     {
-        if (await IsMountExistsAsync(cancellationToken) && await IsSnapshotValidAsync(cancellationToken))
+        if (_tryInitialRestoreFromSnapshot 
+            && await IsMountExistsAsync(cancellationToken)
+            && await IsSnapshotValidAsync(dbSetup, cancellationToken))
         {
             await _restorer.RestoreAsync(cancellationToken);
             return;
@@ -48,6 +55,7 @@ public class DbSetupStrategy<TSeeder, TRestorer> : IDbStrategy
         await _restorer.SnapshotAsync(cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task ResetAsync(
         IContainer container,
         string containerConnectionString,
@@ -62,16 +70,20 @@ public class DbSetupStrategy<TSeeder, TRestorer> : IDbStrategy
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
     /// <exception cref="ExecFailedException"></exception>
-    private async Task<bool> IsSnapshotValidAsync(CancellationToken cancellationToken)
+    private async Task<bool> IsSnapshotValidAsync(DbSetup dbSetup, CancellationToken cancellationToken)
     {
         // COMMAND EXPLANATION:
-        // find ... -newer ...  -> Looks for files in the dir newer than the snapshot file
-        // -print -quit         -> Stop searching as soon as we find ONE new file (Performance)
+        // Checks if at least one snapshot exists in the directory
+        // "ls ... > /dev/null 2>&1" silence the output, returns true (0) if files exist, false (2) if not - masked.
+        // find ... -newermt ...  -> Looks for files in the dir newer than the snapshot LMD
+        // -print -quit         -> Stop searching as soon as we find ONE new file
         // test -z "..."        -> Returns Exit Code 0 (Success) if the string is EMPTY (no new files found)
         //                      -> Returns Exit Code 1 (Fail) if the string is NOT EMPTY (new files found)
-        
-        var cmd = $"test -z \"$(find {_restorer.RestorationStateFilesDirectory} -newer {_restorer.RestorationStateFilesPath} -print -quit)\"";
-
+        var migrationsLMD = await dbSetup.GetMigrationsLastModificationDateAsync(cancellationToken);
+        var cmd = $"ls {_restorer.RestorationStateFilesDirectory}/*snapshot_* > /dev/null 2>&1 && " + 
+          $"test -z \"$(find {_restorer.RestorationStateFilesDirectory} " +
+           "-maxdepth 1 -name '*_snapshot_*' " +
+          $"-newermt '{migrationsLMD:yyyy-MM-dd HH:mm:ss}' -print -quit)\"";
         var result = await _container.ExecAsync( 
         [
             "/bin/bash", 
@@ -79,14 +91,14 @@ public class DbSetupStrategy<TSeeder, TRestorer> : IDbStrategy
             cmd
         ], cancellationToken);
 
-        if (result.ExitCode == 0)
+        if (result.ExitCode == 0 && result.Stderr.IsNullOrEmpty())
         {
             Console.WriteLine("Snapshot is up to date (No newer migrations found).");
             return true; 
         }
         else if (result.ExitCode == 1)
         {
-            Console.WriteLine("Migrations have changed. Snapshot recreation required.");
+            Console.WriteLine("No up-to-date snapshot exists, recreation required.");
             return false;
         }
 
@@ -105,7 +117,7 @@ public class DbSetupStrategy<TSeeder, TRestorer> : IDbStrategy
         [
             "/bin/bash", 
             "-c", 
-            $"findmnt -q {_restorer.RestorationStateFilesPath}",
+            $"findmnt {_restorer.RestorationStateFilesDirectory}",
         ], cancellationToken);
 
         if (result.ExitCode == 0)
@@ -114,7 +126,7 @@ public class DbSetupStrategy<TSeeder, TRestorer> : IDbStrategy
         }
         else if (result.ExitCode == 1)
         {
-            Console.WriteLine($"[WARNING] No mount found at {_restorer.RestorationStateFilesPath}. Skipping initial restoration.");
+            Console.WriteLine($"[WARNING] No mount found at {_restorer.RestorationStateFilesDirectory}. Skipping initial restoration.");
             return false;
         }
         

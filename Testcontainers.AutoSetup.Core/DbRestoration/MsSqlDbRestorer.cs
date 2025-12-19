@@ -18,6 +18,7 @@ public class MsSqlDbRestorer : DbRestorer
         : base(dbSetup, container, containerConnectionString, restorationStateFilesDirectory ?? DefaultRestorationStateFilesPath)
     { }
 
+    /// <inheritdoc/>
     public override async Task RestoreAsync(CancellationToken cancellationToken = default)
     {
         var stopwatch = Stopwatch.StartNew();
@@ -95,6 +96,7 @@ public class MsSqlDbRestorer : DbRestorer
         Console.WriteLine("[DB RESET IN] " + stopwatch.ElapsedMilliseconds + "ms");
     }
 
+    /// <inheritdoc/>
     public override async Task SnapshotAsync(CancellationToken cancellationToken = default)
     {
         await EnsureRestorationDirectoryExistsAsync();

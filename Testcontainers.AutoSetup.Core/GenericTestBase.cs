@@ -16,6 +16,7 @@ public abstract class GenericTestBase
     {
         // Optional: Reflection check for [DbReset] attribute goes here
         // var shouldReset = CheckAttribute(this.GetType());
+        // TODO implement an attribute and its usage
 
         if (ShouldReset())
         {
@@ -24,7 +25,7 @@ public abstract class GenericTestBase
     }
 
     // Helper for attribute checking
-    private bool ShouldReset()
+    private static bool ShouldReset()
     {
         // Basic reflection to see if class/method has [DbReset(None)]
         // This is framework-agnostic because it uses standard .NET Reflection
