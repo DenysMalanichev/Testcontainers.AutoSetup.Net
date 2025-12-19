@@ -39,15 +39,13 @@ public class GlobalTestSetup : GenericTestBase
         // 2. Register containers within the environment
         var dbSetup = MsSqlDbSetup;
         MsSqlContainerFromSpecificBuilderConnStr = dbSetup.BuildConnectionString(MsSqlContainerFromSpecificBuilder.GetConnectionString());
-        Environment.Register(dbSetup,
+        Environment.Register(
+            dbSetup,
             MsSqlContainerFromSpecificBuilder,
-            new DbSetupStrategy(
-                new EfSeeder(),
-                new MsSqlDbRestorer(
-                    MsSqlDbSetup,
-                    MsSqlContainerFromSpecificBuilder,
-                    MsSqlContainerFromSpecificBuilderConnStr)
-            ), 
+            new DbSetupStrategy<EfSeeder, MsSqlDbRestorer>(
+                MsSqlDbSetup,
+                MsSqlContainerFromSpecificBuilder,
+                MsSqlContainerFromSpecificBuilderConnStr),
             c => c.GetConnectionString());
 
         var genericDbSetup = GenericMsSqlDbSetup;
@@ -55,13 +53,10 @@ public class GlobalTestSetup : GenericTestBase
         MsSqlContainerFromGenericBuilderConnStr = genericDbSetup.BuildConnectionString($"Server={EnvironmentHelper.DockerHostAddress},{mappedPort};Database={genericDbSetup.DbName};User ID=sa;Password=YourStrongPassword123!;Encrypt=False;");
         Environment.Register(genericDbSetup,
             MsSqlContainerFromGenericBuilder,
-            new DbSetupStrategy(
-                new EfSeeder(),
-                new MsSqlDbRestorer(
-                    GenericMsSqlDbSetup,
-                    MsSqlContainerFromGenericBuilder,
-                    MsSqlContainerFromGenericBuilderConnStr)
-            ), 
+            new DbSetupStrategy<EfSeeder, MsSqlDbRestorer>(
+                GenericMsSqlDbSetup,
+                MsSqlContainerFromGenericBuilder,
+                MsSqlContainerFromGenericBuilderConnStr),
             c => MsSqlContainerFromGenericBuilderConnStr);
 
         // 3. Execute Cold Start (Seed + Snapshot)
@@ -127,6 +122,7 @@ public class GlobalTestSetup : GenericTestBase
                     new DbContextOptionsBuilder<CatalogContext>()
                     .UseSqlServer(connString)
                     .Options),
+                MigrationsPath = "./IntegrationsTests/Migrations",
             };
 
     private static EfDbSetup GenericMsSqlDbSetup => new() 
@@ -137,6 +133,7 @@ public class GlobalTestSetup : GenericTestBase
                     new DbContextOptionsBuilder<CatalogContext>()
                     .UseSqlServer(connString)
                     .Options),
+                MigrationsPath = "./IntegrationsTests/Migrations",
             };
 
     /// <inheritdoc cref="IWaitUntil" />

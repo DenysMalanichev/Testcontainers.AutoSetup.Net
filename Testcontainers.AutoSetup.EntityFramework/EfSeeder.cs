@@ -7,54 +7,14 @@ using Testcontainers.AutoSetup.EntityFramework.Entities;
 namespace Testcontainers.AutoSetup.EntityFramework;
 
 public class EfSeeder : IDbSeeder
-{    
-    private readonly bool _tryRecreateFromDump;
-
-    public EfSeeder(bool tryRecreateFromDump = false)
-    {
-        _tryRecreateFromDump = tryRecreateFromDump;
-    }
-
+{
     public async Task SeedAsync(
         DbSetup dbSetup,
         IContainer container,
         string connectionString,
         CancellationToken cancellationToken = default)
     {
-        if (_tryRecreateFromDump)
-        {
-            await InitializeDatabaseWithDumpAsync(container, connectionString, cancellationToken);
-        }
-
         await ApplyEFMigrationsAsync((EfDbSetup)dbSetup, connectionString, cancellationToken).ConfigureAwait(false);
-    }
-
-    private async Task InitializeDatabaseWithDumpAsync(IContainer container, string connectionString, CancellationToken cancellationToken)
-    {
-        // var latestSnapshotFile = await GetLatestSnapshotFileAsync(container).ConfigureAwait(false);
-
-        // if (!isLocalRun)
-        // {
-        //     await ApplyEFMigrationsAsync(connection).ConfigureAwait(false);
-        //     return;
-        // }
-
-        // bool areScriptsUpdated = AreLiquibaseScriptsUpdated(latestSnapshotFile.LastWriteTime);
-
-        // if (latestSnapshotFile.Name is not null && areScriptsUpdated)
-        // {
-        //     await RemoveDeprecatedDbSnapshotsAsync(container, latestSnapshotFile.Name!).ConfigureAwait(false);
-        // }
-
-        // if (latestSnapshotFile.Name is null || areScriptsUpdated)
-        // {
-        //     await ApplyEFMigrationsAsync(connection).ConfigureAwait(false);
-        //     await CreateDatabaseStateSnapshotAsync(container, connection).ConfigureAwait(false);
-        // }
-        // else
-        // {
-        //     await RestoreDatabaseStateAsync(container, latestSnapshotFile.Name).ConfigureAwait(false);
-        // }
     }
 
     private static async Task ApplyEFMigrationsAsync(

@@ -1,11 +1,12 @@
-
-
-using DotNet.Testcontainers.Containers;
-
 namespace Testcontainers.AutoSetup.Core.Abstractions;
 
 public interface IDbRestorer
 {
+    /// <summary>
+    /// Returns the <see cref="string?"/> path to the current DB snapshot or null, if no snapshots exist
+    /// </summary>
+    string? RestorationStateFilesPath { get; }
+
     /// <summary>
     /// Creates a snapshot of the DB from which it will be restored
     /// </summary>

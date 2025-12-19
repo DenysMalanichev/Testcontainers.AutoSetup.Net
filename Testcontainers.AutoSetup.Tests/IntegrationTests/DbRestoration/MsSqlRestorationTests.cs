@@ -19,7 +19,7 @@ public class MsSqlRestorationTests(ContainersFixture fixture) : IntegrationTests
         Assert.Equal(TestcontainersStates.Running, Setup.MsSqlContainerFromSpecificBuilder.State);
 
         var stopwatch = Stopwatch.StartNew();
-        using var connection = new SqlConnection(Setup.MsSqlContainerFromSpecificBuilderConnStr);
+        await using var connection = new SqlConnection(Setup.MsSqlContainerFromSpecificBuilderConnStr);
         await connection.OpenAsync();
         stopwatch.Stop();
         System.Console.WriteLine("[CONNECTION OPENED IN TEST IN] " + stopwatch.ElapsedMilliseconds);
@@ -27,6 +27,7 @@ public class MsSqlRestorationTests(ContainersFixture fixture) : IntegrationTests
         var migrationCount = (int)(await historyCmd.ExecuteScalarAsync() ?? throw new SqlNullValueException());
 
         Assert.True(migrationCount > 0, "No migrations were found in the history table.");
+        await connection.DisposeAsync();
     }
 
     [Fact]
@@ -38,7 +39,7 @@ public class MsSqlRestorationTests(ContainersFixture fixture) : IntegrationTests
         Assert.Equal(TestcontainersStates.Running, Setup.MsSqlContainerFromGenericBuilder.State);
         
         var stopwatch = Stopwatch.StartNew();
-        using var connection = new SqlConnection(Setup.MsSqlContainerFromGenericBuilderConnStr);
+        await using var connection = new SqlConnection(Setup.MsSqlContainerFromGenericBuilderConnStr);
         await connection.OpenAsync();
         stopwatch.Stop();
         System.Console.WriteLine("[CONNECTIOn OPENED IN TEST IN] " + stopwatch.ElapsedMilliseconds);
@@ -57,7 +58,7 @@ public class MsSqlRestorationTests(ContainersFixture fixture) : IntegrationTests
         Assert.Equal(TestcontainersStates.Running, Setup.MsSqlContainerFromSpecificBuilder.State);
 
         var stopwatch = Stopwatch.StartNew();
-        using var connection = new SqlConnection(Setup.MsSqlContainerFromSpecificBuilderConnStr);
+        await using var connection = new SqlConnection(Setup.MsSqlContainerFromSpecificBuilderConnStr);
         await connection.OpenAsync();
         stopwatch.Stop();
         System.Console.WriteLine("[CONNECTIOn OPENED IN TEST IN] " + stopwatch.ElapsedMilliseconds);
@@ -76,7 +77,7 @@ public class MsSqlRestorationTests(ContainersFixture fixture) : IntegrationTests
         Assert.Equal(TestcontainersStates.Running, Setup.MsSqlContainerFromGenericBuilder.State);
 
         var stopwatch = Stopwatch.StartNew();
-        using var connection = new SqlConnection(Setup.MsSqlContainerFromGenericBuilderConnStr);
+        await using var connection = new SqlConnection(Setup.MsSqlContainerFromGenericBuilderConnStr);
         await connection.OpenAsync();
         stopwatch.Stop();
         System.Console.WriteLine("[CONNECTIOn OPENED IN TEST IN] " + stopwatch.ElapsedMilliseconds);

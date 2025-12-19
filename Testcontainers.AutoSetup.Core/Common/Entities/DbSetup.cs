@@ -4,10 +4,15 @@ namespace Testcontainers.AutoSetup.Core.Common.Entities;
 
 public abstract record DbSetup
 {   
-    public DbType DbType { get; set; } = DbType.Other;
-    public string? DbName { get; set; }
-    public string? MigrationsPath { get; set; }
-    public bool RestoreFromDump { get; set; } = false;
+    public required string DbName { get; init; }
+    public required string MigrationsPath { get; init; }
 
+    public DbType DbType { get; init; } = DbType.Other;
+    public bool RestoreFromDump { get; init; } = false;
+
+    /// <summary>
+    /// Builds and returns a connection string to desiered DB
+    /// </summary>
+    /// <param name="containerConnStr">Connection string to DB's container</param>
     public abstract string BuildConnectionString(string containerConnStr);
 }

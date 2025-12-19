@@ -1,5 +1,3 @@
-using System.Collections.Concurrent;
-using System.Data;
 using System.Diagnostics;
 using DotNet.Testcontainers.Containers;
 using Microsoft.Data.SqlClient;
@@ -10,77 +8,101 @@ namespace Testcontainers.AutoSetup.Core.DbRestoration;
 
 public class MsSqlDbRestorer : DbRestorer
 {
-    /// <summary>
-    /// Cached connections
-    /// </summary>
-    private static readonly ConcurrentDictionary<string, SqlConnection> _globalConnectionCache = new();
+    private const string DefaultRestorationStateFilesPath = "/var/opt/mssql/Restoration";
 
-    private readonly Task _warmupTask;
-
-    /// <inheritdoc/>
     public MsSqlDbRestorer(
-        DbSetup dbSetup, 
+        DbSetup dbSetup,
         IContainer container,
         string containerConnectionString,
-        string restorationStateFilesPath = "/var/opt/mssql/Restoration")
-        : base(dbSetup, container, containerConnectionString, restorationStateFilesPath)
-    {
-        // Warm up connection to prevent reverse DNS timeouts
-        // Runs immideately after the restorer class is constrcuted 
-        Task[] warmupTasks = [
-            WarmupInternalAsync(containerConnectionString),
-            CreateRestorationDirectoryAsync()
-        ];
-        _warmupTask = Task.WhenAll(warmupTasks);
-    }
+        string restorationStateFilesDirectory = DefaultRestorationStateFilesPath)
+        : base(dbSetup, container, containerConnectionString, restorationStateFilesDirectory ?? DefaultRestorationStateFilesPath)
+    { }
 
-    /// <inheritdoc/>
     public override async Task RestoreAsync(CancellationToken cancellationToken = default)
     {
         var stopwatch = Stopwatch.StartNew();
-        await EnsureWarmUpIsFinishedAsync();
 
-        // 1. Get Cached, Non-Pooled Connection
-        var connection = await GetCachedMasterConnectionAsync(_containerConnectionString, cancellationToken);
-        
-        // 2. Kill Active Sessions & Restore
+        await using var connection = CreateMasterConnectionAsync(_containerConnectionString);
+        await connection.OpenAsync(cancellationToken);
+
         var sql = $@"
-            DECLARE @kill varchar(8000) = '';  
-            SELECT @kill = @kill + 'kill ' + CONVERT(varchar(5), session_id) + ';'  
-            FROM sys.dm_exec_sessions
-            WHERE database_id  = db_id('{_dbSetup.DbName}') AND is_user_process = 1; 
-            EXEC(@kill);
-
             USE master;
-            RESTORE DATABASE [{_dbSetup.DbName}] FROM DATABASE_SNAPSHOT = '{_dbSetup.DbName}_snapshot';";
+
+            DECLARE @TargetDbId smallint = DB_ID('{_dbSetup.DbName}');
+            DECLARE @LatestSnapshot nvarchar(128);
+            DECLARE @DynSql nvarchar(MAX) = '';
+
+            -- A. Find Latest Snapshot
+            SELECT TOP 1 @LatestSnapshot = name
+            FROM sys.databases
+            WHERE source_database_id = @TargetDbId
+            ORDER BY create_date DESC;
+
+            IF @LatestSnapshot IS NULL
+            BEGIN
+                RAISERROR('No snapshot found for restoration.', 16, 1);
+                RETURN;
+            END
+
+            -- B. MANUAL KILL (Fixes 'Database already open' error)
+            -- If the DB is stuck in SINGLE_USER, we must kill the holder before we can ALTER it.
+            DECLARE @KillSql nvarchar(MAX) = '';
+            SELECT @KillSql = @KillSql + 'KILL ' + CAST(session_id AS varchar(10)) + '; '
+            FROM sys.dm_exec_sessions
+            WHERE database_id = @TargetDbId
+               AND session_id <> @@SPID
+               AND is_user_process = 1; -- Don't kill ourselves
+            
+            EXEC(@KillSql);
+
+            -- C. Set SINGLE_USER (Now safe to do so)
+            ALTER DATABASE [{_dbSetup.DbName}] SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
+
+            -- D. Cleanup Old Snapshots (Required before Restore)
+            SET @DynSql = '';
+            SELECT @DynSql = @DynSql + 'DROP DATABASE [' + name + ']; '
+            FROM sys.databases
+            WHERE source_database_id = @TargetDbId
+              AND name != @LatestSnapshot;
+            
+            EXEC(@DynSql);
+
+            -- E. RESTORE (Must use Dynamic SQL)
+            RESTORE DATABASE [{_dbSetup.DbName}] FROM DATABASE_SNAPSHOT = @LatestSnapshot;
+
+            -- F. Force MULTI_USER
+            IF (SELECT user_access_desc FROM sys.databases WHERE name = '{_dbSetup.DbName}') <> 'MULTI_USER'
+            BEGIN
+                ALTER DATABASE [{_dbSetup.DbName}] SET MULTI_USER;
+            END
+        ";
 
         try
         {
-            using var command = new SqlCommand(sql, connection) { CommandTimeout = 30 };
+            await using var command = new SqlCommand(sql, connection) { CommandTimeout = 60 };
             await command.ExecuteNonQueryAsync(cancellationToken);
         }
-        catch
+        catch (SqlException ex)
         {
-            // If restore fails, the connection might be tainted.
-            InvalidateCache(_containerConnectionString);
+            await connection.DisposeAsync();
+            Console.WriteLine($"[Restore Error] {ex.Message}");
             throw;
         }
 
-        // 3. Clear the *Application's* Pool (Standard pool, not our cache)
-        SqlConnection.ClearPool(new SqlConnection(_containerConnectionString));
+        SqlConnection.ClearPool(connection);
+
         stopwatch.Stop();
-        Console.WriteLine("[DB RESET IN]" + stopwatch.ElapsedMilliseconds);
+        Console.WriteLine("[DB RESET IN] " + stopwatch.ElapsedMilliseconds + "ms");
     }
 
-    /// <inheritdoc/>
     public override async Task SnapshotAsync(CancellationToken cancellationToken = default)
     {
-        await EnsureWarmUpIsFinishedAsync();
+        await EnsureRestorationDirectoryExistsAsync();
 
-        var snapshotName = $"{_dbSetup.DbName}_snapshot";
-        var linuxPath = Path.Combine(_restorationStateFilesPath, snapshotName).Replace("\\", "/");
+        _restorationSnapshotName = $"{_dbSetup.DbName}_snapshot_{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}";
 
-        var connection = await GetCachedMasterConnectionAsync(_containerConnectionString, cancellationToken);
+        await using var connection = CreateMasterConnectionAsync(_containerConnectionString);
+        await connection.OpenAsync(cancellationToken);
 
         var sql = $@"
             USE [{_dbSetup.DbName}];
@@ -91,105 +113,30 @@ public class MsSqlDbRestorer : DbRestorer
             USE master;
             ALTER DATABASE [{_dbSetup.DbName}] SET AUTO_CLOSE OFF;
 
-            IF EXISTS (SELECT name FROM sys.databases WHERE name = '{snapshotName}') DROP DATABASE [{snapshotName}];
-
-            CREATE DATABASE [{snapshotName}] 
-            ON ( NAME = [{_dbSetup.DbName}], FILENAME = '{linuxPath}' )
+            -- Create the snapshot
+            CREATE DATABASE [{_restorationSnapshotName}] 
+            ON ( NAME = [{_dbSetup.DbName}], FILENAME = '{RestorationStateFilesPath}' )
             AS SNAPSHOT OF [{_dbSetup.DbName}];";
 
-        using var command = new SqlCommand(sql, connection);
+        await using var command = new SqlCommand(sql, connection);
         await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
     /// <summary>
-    /// Creates and caches the sonnection to a DB
+    /// Creates a connection to 'master' with Pooling ENABLED.
+    /// We rely on ADO.NET internal pooling, which is efficient and thread-safe.
     /// </summary>
-    /// <param name="containerConnStr">Connection <see cref="string"/> used to connect to a default container DB</param>
-    /// <param name="ct">Cancellation token</param>
-    /// <returns></returns>
-    private async Task<SqlConnection> GetCachedMasterConnectionAsync(string containerConnStr, CancellationToken ct)
+    private static SqlConnection CreateMasterConnectionAsync(string containerConnStr)
     {
         var masterBuilder = new SqlConnectionStringBuilder(containerConnStr)
         {
             InitialCatalog = "master",
             Pooling = true,
-            ConnectTimeout = 10,
-            ApplicationName = "Tc_Restorer_NoPool" ,
+            ConnectTimeout = 30,
+            ApplicationName = "IntTests_Restorer",
             Encrypt = false,
         };
 
-        var connection = _globalConnectionCache.GetOrAdd(masterBuilder.ConnectionString, _ => new SqlConnection(masterBuilder.ConnectionString));
-
-        if (connection.State != ConnectionState.Open)
-        {
-            if (connection.State != ConnectionState.Closed) await connection.CloseAsync();
-            await connection.OpenAsync(ct);
-        }
-        else
-        {
-            // Optional Heartbeat to detect stale connections
-            try 
-            {
-                using var cmd = new SqlCommand("SELECT 1", connection);
-                cmd.CommandTimeout = 1; 
-                await cmd.ExecuteScalarAsync(ct);
-            }
-            catch
-            {
-                await connection.CloseAsync();
-                await connection.OpenAsync(ct);
-            }
-        }
-
-        return connection;
-    }
-
-    /// <summary>
-    /// Removes a connection from cache
-    /// </summary>
-    /// <param name="containerConnStr">Connection <see cref="string"/> used to connect to a default container DB</param>
-    private static void InvalidateCache(string containerConnStr)
-    {
-        var connectionBuilder = new SqlConnectionStringBuilder(containerConnStr)
-        {
-            InitialCatalog = "master",
-            Pooling = false,
-            ApplicationName = "Tc_Restorer_NoPool",
-            Encrypt = false
-        };
-        _globalConnectionCache.TryRemove(connectionBuilder.ConnectionString, out _);
-    }
-
-    /// <summary>
-    /// Ensures that the restoration directory exists 
-    /// </summary>
-    /// <returns></returns>
-    private async Task CreateRestorationDirectoryAsync()
-    {        
-        var result = await _container.ExecAsync(["/bin/bash", "-c", $"mkdir -p {_restorationStateFilesPath}"]);
-        if(result.ExitCode != 0 || !string.IsNullOrEmpty(result.Stderr))
-        {
-            throw new ExecFailedException(result);
-        }
-    }
-
-    private async Task WarmupInternalAsync(string connStr)
-    {
-        try 
-        {
-            await GetCachedMasterConnectionAsync(connStr, CancellationToken.None);
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"[Warmup Warning] {ex.Message}");
-        }
-    }
-
-    private async Task EnsureWarmUpIsFinishedAsync()
-    {
-        if (_warmupTask != null)
-        {
-            await _warmupTask;
-        }
+        return new SqlConnection(masterBuilder.ConnectionString);
     }
 }
