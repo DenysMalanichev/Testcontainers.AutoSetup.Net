@@ -75,7 +75,14 @@ public class GlobalTestSetup : GenericTestBase
             builder = builder
                 .WithName("MsSQL-testcontainer")
                 .WithReuse(reuse: true)
-                .WithLabel("reuse-id", "MsSQL-testcontainer-reuse-hash");
+                // We must use root to ensure volume mounts work
+                .WithCreateParameterModifier(config => 
+                {
+                    config.User = "root"; 
+                })
+                .WithLabel("reuse-id", "MsSQL-testcontainer-reuse-hash")
+                .WithVolumeMount("MsSQL-testcontainer-Restoration", "/var/opt/mssql/Restoration", AccessMode.ReadWrite)
+                .WithTmpfsMount("/var/opt/mssql/data", AccessMode.ReadWrite);
         }
         var container = builder
             .WithPassword("#AdminPass123")
@@ -97,7 +104,15 @@ public class GlobalTestSetup : GenericTestBase
                 .WithName("GenericMsSQL-testcontainer")
                 .WithReuse(reuse: true)
                 .WithLabel("reuse-id", "GenericMsSQL-testcontainer-reuse-hash")
-                .WithPortBinding(Constants.GenericContainerPort, 1433);
+                .WithPortBinding(Constants.GenericContainerPort, 1433)
+                // We must use root to ensure volume mounts work
+                .WithCreateParameterModifier(config => 
+                {
+                    config.User = "root"; 
+                })
+                .WithLabel("reuse-id", "MsSQL-testcontainer-reuse-hash")
+                .WithVolumeMount("GenericMsSQL-testcontainer-Restoration", "/var/opt/mssql/Restoration", AccessMode.ReadWrite)
+                .WithTmpfsMount("/var/opt/mssql/data", AccessMode.ReadWrite);
         }
         else
         {
@@ -122,7 +137,7 @@ public class GlobalTestSetup : GenericTestBase
                     new DbContextOptionsBuilder<CatalogContext>()
                     .UseSqlServer(connString)
                     .Options),
-                MigrationsPath = "./IntegrationsTests/Migrations",
+                MigrationsPath = "./IntegrationTests/Migrations",
             };
 
     private static EfDbSetup GenericMsSqlDbSetup => new() 
@@ -133,7 +148,7 @@ public class GlobalTestSetup : GenericTestBase
                     new DbContextOptionsBuilder<CatalogContext>()
                     .UseSqlServer(connString)
                     .Options),
-                MigrationsPath = "./IntegrationsTests/Migrations",
+                MigrationsPath = "./IntegrationTests/Migrations",
             };
 
     /// <inheritdoc cref="IWaitUntil" />
