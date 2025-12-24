@@ -1,7 +1,5 @@
 using DotNet.Testcontainers.Containers;
 using Microsoft.Data.SqlClient;
-using Microsoft.EntityFrameworkCore.Metadata.Internal;
-using Org.BouncyCastle.Crypto.Prng;
 using System.Data.SqlTypes;
 using System.Diagnostics;
 using Testcontainers.AutoSetup.Core.Attributes;
@@ -74,11 +72,17 @@ public class MsSqlRestorationTests(ContainersFixture fixture) : IntegrationTests
         await using var alterQuery = new SqlCommand(alterQueryString, connection);
         await alterQuery.ExecuteNonQueryAsync();
 
+        await connection.DisposeAsync();
+        SqlConnection.ClearAllPools();
         await Setup.ResetEnvironmentAsync(this.GetType());
+
+        using var newConnection = new SqlConnection(Setup.MsSqlContainerFromSpecificBuilderConnStr);
+        await newConnection.OpenAsync();
+
         var chechQueryString = "SELECT COUNT(1) FROM [CatalogTest].[dbo].[Baskets];";
-        await using var checkQuery = new SqlCommand(chechQueryString, connection);
+        await using var checkQuery = new SqlCommand(chechQueryString, newConnection);
         var checkResult = await checkQuery.ExecuteScalarAsync();
-        Assert.Equal(1, (int)checkResult!);
+        Assert.Equal(0, (int)checkResult!);
     }
 
     [Fact]
