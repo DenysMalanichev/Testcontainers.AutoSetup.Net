@@ -22,7 +22,7 @@ jobs:
       - name: Build
         run: dotnet build --no-restore
       - name: Test
-        run: dotnet test --no-build --verbosity normal --collect:"XPlat Coverage" --results-directory TestResults/
+        run: dotnet test --verbosity normal --collect:"XPlat Coverage" --results-directory TestResults/
 
       - name: Publish Code Coverage Summary
         uses: irongut/CodeCoverageSummary@v1.3.0
