@@ -29,7 +29,8 @@ jobs:
         with:
           filename: '**/coverage.cobertura.xml'
           badge: true
-          fail_on_coverage_less_than: 80
+          fail_below_min: true
+          thresholds: '80 100'  # Fails if below 80%
           format: markdown
           output: both
 
