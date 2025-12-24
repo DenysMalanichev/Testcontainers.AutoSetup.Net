@@ -1,13 +1,17 @@
 using DotNet.Testcontainers.Containers;
-using Testcontainers.AutoSetup.Tests.TestCollections;
 using Microsoft.Data.SqlClient;
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
+using Org.BouncyCastle.Crypto.Prng;
 using System.Data.SqlTypes;
 using System.Diagnostics;
+using Testcontainers.AutoSetup.Core.Attributes;
+using Testcontainers.AutoSetup.Tests.IntegrationTests.TestCollections;
 
 namespace Testcontainers.AutoSetup.Tests.IntegrationTests.DbRestoration;
 
+[DbReset]
 [Trait("Category", "Integration")]
-[Collection(nameof(ParallelTests))]
+[Collection(nameof(ParallelIntegrationTestsCollection))]
 public class MsSqlRestorationTests(ContainersFixture fixture) : IntegrationTestsBase(fixture)
 {
     [Fact]
@@ -42,7 +46,7 @@ public class MsSqlRestorationTests(ContainersFixture fixture) : IntegrationTests
         await using var connection = new SqlConnection(Setup.MsSqlContainerFromGenericBuilderConnStr);
         await connection.OpenAsync();
         stopwatch.Stop();
-        System.Console.WriteLine("[CONNECTIOn OPENED IN TEST IN] " + stopwatch.ElapsedMilliseconds);
+        System.Console.WriteLine("[CONNECTION OPENED IN TEST IN] " + stopwatch.ElapsedMilliseconds);
         using var historyCmd = new SqlCommand("SELECT COUNT(*) FROM __EFMigrationsHistory", connection);
         var migrationCount = (int)(await historyCmd.ExecuteScalarAsync() ?? throw new SqlNullValueException());
 
@@ -61,11 +65,20 @@ public class MsSqlRestorationTests(ContainersFixture fixture) : IntegrationTests
         await using var connection = new SqlConnection(Setup.MsSqlContainerFromSpecificBuilderConnStr);
         await connection.OpenAsync();
         stopwatch.Stop();
-        System.Console.WriteLine("[CONNECTIOn OPENED IN TEST IN] " + stopwatch.ElapsedMilliseconds);
+        System.Console.WriteLine("[CONNECTION OPENED IN TEST IN] " + stopwatch.ElapsedMilliseconds);
         using var historyCmd = new SqlCommand("SELECT COUNT(*) FROM __EFMigrationsHistory", connection);
         var migrationCount = (int)(await historyCmd.ExecuteScalarAsync() ?? throw new SqlNullValueException());
 
         Assert.True(migrationCount > 0, "No migrations were found in the history table.");
+        var alterQueryString = $"INSERT INTO [CatalogTest].[dbo].[Baskets] ([BuyerId]) VALUES ('{Guid.NewGuid()}');";
+        await using var alterQuery = new SqlCommand(alterQueryString, connection);
+        await alterQuery.ExecuteNonQueryAsync();
+
+        await Setup.ResetEnvironmentAsync(this.GetType());
+        var chechQueryString = "SELECT COUNT(1) FROM [CatalogTest].[dbo].[Baskets];";
+        await using var checkQuery = new SqlCommand(chechQueryString, connection);
+        var checkResult = await checkQuery.ExecuteScalarAsync();
+        Assert.Equal(1, (int)checkResult!);
     }
 
     [Fact]
@@ -80,7 +93,7 @@ public class MsSqlRestorationTests(ContainersFixture fixture) : IntegrationTests
         await using var connection = new SqlConnection(Setup.MsSqlContainerFromGenericBuilderConnStr);
         await connection.OpenAsync();
         stopwatch.Stop();
-        System.Console.WriteLine("[CONNECTIOn OPENED IN TEST IN] " + stopwatch.ElapsedMilliseconds);
+        System.Console.WriteLine("[CONNECTION OPENED IN TEST IN] " + stopwatch.ElapsedMilliseconds);
         using var historyCmd = new SqlCommand("SELECT COUNT(*) FROM __EFMigrationsHistory", connection);
         var migrationCount = (int)(await historyCmd.ExecuteScalarAsync() ?? throw new SqlNullValueException());
 

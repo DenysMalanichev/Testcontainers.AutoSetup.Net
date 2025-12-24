@@ -13,7 +13,9 @@ public class DbSetupStrategy<TSeeder, TRestorer> : IDbStrategy
     private readonly TRestorer _restorer;
 
     private readonly IContainer _container;
+    private readonly DbSetup _dbSetup;
     private readonly bool _tryInitialRestoreFromSnapshot = true;
+    private readonly string _containerConnectionString;
 
     public DbSetupStrategy(
         DbSetup dbSetup,
@@ -22,44 +24,56 @@ public class DbSetupStrategy<TSeeder, TRestorer> : IDbStrategy
         bool tryInitialRestoreFromSnapshot = true,
         string? restorationStateFilesPath = null!)
     {
-        _seeder = new TSeeder() ?? throw new ArgumentException($"Failed to instantiate a seeder of type {typeof(TSeeder)}");
-        _restorer = (TRestorer)Activator.CreateInstance(
-            typeof(TRestorer),
-            [dbSetup, container, containerConnectionString, restorationStateFilesPath])!
-                ?? throw new ArgumentException($"Failed to instantiate a restorer of type {typeof(TRestorer)}");
-        
         _container = container ?? throw new ArgumentNullException(nameof(container));
+        _dbSetup = dbSetup ?? throw new ArgumentNullException(nameof(dbSetup));
+        _containerConnectionString = containerConnectionString
+            ?? throw new ArgumentNullException(nameof(containerConnectionString));
+
+        try
+        {
+            _seeder = new TSeeder();
+        }
+        catch(Exception ex)
+        {
+            throw new ArgumentException($"Failed to instantiate a seeder of type {typeof(TSeeder)}", ex);
+        }
+        
+        try
+        {
+            _restorer = (TRestorer)Activator.CreateInstance(
+            typeof(TRestorer),
+            [dbSetup, container, containerConnectionString, restorationStateFilesPath])!;
+        }
+        catch(Exception ex)
+        {
+            throw new ArgumentException($"Failed to instantiate a restorer of type {typeof(TRestorer)}", ex);   
+        }
+        
         _tryInitialRestoreFromSnapshot = tryInitialRestoreFromSnapshot;
     }
 
     /// <inheritdoc/>
-    public async Task InitializeGlobalAsync(
-        DbSetup dbSetup,
-        IContainer container,
-        string containerConnectionString,
-        CancellationToken cancellationToken = default)
+    public async Task InitializeGlobalAsync(CancellationToken cancellationToken = default)
     {
         if (_tryInitialRestoreFromSnapshot 
             && await IsMountExistsAsync(cancellationToken)
-            && await IsSnapshotValidAsync(dbSetup, cancellationToken))
+            && await IsSnapshotValidAsync(cancellationToken))
         {
             await _restorer.RestoreAsync(cancellationToken);
             return;
         }
+        var connectionString = _dbSetup.BuildConnectionString(_containerConnectionString);
         await _seeder.SeedAsync(
-            dbSetup,
-            container,
-            dbSetup.BuildConnectionString(containerConnectionString),
+            _dbSetup,
+            _container,
+            connectionString,
             cancellationToken);
 
         await _restorer.SnapshotAsync(cancellationToken);
     }
 
     /// <inheritdoc/>
-    public async Task ResetAsync(
-        IContainer container,
-        string containerConnectionString,
-        CancellationToken cancellationToken = default)
+    public async Task ResetAsync(CancellationToken cancellationToken = default)
     {
         await _restorer.RestoreAsync(cancellationToken);
     }
@@ -70,7 +84,7 @@ public class DbSetupStrategy<TSeeder, TRestorer> : IDbStrategy
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
     /// <exception cref="ExecFailedException"></exception>
-    private async Task<bool> IsSnapshotValidAsync(DbSetup dbSetup, CancellationToken cancellationToken)
+    private async Task<bool> IsSnapshotValidAsync(CancellationToken cancellationToken)
     {
         // COMMAND EXPLANATION:
         // Checks if at least one snapshot exists in the directory
@@ -79,7 +93,7 @@ public class DbSetupStrategy<TSeeder, TRestorer> : IDbStrategy
         // -print -quit         -> Stop searching as soon as we find ONE new file
         // test -z "..."        -> Returns Exit Code 0 (Success) if the string is EMPTY (no new files found)
         //                      -> Returns Exit Code 1 (Fail) if the string is NOT EMPTY (new files found)
-        var migrationsLMD = await dbSetup.GetMigrationsLastModificationDateAsync(cancellationToken);
+        var migrationsLMD = await _dbSetup.GetMigrationsLastModificationDateAsync(cancellationToken);
         var cmd = $"ls {_restorer.RestorationStateFilesDirectory}/*snapshot_* > /dev/null 2>&1 && " + 
           $"test -z \"$(find {_restorer.RestorationStateFilesDirectory} " +
            "-maxdepth 1 -name '*_snapshot_*' " +
@@ -96,7 +110,7 @@ public class DbSetupStrategy<TSeeder, TRestorer> : IDbStrategy
             Console.WriteLine("Snapshot is up to date (No newer migrations found).");
             return true; 
         }
-        else if (result.ExitCode == 1)
+        else if (result.ExitCode == 1 || result.ExitCode == 2)
         {
             Console.WriteLine("No up-to-date snapshot exists, recreation required.");
             return false;

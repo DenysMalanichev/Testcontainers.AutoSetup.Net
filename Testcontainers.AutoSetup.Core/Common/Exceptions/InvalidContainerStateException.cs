@@ -16,5 +16,4 @@ public class InvalidContainerStateException : Exception
 
     public InvalidContainerStateException(IContainer container, TestcontainersStates expectedState, Exception innerException)
         : base($"Expected Container {container.Id} to be {expectedState}, but found {container.State}", innerException) { }
-
 }

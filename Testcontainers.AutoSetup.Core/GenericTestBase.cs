@@ -1,34 +1,56 @@
+using System.Reflection.Metadata.Ecma335;
+using Testcontainers.AutoSetup.Core.Attributes;
 using Testcontainers.AutoSetup.Core.Common;
+using Testcontainers.AutoSetup.Core.Common.Enums;
 
 namespace Testcontainers.AutoSetup.Core;
 
 public abstract class GenericTestBase
 {
-    public readonly TestEnvironment Environment;
+    private const string ScopePropertyName = "Scope"; 
 
-    protected GenericTestBase(TestEnvironment environment)
+    protected readonly TestEnvironment Environment;
+
+    protected GenericTestBase()
     {
-        Environment = environment;
+        Environment = new TestEnvironment();
     }
 
-    // The method to call before every test
-    protected async Task OnTestStartAsync()
+    /// <summary>
+    /// Performs a preparations before each test execution
+    /// </summary>
+    /// <param name="testClassType">The type of a test class that is about to be executed</param>
+    /// <param name="testResetAction">The <see cref="Action"/> that will be executed before DB <see cref="TestEnvironment"/> reset</param>
+    /// <returns></returns>
+    protected async Task OnTestStartAsync(Type testClassType, Action? testResetAction = null!)
     {
-        // Optional: Reflection check for [DbReset] attribute goes here
-        // var shouldReset = CheckAttribute(this.GetType());
-        // TODO implement an attribute and its usage
+        // User's defined reset logic
+        testResetAction?.Invoke(); 
 
-        if (ShouldReset())
+        if (ShouldReset(testClassType))
         {
             await Environment.ResetAsync();
         }
     }
 
-    // Helper for attribute checking
-    private static bool ShouldReset()
+    /// <summary>
+    /// Checks if the class has <see cref="DbResetAttribute"/> 
+    /// and whether it has a <see cref="ResetScope.None"/> 
+    /// </summary>
+    /// <returns></returns>
+    /// <exception cref="TypeAccessException"></exception>
+    private static bool ShouldReset(Type testClassType)
     {
-        // Basic reflection to see if class/method has [DbReset(None)]
-        // This is framework-agnostic because it uses standard .NET Reflection
-        return true; 
+        var attribute = Attribute.GetCustomAttribute(testClassType, typeof(DbResetAttribute));
+        if(attribute is null)
+        {
+            return false;
+        }
+
+        var resetScopePropertyInfo = attribute.GetType().GetProperty(ScopePropertyName)
+            ?? throw new TypeAccessException($"Cannot find a '{ScopePropertyName}' property of {typeof(DbResetAttribute)}");
+        var scopeValue = (ResetScope)resetScopePropertyInfo.GetValue(attribute)!;
+
+        return scopeValue is ResetScope.BeforeExecution;
     }
 }

@@ -2,9 +2,11 @@ using Testcontainers.AutoSetup.Core.Common.Enums;
 
 namespace Testcontainers.AutoSetup.Core.Attributes;
 
-[AttributeUsage(AttributeTargets.Method | AttributeTargets.Class)]
-public class DbResetAttribute : Attribute
+/// <summary>
+/// Specifies the testcontainers reset scope
+/// </summary>
+[AttributeUsage(AttributeTargets.Class)]
+public class DbResetAttribute(ResetScope scope = ResetScope.BeforeExecution) : Attribute
 {
-    public ResetScope Scope { get; }
-    public DbResetAttribute(ResetScope scope = ResetScope.BeforeExecution) => Scope = scope;
+    public ResetScope Scope { get; } = scope;
 }

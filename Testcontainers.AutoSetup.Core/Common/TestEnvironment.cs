@@ -1,6 +1,5 @@
 using DotNet.Testcontainers.Containers;
 using Testcontainers.AutoSetup.Core.Abstractions;
-using Testcontainers.AutoSetup.Core.Common.Entities;
 
 namespace Testcontainers.AutoSetup.Core.Common;
 
@@ -23,18 +22,13 @@ public class TestEnvironment
     /// <param name="resetStrategy">The strategy defining how the database should be initialized or reset.</param>
     /// <param name="connectionStringProvider">A function to extract the valid connection string from the container.</param>
     public void Register<TContainer>(
-        DbSetup dbSetup,
         TContainer container, 
         IDbStrategy resetStrategy, 
         Func<TContainer, string> connectionStringProvider) 
         where TContainer : IContainer
     {
-        _initializeTasks.Add((ct) => 
-            resetStrategy.InitializeGlobalAsync(
-                dbSetup, container, connectionStringProvider(container), ct));
-        _resetTasks.Add((ct) => 
-            resetStrategy.ResetAsync(
-                container, connectionStringProvider(container), ct));
+        _initializeTasks.Add(resetStrategy.InitializeGlobalAsync);
+        _resetTasks.Add(resetStrategy.ResetAsync);
     }
 
     /// <summary>
@@ -47,7 +41,7 @@ public class TestEnvironment
     /// </remarks>
     /// <param name="ct">A token to cancel the initialization process.</param>
     /// <returns>A task that completes when all registered strategies have finished executing.</returns>
-    public async Task InitializeAsync(CancellationToken ct = default)
+    public virtual async Task InitializeAsync(CancellationToken ct = default)
     {
         await Task.WhenAll(_initializeTasks.Select(x => x(ct)));
     }
@@ -62,7 +56,7 @@ public class TestEnvironment
     /// </remarks>
     /// <param name="ct">A token to cancel the initialization process.</param>
     /// <returns>A task that completes when all registered strategies have finished executing.</returns>
-    public async Task ResetAsync(CancellationToken ct = default)
+    public virtual async Task ResetAsync(CancellationToken ct = default)
     {
         await Task.WhenAll(_resetTasks.Select(x => x(ct)));
     }

@@ -12,7 +12,7 @@ public abstract class IntegrationTestsBase : IAsyncLifetime
 
     public async Task InitializeAsync()
     {
-        await Setup.Environment.ResetAsync();
+        await Setup.ResetEnvironmentAsync(this.GetType());
     }
 
     public async Task DisposeAsync()

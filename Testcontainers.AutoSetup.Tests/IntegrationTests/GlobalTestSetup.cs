@@ -10,6 +10,7 @@ using Testcontainers.MsSql;
 using DotNet.Testcontainers.Configurations;
 using DotNet.Testcontainers.Containers;
 using Testcontainers.AutoSetup.Core;
+using Testcontainers.AutoSetup.Core.Extensions;
 
 namespace Testcontainers.AutoSetup.Tests.IntegrationTests;
 
@@ -22,8 +23,6 @@ public class GlobalTestSetup : GenericTestBase
 
 
     public readonly string? DockerEndpoint = EnvironmentHelper.GetDockerEndpoint();
-
-    public GlobalTestSetup() : base(new TestEnvironment()) { }
 
     public async Task InitializeEnvironmentAsync()
     {
@@ -40,7 +39,6 @@ public class GlobalTestSetup : GenericTestBase
         var dbSetup = MsSqlDbSetup;
         MsSqlContainerFromSpecificBuilderConnStr = dbSetup.BuildConnectionString(MsSqlContainerFromSpecificBuilder.GetConnectionString());
         Environment.Register(
-            dbSetup,
             MsSqlContainerFromSpecificBuilder,
             new DbSetupStrategy<EfSeeder, MsSqlDbRestorer>(
                 MsSqlDbSetup,
@@ -50,8 +48,9 @@ public class GlobalTestSetup : GenericTestBase
 
         var genericDbSetup = GenericMsSqlDbSetup;
         var mappedPort = MsSqlContainerFromGenericBuilder.GetMappedPublicPort(1433);    
-        MsSqlContainerFromGenericBuilderConnStr = genericDbSetup.BuildConnectionString($"Server={EnvironmentHelper.DockerHostAddress},{mappedPort};Database={genericDbSetup.DbName};User ID=sa;Password=YourStrongPassword123!;Encrypt=False;");
-        Environment.Register(genericDbSetup,
+        MsSqlContainerFromGenericBuilderConnStr = genericDbSetup.BuildConnectionString(
+            $"Server={EnvironmentHelper.DockerHostAddress},{mappedPort};Database={genericDbSetup.DbName};User ID=sa;Password=YourStrongPassword123!;Encrypt=False;");
+        Environment.Register(
             MsSqlContainerFromGenericBuilder,
             new DbSetupStrategy<EfSeeder, MsSqlDbRestorer>(
                 GenericMsSqlDbSetup,
@@ -63,28 +62,16 @@ public class GlobalTestSetup : GenericTestBase
         await Environment.InitializeAsync();
     }
 
+    public async Task ResetEnvironmentAsync(Type testClassType)
+    {
+        await OnTestStartAsync(testClassType);
+    }
+
     private MsSqlContainer CreateMsSqlContainerFromSpecificBuilder()
     {
         var builder = new MsSqlBuilder();
-        if(DockerEndpoint is not null)
-        {
-            builder = builder.WithDockerEndpoint(DockerEndpoint);
-        }
-        if(!EnvironmentHelper.IsCiRun())
-        {
-            builder = builder
-                .WithName("MsSQL-testcontainer")
-                .WithReuse(reuse: true)
-                // We must use root to ensure volume mounts work
-                .WithCreateParameterModifier(config => 
-                {
-                    config.User = "root"; 
-                })
-                .WithLabel("reuse-id", "MsSQL-testcontainer-reuse-hash")
-                .WithVolumeMount("MsSQL-testcontainer-Restoration", "/var/opt/mssql/Restoration", AccessMode.ReadWrite)
-                .WithTmpfsMount("/var/opt/mssql/data", AccessMode.ReadWrite);
-        }
         var container = builder
+            .WithAutoSetupDefaults(containerName: "MsSQL-testcontainer")
             .WithPassword("#AdminPass123")
             .Build();
 
@@ -94,29 +81,14 @@ public class GlobalTestSetup : GenericTestBase
     private IContainer CreateMsSqlContainerFromGenericBuilder()
     {
         var builder = new ContainerBuilder();
-        if(DockerEndpoint is not null)
+        builder = builder.WithAutoSetupDefaults(containerName: "GenericMsSQL-testcontainer");
+        if (EnvironmentHelper.IsCiRun())
         {
-            builder = builder.WithDockerEndpoint(DockerEndpoint);
-        }
-        if(!EnvironmentHelper.IsCiRun())
-        {
-            builder = builder
-                .WithName("GenericMsSQL-testcontainer")
-                .WithReuse(reuse: true)
-                .WithLabel("reuse-id", "GenericMsSQL-testcontainer-reuse-hash")
-                .WithPortBinding(Constants.GenericContainerPort, 1433)
-                // We must use root to ensure volume mounts work
-                .WithCreateParameterModifier(config => 
-                {
-                    config.User = "root"; 
-                })
-                .WithLabel("reuse-id", "MsSQL-testcontainer-reuse-hash")
-                .WithVolumeMount("GenericMsSQL-testcontainer-Restoration", "/var/opt/mssql/Restoration", AccessMode.ReadWrite)
-                .WithTmpfsMount("/var/opt/mssql/data", AccessMode.ReadWrite);
+            builder = builder.WithPortBinding(1433, assignRandomHostPort: true);
         }
         else
         {
-            builder = builder.WithPortBinding(1433, assignRandomHostPort: true);
+            builder = builder.WithPortBinding(Constants.GenericContainerPort, 1433);
         }
         var container = builder
             .WithImage("mcr.microsoft.com/mssql/server:2019-CU18-ubuntu-20.04")

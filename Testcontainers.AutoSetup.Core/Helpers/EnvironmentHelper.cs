@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using Testcontainers.AutoSetup.Core.Abstractions;
 
 namespace Testcontainers.AutoSetup.Core.Helpers;
 
@@ -113,6 +114,25 @@ public static class EnvironmentHelper
         }
     }
 
+    /// <summary>
+    /// Determines if the current execution is occurring within a CI/CD environment.
+    /// </summary>
+    public static bool IsCiRun()
+    {
+        // 1. Fast path (Read)
+        if (_cachedIsCiRun.HasValue) return _cachedIsCiRun.Value;
+
+        lock (_lock)
+        {
+            // 2. Double-check (Read inside lock)
+            if (_cachedIsCiRun.HasValue) return _cachedIsCiRun.Value;
+
+            // 3. Calculate and Store
+            _cachedIsCiRun = CalculateIsCiRun();
+            return _cachedIsCiRun.Value;
+        }
+    }
+
     private static string? CalculateDockerEndpoint()
     {
         // 1. Priority: Custom Manual Endpoint
@@ -141,25 +161,6 @@ public static class EnvironmentHelper
 
         // 5. Priority: TCP Connection (WSL2 Fallback)
         return $"tcp://{DockerHostAddress}:{_dockerPort}";
-    }
-
-    /// <summary>
-    /// Determines if the current execution is occurring within a CI/CD environment.
-    /// </summary>
-    public static bool IsCiRun()
-    {
-        // 1. Fast path (Read)
-        if (_cachedIsCiRun.HasValue) return _cachedIsCiRun.Value;
-
-        lock (_lock)
-        {
-            // 2. Double-check (Read inside lock)
-            if (_cachedIsCiRun.HasValue) return _cachedIsCiRun.Value;
-
-            // 3. Calculate and Store
-            _cachedIsCiRun = CalculateIsCiRun();
-            return _cachedIsCiRun.Value;
-        }
     }
 
     private static bool CalculateIsCiRun()
