@@ -1,4 +1,4 @@
-# TestcontaienrsAutoSetup ![DotnetVersion](https://img.shields.io/badge/version-10.0-orange?style=flat&logo=.NET) [![CI](https://github.com/DenysMalanichev/TestcontaienrsAutoSetup/actions/workflows/ci.yaml/badge.svg)](https://github.com/DenysMalanichev/TestcontaienrsAutoSetup/actions/workflows/ci.yaml) ![Code Coverage](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/YOUR_USER/YOUR_GIST_ID/raw/coverage.json)
+# TestcontaienrsAutoSetup ![DotnetVersion](https://img.shields.io/badge/version-10.0-orange?style=flat&logo=.NET) [![CI](https://github.com/DenysMalanichev/TestcontaienrsAutoSetup/actions/workflows/ci.yaml/badge.svg)](https://github.com/DenysMalanichev/TestcontaienrsAutoSetup/actions/workflows/ci.yaml) ![Code Coverage](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/DenysMalanichev/014183e2f85a69201c0d39313d2065eb/raw/coverage.json)
 
 ## Docker under WSL
 In case your Docker is running under WSL2 do not forget to 
