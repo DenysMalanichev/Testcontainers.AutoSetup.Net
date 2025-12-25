@@ -1,4 +1,3 @@
-using System.Reflection.Metadata.Ecma335;
 using Testcontainers.AutoSetup.Core.Attributes;
 using Testcontainers.AutoSetup.Core.Common;
 using Testcontainers.AutoSetup.Core.Common.Enums;
@@ -9,18 +8,41 @@ public abstract class GenericTestBase
 {
     private const string ScopePropertyName = "Scope"; 
 
-    protected readonly TestEnvironment Environment;
+    protected readonly TestEnvironment TestEnvironment;
 
     protected GenericTestBase()
     {
-        Environment = new TestEnvironment();
+        TestEnvironment = new TestEnvironment();
     }
+
+    /// <summary>
+    /// Performs the full initialization flow: 
+    /// 1. User Configuration -> 2. Environment Cold Start
+    /// </summary>
+    public async Task InitializeEnvironmentAsync()
+    {
+        await ConfigureSetupAsync();
+
+        await TestEnvironment.InitializeAsync();
+    }
+
+    /// <summary>
+    /// Performs an initial setup of the test environment
+    /// </summary>
+    public abstract Task ConfigureSetupAsync();
+
+    /// <summary>
+    /// Performs a reset of the test environment before test execution
+    /// </summary>
+    /// <param name="testClassType">The type of a test class that is about to be executed</param>
+    /// <returns></returns>
+    public abstract Task ResetEnvironmentAsync(Type testClassType);
 
     /// <summary>
     /// Performs a preparations before each test execution
     /// </summary>
     /// <param name="testClassType">The type of a test class that is about to be executed</param>
-    /// <param name="testResetAction">The <see cref="Action"/> that will be executed before DB <see cref="TestEnvironment"/> reset</param>
+    /// <param name="testResetAction">The <see cref="Action"/> that will be executed before DB <see cref="Common.TestEnvironment"/> reset</param>
     /// <returns></returns>
     protected async Task OnTestStartAsync(Type testClassType, Action? testResetAction = null!)
     {
@@ -29,13 +51,13 @@ public abstract class GenericTestBase
 
         if (ShouldReset(testClassType))
         {
-            await Environment.ResetAsync();
+            await TestEnvironment.ResetAsync();
         }
     }
 
     /// <summary>
     /// Checks if the class has <see cref="DbResetAttribute"/> 
-    /// and whether it has a <see cref="ResetScope.None"/> 
+    /// and whether it has a <see cref="ResetScope.None"/> argument 
     /// </summary>
     /// <returns></returns>
     /// <exception cref="TypeAccessException"></exception>

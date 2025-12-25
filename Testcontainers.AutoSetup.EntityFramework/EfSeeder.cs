@@ -22,7 +22,7 @@ public class EfSeeder : IDbSeeder
         string connectionString,
         CancellationToken cancellationToken = default)
     {
-        var finalConnectionString = dbSetup.BuildConnectionString(connectionString);
+        var finalConnectionString = dbSetup.BuildDbConnectionString();
 
         using var dbContext = dbSetup.ContextFactory(finalConnectionString);
 

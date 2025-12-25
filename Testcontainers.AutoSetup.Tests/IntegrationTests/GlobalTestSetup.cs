@@ -24,7 +24,8 @@ public class GlobalTestSetup : GenericTestBase
 
     public readonly string? DockerEndpoint = EnvironmentHelper.GetDockerEndpoint();
 
-    public async Task InitializeEnvironmentAsync()
+    /// <inheritdoc/>
+    public override async Task ConfigureSetupAsync()
     {
         // 1. Build & Start Containers
         MsSqlContainerFromSpecificBuilder = CreateMsSqlContainerFromSpecificBuilder();
@@ -36,38 +37,27 @@ public class GlobalTestSetup : GenericTestBase
         );
 
         // 2. Register containers within the environment
-        var dbSetup = MsSqlDbSetup;
-        MsSqlContainerFromSpecificBuilderConnStr = dbSetup.BuildConnectionString(MsSqlContainerFromSpecificBuilder.GetConnectionString());
-        Environment.Register(
-            MsSqlContainerFromSpecificBuilder,
-            new DbSetupStrategy<EfSeeder, MsSqlDbRestorer>(
-                MsSqlDbSetup,
-                MsSqlContainerFromSpecificBuilder,
-                MsSqlContainerFromSpecificBuilderConnStr),
-            c => c.GetConnectionString());
+        var dbSetup = MsSqlDbSetup(MsSqlContainerFromSpecificBuilder.GetConnectionString());        
+        MsSqlContainerFromSpecificBuilderConnStr = dbSetup.BuildDbConnectionString(); 
+        TestEnvironment.Register<EfSeeder, MsSqlDbRestorer>(
+            dbSetup,
+            MsSqlContainerFromSpecificBuilder);
 
-        var genericDbSetup = GenericMsSqlDbSetup;
-        var mappedPort = MsSqlContainerFromGenericBuilder.GetMappedPublicPort(1433);    
-        MsSqlContainerFromGenericBuilderConnStr = genericDbSetup.BuildConnectionString(
-            $"Server={EnvironmentHelper.DockerHostAddress},{mappedPort};Database={genericDbSetup.DbName};User ID=sa;Password=YourStrongPassword123!;Encrypt=False;");
-        Environment.Register(
-            MsSqlContainerFromGenericBuilder,
-            new DbSetupStrategy<EfSeeder, MsSqlDbRestorer>(
-                GenericMsSqlDbSetup,
-                MsSqlContainerFromGenericBuilder,
-                MsSqlContainerFromGenericBuilderConnStr),
-            c => MsSqlContainerFromGenericBuilderConnStr);
-
-        // 3. Execute Cold Start (Seed + Snapshot)
-        await Environment.InitializeAsync();
+        var mappedPort = MsSqlContainerFromGenericBuilder.GetMappedPublicPort(1433);
+        var genericDbSetup = GenericMsSqlDbSetup(mappedPort);
+        MsSqlContainerFromGenericBuilderConnStr = genericDbSetup.BuildDbConnectionString();
+        TestEnvironment.Register<EfSeeder, MsSqlDbRestorer>(
+            genericDbSetup,
+            MsSqlContainerFromGenericBuilder);
     }
 
-    public async Task ResetEnvironmentAsync(Type testClassType)
+    /// <inheritdoc/>
+    public override async Task ResetEnvironmentAsync(Type testClassType)
     {
         await OnTestStartAsync(testClassType);
     }
 
-    private MsSqlContainer CreateMsSqlContainerFromSpecificBuilder()
+    private static MsSqlContainer CreateMsSqlContainerFromSpecificBuilder()
     {
         var builder = new MsSqlBuilder();
         var container = builder
@@ -78,7 +68,7 @@ public class GlobalTestSetup : GenericTestBase
         return container;
     }
 
-    private IContainer CreateMsSqlContainerFromGenericBuilder()
+    private static IContainer CreateMsSqlContainerFromGenericBuilder()
     {
         var builder = new ContainerBuilder();
         builder = builder.WithAutoSetupDefaults(containerName: "GenericMsSQL-testcontainer");
@@ -101,10 +91,11 @@ public class GlobalTestSetup : GenericTestBase
         return container;
     }
 
-    private static EfDbSetup MsSqlDbSetup => new() 
+    private static EfDbSetup MsSqlDbSetup(string containerConnectionString) => new() 
             {
-                DbType = Core.Common.Enums.DbType.MsSQL,
                 DbName = "CatalogTest", 
+                DbType = Core.Common.Enums.DbType.MsSQL,
+                ContainerConnectionString = containerConnectionString,
                 ContextFactory = connString => new CatalogContext(
                     new DbContextOptionsBuilder<CatalogContext>()
                     .UseSqlServer(connString)
@@ -112,10 +103,11 @@ public class GlobalTestSetup : GenericTestBase
                 MigrationsPath = "./IntegrationTests/Migrations",
             };
 
-    private static EfDbSetup GenericMsSqlDbSetup => new() 
+    private static EfDbSetup GenericMsSqlDbSetup(int mappedPort) => new() 
             {
                 DbType = Core.Common.Enums.DbType.MsSQL,
                 DbName = "GenericCatalogTest", 
+                ContainerConnectionString = $"Server={EnvironmentHelper.DockerHostAddress},{mappedPort};Database=GenericCatalogTest;User ID=sa;Password=YourStrongPassword123!;Encrypt=False;",
                 ContextFactory = connString => new CatalogContext(
                     new DbContextOptionsBuilder<CatalogContext>()
                     .UseSqlServer(connString)

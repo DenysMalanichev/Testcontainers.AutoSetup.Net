@@ -1,5 +1,6 @@
 using DotNet.Testcontainers.Containers;
 using Testcontainers.AutoSetup.Core.Abstractions;
+using Testcontainers.AutoSetup.Core.Common.Entities;
 
 namespace Testcontainers.AutoSetup.Core.Common;
 
@@ -16,17 +17,24 @@ public class TestEnvironment
     /// This method does not execute the strategy immediately. It stores a factory delegate 
     /// that will be invoked when <see cref="InitializeAsync"/> is called.
     /// </remarks>
-    /// <typeparam name="TContainer">The type of the container implementing <see cref="IContainer"/>.</typeparam>
+    /// <typeparam name="TSeeder">The type of the database seeder implementing <see cref="IDbSeeder"/>.</typeparam>
+    /// <typeparam name="TRestorer">The type of the database restorer implementing <see cref="IDbRestorer"/>.</typeparam>
     /// <param name="dbSetup">The database configuration and schema setup definition.</param>
     /// <param name="container">The specific container instance to operate on.</param>
     /// <param name="resetStrategy">The strategy defining how the database should be initialized or reset.</param>
-    /// <param name="connectionStringProvider">A function to extract the valid connection string from the container.</param>
-    public void Register<TContainer>(
-        TContainer container, 
-        IDbStrategy resetStrategy, 
-        Func<TContainer, string> connectionStringProvider) 
-        where TContainer : IContainer
+    public void Register<TSeeder, TRestorer>(
+        DbSetup dbSetup,
+        IContainer container,
+        bool tryInitialRestoreFromSnapshot = true,
+        string? restorationStateFilesPath = null!)
+            where TSeeder : IDbSeeder, new()
+            where TRestorer : DbRestorer
     {
+        var resetStrategy = new DbSetupStrategy<TSeeder, TRestorer>(
+            dbSetup,
+            container,
+            tryInitialRestoreFromSnapshot,
+            restorationStateFilesPath);
         _initializeTasks.Add(resetStrategy.InitializeGlobalAsync);
         _resetTasks.Add(resetStrategy.ResetAsync);
     }

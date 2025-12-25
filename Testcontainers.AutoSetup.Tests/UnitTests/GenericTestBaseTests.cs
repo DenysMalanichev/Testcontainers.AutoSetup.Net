@@ -14,17 +14,27 @@ public class GenericTestBaseTests
 {
     private class TestableGenericTestBase : GenericTestBase
     {
+        public override Task ConfigureSetupAsync()
+        {
+            throw new NotImplementedException();
+        }
+
         // Expose the protected method so we can call it from the test
         public Task InvokeOnTestStartAsync(Type testClassType, Action testResetAction)
         {
             return OnTestStartAsync(testClassType, testResetAction);
         }
 
+        public override Task ResetEnvironmentAsync(Type testClassType)
+        {
+            throw new NotImplementedException();
+        }
+
         // Helper to swap the hard-coded Environment with our Mock
         public void SetMockEnvironment(TestEnvironment mockEnv)
         {
             var envField = typeof(GenericTestBase)
-                .GetField("Environment", BindingFlags.Instance | BindingFlags.NonPublic);
+                .GetField("TestEnvironment", BindingFlags.Instance | BindingFlags.NonPublic);
 
             if (envField == null)
                 throw new InvalidOperationException("Could not find 'Environment' field on GenericTestBase");

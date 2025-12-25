@@ -12,8 +12,10 @@ public record EfDbSetup : DbSetup
     public required Func<string, DbContext> ContextFactory { get; init; }
 
     /// <inheritdoc/>
-    public override string BuildConnectionString(string containerConnStr)
+    public override string BuildDbConnectionString()
     {
+        var containerConnStr = ContainerConnectionString ?? throw new InvalidOperationException(
+            "ContainerConnectionString must be provided to build the full connection string.");
         if(DbName is not null)
         {
             containerConnStr = containerConnStr.Replace("Database=master", $"Database={DbName}");            

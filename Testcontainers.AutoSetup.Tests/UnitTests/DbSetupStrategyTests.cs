@@ -17,7 +17,6 @@ public class DbSetupStrategyTests
         // Arrange
         var dbSetupMock = new Mock<DbSetup>();
         var containerMock = new Mock<IContainer>();
-        const string containerConnStr = "test-conn-str";
         bool tryInitialRestoreFromSnapshot = false;
         const string restorationPath = "test-restoration-path";
 
@@ -26,7 +25,6 @@ public class DbSetupStrategyTests
             new DbSetupStrategy<TestFailedCtorDbSeeder, TestDbRestorer>(
             dbSetupMock.Object,
             containerMock.Object,
-            containerConnStr,
             tryInitialRestoreFromSnapshot,
             restorationPath));
         Assert.Equal($"Failed to instantiate a seeder of type {typeof(TestFailedCtorDbSeeder)}", exception.Message);
@@ -39,7 +37,6 @@ public class DbSetupStrategyTests
         // Arrange
         var dbSetupMock = new Mock<DbSetup>();
         var containerMock = new Mock<IContainer>();
-        const string containerConnStr = "test-conn-str";
         bool tryInitialRestoreFromSnapshot = false;
         const string restorationPath = "test-restoration-path";
 
@@ -48,7 +45,6 @@ public class DbSetupStrategyTests
             new DbSetupStrategy<TestDbSeeder, TestFailedCtorDbRestorer>(
             dbSetupMock.Object,
             containerMock.Object,
-            containerConnStr,
             tryInitialRestoreFromSnapshot,
             restorationPath));
         Assert.Equal($"Failed to instantiate a restorer of type {typeof(TestFailedCtorDbRestorer)}", exception.Message);
@@ -61,7 +57,6 @@ public class DbSetupStrategyTests
         // Arrange
         var dbSetupMock = new Mock<DbSetup>();
         IContainer container = null!;
-        const string containerConnStr = "test-conn-str";
         bool tryInitialRestoreFromSnapshot = false;
         const string restorationPath = "test-restoration-path";
 
@@ -70,7 +65,6 @@ public class DbSetupStrategyTests
             new DbSetupStrategy<TestDbSeeder, TestDbRestorer>(
             dbSetupMock.Object,
             container,
-            containerConnStr,
             tryInitialRestoreFromSnapshot,
             restorationPath));
     }
@@ -81,7 +75,6 @@ public class DbSetupStrategyTests
         // Arrange
         DbSetup dbSetupMock = null!;
         var container = new Mock<IContainer>();
-        const string containerConnStr = "test-conn-str";
         bool tryInitialRestoreFromSnapshot = false;
         const string restorationPath = "test-restoration-path";
 
@@ -90,7 +83,6 @@ public class DbSetupStrategyTests
             new DbSetupStrategy<TestDbSeeder, TestDbRestorer>(
             dbSetupMock,
             container.Object,
-            containerConnStr,
             tryInitialRestoreFromSnapshot,
             restorationPath));
     }
@@ -102,9 +94,9 @@ public class DbSetupStrategyTests
         var dbSetupMock = new Mock<DbSetup>();
         dbSetupMock.Setup(ds => ds.GetMigrationsLastModificationDateAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(DateTime.MinValue);
+        dbSetupMock.Setup(s => s.ContainerConnectionString).Returns("container-conn");
         var containerMock = new Mock<IContainer>();
 
-        const string containerConnStr = "test-conn-str";
         bool tryInitialRestoreFromSnapshot = true;
         const string restorationPath = "test-restoration-path";
 
@@ -129,7 +121,6 @@ public class DbSetupStrategyTests
         var setupStrategy = new DbSetupStrategy<TestDbSeeder, TestDbRestorer>(
             dbSetupMock.Object,
             containerMock.Object,
-            containerConnStr,
             tryInitialRestoreFromSnapshot,
             restorationPath);
 
@@ -150,15 +141,14 @@ public class DbSetupStrategyTests
         // Arrange
         var dbSetupMock = new Mock<DbSetup>();
         var containerMock = new Mock<IContainer>();
+        dbSetupMock.Setup(s => s.ContainerConnectionString).Returns("container-conn");
 
-        const string containerConnStr = "test-conn-str";
         bool tryInitialRestoreFromSnapshot = false;
         const string restorationPath = "test-restoration-path";
 
         var setupStrategy = new DbSetupStrategy<TestDbSeeder, TestDbRestorer>(
             dbSetupMock.Object,
             containerMock.Object,
-            containerConnStr,
             tryInitialRestoreFromSnapshot,
             restorationPath);
 
@@ -188,11 +178,11 @@ public class DbSetupStrategyTests
         var dbSetupMock = new Mock<DbSetup>();
         var containerMock = new Mock<IContainer>();
         const string restorationPath = "/tmp/restore";
+        dbSetupMock.Setup(s => s.ContainerConnectionString).Returns("container-conn");
 
         var strategy = new DbSetupStrategy<TestDbSeeder, TestDbRestorer>(
             dbSetupMock.Object,
             containerMock.Object,
-            "test-conn-str",
             tryInitialRestoreFromSnapshot: true,
             restorationStateFilesPath: restorationPath);
 
@@ -214,6 +204,7 @@ public class DbSetupStrategyTests
         var dbSetupMock = new Mock<DbSetup>();
         var containerMock = new Mock<IContainer>();
         const string restorationPath = "/tmp/missing-mount";
+        dbSetupMock.Setup(s => s.ContainerConnectionString).Returns("container-conn");
 
         containerMock.Setup(c => c.ExecAsync(It.Is<IList<string>>(args => 
             args.Contains($"findmnt {restorationPath}")), It.IsAny<CancellationToken>()))
@@ -222,7 +213,6 @@ public class DbSetupStrategyTests
         var strategy = new DbSetupStrategy<TestDbSeeder, TestDbRestorer>(
             dbSetupMock.Object,
             containerMock.Object,
-            "container-conn",
             tryInitialRestoreFromSnapshot: true,
             restorationStateFilesPath: restorationPath);
 
@@ -250,6 +240,7 @@ public class DbSetupStrategyTests
         var dbSetupMock = new Mock<DbSetup>();
         var containerMock = new Mock<IContainer>();
         const string restorationPath = "/tmp/missing-mount";
+        dbSetupMock.Setup(s => s.ContainerConnectionString).Returns("container-conn");
 
         containerMock.Setup(c => c.ExecAsync(It.Is<IList<string>>(args => 
             args.Contains($"findmnt {restorationPath}")), It.IsAny<CancellationToken>()))
@@ -258,7 +249,6 @@ public class DbSetupStrategyTests
         var strategy = new DbSetupStrategy<TestDbSeeder, TestDbRestorer>(
             dbSetupMock.Object,
             containerMock.Object,
-            "container-conn",
             tryInitialRestoreFromSnapshot: true,
             restorationStateFilesPath: restorationPath);
 
@@ -287,6 +277,7 @@ public class DbSetupStrategyTests
         var dbSetupMock = new Mock<DbSetup>();
         var containerMock = new Mock<IContainer>();
         const string restorationPath = "/tmp/mount";
+        dbSetupMock.Setup(s => s.ContainerConnectionString).Returns("container-conn");
 
         containerMock.Setup(c => c.ExecAsync(It.Is<IList<string>>(args => 
             args.Contains($"findmnt {restorationPath}")), It.IsAny<CancellationToken>()))
@@ -299,7 +290,6 @@ public class DbSetupStrategyTests
         var strategy = new DbSetupStrategy<TestDbSeeder, TestDbRestorer>(
             dbSetupMock.Object,
             containerMock.Object,
-            "container-conn",
             tryInitialRestoreFromSnapshot: true,
             restorationStateFilesPath: restorationPath);
 
@@ -322,6 +312,7 @@ public class DbSetupStrategyTests
         var dbSetupMock = new Mock<DbSetup>();
         var containerMock = new Mock<IContainer>();
         const string restorationPath = "/tmp/mount";
+        dbSetupMock.Setup(s => s.ContainerConnectionString).Returns("container-conn");
 
         containerMock.Setup(c => c.ExecAsync(It.Is<IList<string>>(args => 
             args.Contains($"findmnt {restorationPath}")), It.IsAny<CancellationToken>()))
@@ -334,7 +325,6 @@ public class DbSetupStrategyTests
         var strategy = new DbSetupStrategy<TestDbSeeder, TestDbRestorer>(
             dbSetupMock.Object,
             containerMock.Object,
-            "container-conn",
             tryInitialRestoreFromSnapshot: true,
             restorationStateFilesPath: restorationPath);
 

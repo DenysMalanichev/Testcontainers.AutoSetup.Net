@@ -11,8 +11,8 @@ public class DbSetupTests
 {
     private record TestDbSetup : DbSetup
     {
-        public override string BuildConnectionString(string containerConnStr) 
-            => containerConnStr;
+        public override string BuildDbConnectionString() 
+            => "containerConnStr";
 
         public override Task<DateTime> GetMigrationsLastModificationDateAsync(CancellationToken cancellationToken = default) 
             => Task.FromResult(DateTime.MinValue);
@@ -24,12 +24,14 @@ public class DbSetupTests
         // Arrange
         const string dbName = "TestDb";
         const string migrationPath = "./migrations";
+        const string testConnStr = "test-connection-string";
 
         // Act
         var sut = new TestDbSetup 
         { 
             DbName = dbName, 
-            MigrationsPath = migrationPath 
+            MigrationsPath = migrationPath,
+            ContainerConnectionString = testConnStr,
         };
 
         // Assert
@@ -44,7 +46,8 @@ public class DbSetupTests
         var sut = new TestDbSetup 
         { 
             DbName = "DefaultTest", 
-            MigrationsPath = "./" 
+            MigrationsPath = "./",
+            ContainerConnectionString = "default-connection-string",
         };
 
         // Assert
@@ -63,6 +66,7 @@ public class DbSetupTests
         { 
             DbName = "OverrideTest", 
             MigrationsPath = "./",
+            ContainerConnectionString = "default-connection-string",
             DbType = specificType,
             RestoreFromDump = true
         };

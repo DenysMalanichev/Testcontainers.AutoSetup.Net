@@ -15,19 +15,15 @@ public class DbSetupStrategy<TSeeder, TRestorer> : IDbStrategy
     private readonly IContainer _container;
     private readonly DbSetup _dbSetup;
     private readonly bool _tryInitialRestoreFromSnapshot = true;
-    private readonly string _containerConnectionString;
 
     public DbSetupStrategy(
         DbSetup dbSetup,
         IContainer container,
-        string containerConnectionString,
         bool tryInitialRestoreFromSnapshot = true,
         string? restorationStateFilesPath = null!)
     {
         _container = container ?? throw new ArgumentNullException(nameof(container));
         _dbSetup = dbSetup ?? throw new ArgumentNullException(nameof(dbSetup));
-        _containerConnectionString = containerConnectionString
-            ?? throw new ArgumentNullException(nameof(containerConnectionString));
 
         try
         {
@@ -42,7 +38,7 @@ public class DbSetupStrategy<TSeeder, TRestorer> : IDbStrategy
         {
             _restorer = (TRestorer)Activator.CreateInstance(
             typeof(TRestorer),
-            [dbSetup, container, containerConnectionString, restorationStateFilesPath])!;
+            [dbSetup, container, dbSetup.ContainerConnectionString, restorationStateFilesPath])!;
         }
         catch(Exception ex)
         {
@@ -62,7 +58,7 @@ public class DbSetupStrategy<TSeeder, TRestorer> : IDbStrategy
             await _restorer.RestoreAsync(cancellationToken);
             return;
         }
-        var connectionString = _dbSetup.BuildConnectionString(_containerConnectionString);
+        var connectionString = _dbSetup.BuildDbConnectionString();
         await _seeder.SeedAsync(
             _dbSetup,
             _container,

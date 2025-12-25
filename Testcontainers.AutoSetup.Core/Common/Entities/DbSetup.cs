@@ -5,6 +5,7 @@ namespace Testcontainers.AutoSetup.Core.Common.Entities;
 public abstract record DbSetup
 {   
     public required string DbName { get; init; }
+    public virtual required string ContainerConnectionString { get; init; }
     public required string MigrationsPath { get; init; }
 
     public DbType DbType { get; init; } = DbType.Other;
@@ -13,8 +14,7 @@ public abstract record DbSetup
     /// <summary>
     /// Builds and returns a connection string to desiered DB
     /// </summary>
-    /// <param name="containerConnStr">Connection string to DB's container</param>
-    public abstract string BuildConnectionString(string containerConnStr);
+    public abstract string BuildDbConnectionString();
 
     /// <summary>
     /// Returns a <see cref="DateTime"/> identifying the last time migrations files changed
