@@ -17,7 +17,7 @@ public class DbSetupStrategy<TSeeder, TRestorer> : IDbStrategy
     private readonly IContainer _container;
     private readonly DbSetup _dbSetup;
     private readonly bool _tryInitialRestoreFromSnapshot = true;
-    private ILogger? _logger {get;}
+    private readonly ILogger _logger;
 
     public DbSetupStrategy(
         DbSetup dbSetup,
@@ -108,12 +108,12 @@ public class DbSetupStrategy<TSeeder, TRestorer> : IDbStrategy
 
         if (result.ExitCode == 0 && result.Stderr.IsNullOrEmpty())
         {
-            _logger!.LogInformation("Snapshot is up to date (No newer migrations found).");
+            _logger.LogInformation("Snapshot is up to date (No newer migrations found).");
             return true; 
         }
         else if (result.ExitCode == 1 || result.ExitCode == 2)
         {
-            _logger!.LogWarning("No up-to-date snapshot exists, recreation required.");
+            _logger.LogWarning("No up-to-date snapshot exists, recreation required.");
             return false;
         }
 
@@ -142,7 +142,7 @@ public class DbSetupStrategy<TSeeder, TRestorer> : IDbStrategy
         }
         else if (result.ExitCode == 1)
         {
-            _logger!.LogWarning($"No mount found at {_restorer.RestorationStateFilesDirectory}. Skipping initial restoration.");
+            _logger.LogWarning($"No mount found at {_restorer.RestorationStateFilesDirectory}. Skipping initial restoration.");
             return false;
         }
         

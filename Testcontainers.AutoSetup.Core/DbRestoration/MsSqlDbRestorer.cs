@@ -18,8 +18,8 @@ public class MsSqlDbRestorer : DbRestorer
         DbSetup dbSetup,
         IContainer container,
         string containerConnectionString,
-        string restorationStateFilesDirectory,
-        ILogger logger)
+        string restorationStateFilesDirectory = DefaultRestorationStateFilesPath,
+        ILogger logger = null!)
         : base(
             dbSetup,
             container,
