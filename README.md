@@ -1,4 +1,142 @@
-# TestcontaienrsAutoSetup [![CI](https://github.com/DenysMalanichev/TestcontaienrsAutoSetup/actions/workflows/ci.yaml/badge.svg)](https://github.com/DenysMalanichev/TestcontaienrsAutoSetup/actions/workflows/ci.yaml)
+# Testcontainers.AutoSetup.Net ![DotnetVersion](https://img.shields.io/badge/version-10.0-orange?style=flat&logo=.NET) [![CI](https://github.com/DenysMalanichev/TestcontaienrsAutoSetup/actions/workflows/ci.yaml/badge.svg)](https://github.com/DenysMalanichev/TestcontaienrsAutoSetup/actions/workflows/ci.yaml) ![Code Coverage](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/DenysMalanichev/014183e2f85a69201c0d39313d2065eb/raw/coverage.json)
+
+A lightweight library to automate database setup, seeding and reset workflows for integration tests that use ***Testcontainers.NET***. It provides a pluggable strategy-based model for preparing database state before tests run, restoring snapshots, and seeding data (including Entity Framework-specific helpers). Designed to integrate with .NET test frameworks and container-based test environments.
+
+Testcontainers.AutoSetup.Net provides the functionality of automatic migrations of your  EF Core, Liquibase, Flyway and raw SQL scripts.
+
+## Support
+Current POC works
+<table>
+    <tr>
+        <th>Database</th>
+        <th>Support</th>
+        <th>Container type</th>
+        <th>Restoration strategy</th>
+        <th>Supported schema management tools</th>
+    </tr>
+    <tr>
+        <td>MS SQL</td>
+        <td> ✅ </td>
+        <td>Both with official Testcontainers MsSqlBuilder and generic builds</td>
+        <td>From snapshot, ~300ms</td>
+        <td>EF Core</td>
+    </tr>
+    <tr>
+        <td>PostresQL</td>
+        <td>❌ (Comming soon)</td>
+        <td> - </td>
+        <td>Filesystem Snapshot</td>
+        <td> - </td>
+    </tr>
+    <tr>
+        <td>Oracle</td>
+        <td>❌ (Comming soon)</td>
+        <td> - </td>
+        <td>Snapshot Standby</td>
+        <td> - </td>
+    </tr>
+    <tr>
+        <td>MongoDB</td>
+        <td>❌ (Comming soon)</td>
+        <td> - </td>
+        <td>Respawn or dump</td>
+        <td> - </td>
+    </tr>
+    <tr>
+        <td colspan="5" style="text-align: center; vertical-align: middle;"><strong>Other containers comming soon</strong></td>
+    </tr>
+    <tr>
+        <td>Reddis</td>
+        <td>❌ (Comming soon)</td>
+        <td> - </td>
+        <td> - </td>
+        <td> - </td>
+    </tr>
+    <tr>
+        <td>Elasticksearch</td>
+        <td>❌ (Comming soon)</td>
+        <td> - </td>
+        <td> - </td>
+        <td> - </td>
+    </tr>
+    <tr>
+        <td>Kafka</td>
+        <td>❌ (Comming soon)</td>
+        <td> - </td>
+        <td> - </td>
+        <td> - </td>
+    </tr>
+</table>
+
+## Usage
+You are free to use the default syntax of Testcontainers.NET to crate and configure a container as you need. In order for AutoSetup to work correctly it utilizes the reusable functionality with some aditional configuration, available in `WithAutoSetupDefaults(containerName)` extension method. It configures the container with required params like `.WithReuse(true)`, adds reuse labels, configures a required user and sets up mounts (Volume for snapshots and Tmpfs for DB internal data). For a user it is enough to simply call the method:
+```CSharp
+var msSqlContainer = new MsSqlBuilder();
+var container = builder
+    .WithAutoSetupDefaults(containerName: "MsSQL-testcontainer")
+    .WithPassword("#AdminPass123")
+    .Build();
+await msSqlContainer.StartAsync(); 
+```
+With a running container we can set up the Database(s). To do it we create an `DbSetup` record, in this case an `EfDbSetup`, since we are going to use EF Core migrations. This record defines the DB configuration - a DB type, name, either an absolute or a relative path to migrations folder - `MigrationsPath` and a factory method to instantiate a `DbContext`: 
+```CSharp
+private static EfDbSetup MsSqlDbSetup => new() 
+    {
+        DbType = DbType.MsSQL,
+        DbName = "CatalogTest", 
+        ContextFactory = connString => new CatalogContext(
+            new DbContextOptionsBuilder<CatalogContext>()
+            .UseSqlServer(connString)
+            .Options),
+        MigrationsPath = "./IntegrationTests/Migrations",
+    };
+```
+Next we register this DB setup and container within the `TestEnvironment`. Note the generic parameters, identifying a seeder and restorer classes, specific for a EF Core and MS SQL database:
+```CSharp
+TestEnvironment.Register<EfSeeder, MsSqlDbRestorer>(
+    MsSqlDbSetup
+    msSqlContainer);
+```
+In the same way we can set up multiple DBs within one container.
+
+Finally, by calling an initialize method all registered DBs would be craeted and populated.
+```CSharp
+await TestEnvironment.InitializeAsync();
+```
+
+Each test class must be decorated with `[DbReset]` attribute. For example:
+```CSharp
+[DbReset]
+[Trait("Category", "Integration")]
+[Collection(nameof(ParallelIntegrationTestsCollection))]
+public class MsSqlRestorationTests(ContainersFixture fixture) : IntegrationTestsBase(fixture)
+```
+The attribute has one argument `ResetScope` with two possible values: `None` and `BeforeExecution`, with `BeforeExecution` being a default value. Classes without this attribute would be reset automatically. Nevertheless, it is recommended to mark classes explicitly.
+
+## Test environments
+The Testcontainers.AutoSetup.Net library is designed to work with any test framwork, like xUnit, NUnit, or MSTest. It provides an abstract `TestEnvironment` class which encapsulates all containers that are required to be reset, as well as executes the Init and Reset operations for each of them in parallel. The class also provides abstract methods `ConfigureSetupAsync` and `ResetEnvironmentAsync`. The intended usage of this class would be a craetion a common class (e.g. `GlobalTestSetup`) which inherits from the `TestEnvironment`, creates and configures containers before the test.
+Then this `GlobalTestSetup` may be used as a property in a base class for integration tests. In case of xUnit:
+```CSharp
+public abstract class IntegrationTestsBase : IAsyncLifetime
+{
+    public readonly GlobalTestSetup Setup;
+
+    public IntegrationTestsBase(ContainersFixture fixture)
+    {
+        Setup = fixture.Setup;
+    }
+
+    public async Task InitializeAsync()
+    {
+        await Setup.ResetEnvironmentAsync(this.GetType());
+    }
+
+    public async Task DisposeAsync()
+    {
+        await Task.CompletedTask;
+    }
+}
+```
 
 ## Docker under WSL
 In case your Docker is running under WSL2 do not forget to 
@@ -13,8 +151,8 @@ ExecStart=
 ExecStart=/usr/bin/dockerd --host=tcp://0.0.0.0:2375 --host=unix:///var/run/docker.sock
 ```
 
-## DockerHelper
-**DockerHelper** is a static utility class designed to simplify Docker connectivity configuration for Testcontainers.AutoSetup.
+## EnvironmentHelper
+**EnvironmentHelper** is a static utility class designed to simplify Docker connectivity configuration for Testcontainers.AutoSetup.
 
 It automatically handles networking quirks—specifically resolving the correct IP address when running Docker inside WSL2 on Windows—while providing safe defaults for Linux, macOS, and CI/CD environments.
 
@@ -64,7 +202,7 @@ In most local development scenarios (especially on Windows with WSL2), you simpl
 using Testcontainers.AutoSetup.Core.Helpers;
 using DotNet.Testcontainers.Builders;
 
-var endpoint = DockerHelper.GetDockerEndpoint();
+var endpoint = EnvironmentHelper.GetDockerEndpoint();
 
 var builder = new ContainerBuilder()
     .WithImage("postgres:15-alpine")
@@ -83,7 +221,7 @@ public class GlobalSetup
     public GlobalSetup()
     {
         // Override default 2375
-        DockerHelper.SetDockerPort(5000);
+        EnvironmentHelper.SetDockerPort(5000);
     }
 }
 ```
@@ -92,14 +230,14 @@ If you need to detect a specific custom environment (e.g., a local containerized
 
 ```C#
 // Force CI mode if a specific file exists on disk
-DockerHelper.SetCustomCiCheck(() => File.Exists("/.dockerenv"));
+EnvironmentHelper.SetCustomCiCheck(() => File.Exists("/.dockerenv"));
 
 // OR: Force CI mode based on a custom company variable
-DockerHelper.SetCustomCiCheck(() => Environment.GetEnvironmentVariable("MY_COMPANY_BUILD_AGENT") == "true");
+EnvironmentHelper.SetCustomCiCheck(() => Environment.GetEnvironmentVariable("MY_COMPANY_BUILD_AGENT") == "true");
 ```
 #### How It Works
 WSL2 Resolution
-On Windows, Docker Desktop often runs inside a hidden WSL2 VM. Validating localhost often fails for TCP connections. DockerHelper executes the command wsl hostname -I to fetch the actual IP address of the VM bridging the connection.
+On Windows, Docker Desktop often runs inside a hidden WSL2 VM. Validating localhost often fails for TCP connections. EnvironmentHelper executes the command wsl hostname -I to fetch the actual IP address of the VM bridging the connection.
 
 CI Detection strategy
 The library checks for CI environments in the following order:
@@ -111,3 +249,7 @@ Standard Standard: Checks if CI=true (GitHub Actions, GitLab, Travis).
 Vendor Specific: Checks for existence of variables like TF_BUILD (Azure), JENKINS_URL, TEAMCITY_VERSION, etc.
 
 If any of these are true, GetDockerEndpoint() returns null. This is the desired behavior, as CI agents typically mount the Docker socket (/var/run/docker.sock) directly, which Testcontainers handles automatically without needing a TCP address.
+
+## DB Restore Logic
+
+> NOTE: if you experience delays (5-10 seconds) between tests with MS SQL DB - most likely it is an issue with Reverse DNS lookup. The easiest workaround here is to register the IP of WSL in Windows hosts file.

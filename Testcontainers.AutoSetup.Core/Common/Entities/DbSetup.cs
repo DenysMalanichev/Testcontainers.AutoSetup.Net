@@ -1,19 +1,24 @@
+using Testcontainers.AutoSetup.Core.Common.Enums;
+
 namespace Testcontainers.AutoSetup.Core.Common.Entities;
 
-public record DbSetup
-{    public string? DbName { get; set; }
-    public string? MigrationsPath { get; set; }
-    public bool RestoreFromDump { get; set; } = false;
+public abstract record DbSetup
+{   
+    public required string DbName { get; init; }
+    public virtual required string ContainerConnectionString { get; init; }
+    public required string MigrationsPath { get; init; }
 
-    public string BuildConnectionString(string containerConnStr)
-    {
-        if(DbName is not null)
-        {
-            containerConnStr = containerConnStr.Replace("Database=master", $"Database={DbName}");            
-        }
+    public DbType DbType { get; init; } = DbType.Other;
+    public bool RestoreFromDump { get; init; } = false;
 
-        containerConnStr += ";Encrypt=False";
+    /// <summary>
+    /// Builds and returns a connection string to desiered DB
+    /// </summary>
+    public abstract string BuildDbConnectionString();
 
-        return containerConnStr;
-    }
+    /// <summary>
+    /// Returns a <see cref="DateTime"/> identifying the last time migrations files changed
+    /// </summary>
+    /// <param name="cancellationToken"></param>
+    public abstract Task<DateTime> GetMigrationsLastModificationDateAsync(CancellationToken cancellationToken = default);
 }

@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using Testcontainers.AutoSetup.Core.Abstractions;
 
 namespace Testcontainers.AutoSetup.Core.Helpers;
 
@@ -9,7 +10,7 @@ namespace Testcontainers.AutoSetup.Core.Helpers;
 /// This class handles specific networking quirks required to connect to Docker 
 /// running inside WSL2 on Windows, while providing safe defaults for other platforms.
 /// </summary>
-public static class DockerHelper
+public static class EnvironmentHelper
 {
     private const string _commonCiEnvVar = "CI";
     private static readonly ImmutableArray<string> specificCiVars = ImmutableArray.Create
@@ -22,6 +23,10 @@ public static class DockerHelper
             "HEROKU_TEST_RUN_ID", // Heroku CI
             "CODEBUILD_BUILD_ID"  // AWS CodeBuild
         );
+
+    private static bool? _cachedIsCiRun;
+    private static string? _cachedDockerEndpoint;
+    private static object _lock = new();
 
     private static int _dockerPort = 2375;
     private static string? _customDockerEndpoint = null;
@@ -42,9 +47,13 @@ public static class DockerHelper
     /// The default value is <c>2375</c>.
     /// </summary>
     /// <param name="port">The port number the Docker daemon is listening on.</param>
-    public static void SetDockerPort(int port)
+   public static void SetDockerPort(int port)
     {
-        _dockerPort = port;
+        lock (_lock) // Ensure thread safety during write
+        {
+            _dockerPort = port;
+            _cachedDockerEndpoint = null; // Invalidate
+        }
     }
 
     /// <summary>
@@ -54,7 +63,11 @@ public static class DockerHelper
     /// <param name="dockerEndpoint">The full connection string.</param>
     public static void SetCustomDockerEndpoint(string dockerEndpoint)
     {
-        _customDockerEndpoint = dockerEndpoint;
+        lock (_lock)
+        {
+            _customDockerEndpoint = dockerEndpoint;
+            _cachedDockerEndpoint = null; // Invalidate
+        }
     }
 
     /// <summary>
@@ -64,7 +77,12 @@ public static class DockerHelper
     /// <param name="customCiCheck">A function that returns <c>true</c> if in CI, otherwise <c>false</c>.</param>
     public static void SetCustomCiCheck(Func<bool> customCiCheck)
     {
-        _customCiCheck = customCiCheck;
+        lock (_lock)
+        {
+            _customCiCheck = customCiCheck;
+            _cachedIsCiRun = null;        // Invalidate CI
+            _cachedDockerEndpoint = null; // Invalidate Endpoint (depends on CI)
+        }
     }
 
     /// <summary>
@@ -84,6 +102,38 @@ public static class DockerHelper
     /// A string in the format <c>tcp://{ip}:{port}</c>, <c>unix://...</c>, or <c>null</c>.
     /// </returns>
     public static string? GetDockerEndpoint()
+    {
+        if (_cachedDockerEndpoint != null) return _cachedDockerEndpoint;
+
+        lock (_lock)
+        {
+            if (_cachedDockerEndpoint != null) return _cachedDockerEndpoint;
+
+            _cachedDockerEndpoint = CalculateDockerEndpoint();
+            return _cachedDockerEndpoint;
+        }
+    }
+
+    /// <summary>
+    /// Determines if the current execution is occurring within a CI/CD environment.
+    /// </summary>
+    public static bool IsCiRun()
+    {
+        // 1. Fast path (Read)
+        if (_cachedIsCiRun.HasValue) return _cachedIsCiRun.Value;
+
+        lock (_lock)
+        {
+            // 2. Double-check (Read inside lock)
+            if (_cachedIsCiRun.HasValue) return _cachedIsCiRun.Value;
+
+            // 3. Calculate and Store
+            _cachedIsCiRun = CalculateIsCiRun();
+            return _cachedIsCiRun.Value;
+        }
+    }
+
+    private static string? CalculateDockerEndpoint()
     {
         // 1. Priority: Custom Manual Endpoint
         if (_customDockerEndpoint is not null)
@@ -113,11 +163,9 @@ public static class DockerHelper
         return $"tcp://{DockerHostAddress}:{_dockerPort}";
     }
 
-    /// <summary>
-    /// Determines if the current execution is occurring within a CI/CD environment.
-    /// </summary>
-    public static bool IsCiRun()
+    private static bool CalculateIsCiRun()
     {
+
         if (_customCiCheck is not null)
         {
             return _customCiCheck();
@@ -180,6 +228,14 @@ public static class DockerHelper
         catch
         {
             return "localhost";
+        }
+    }
+
+    private static void ResetEndpointCache()
+    {
+        lock(_lock)
+        {
+            _cachedDockerEndpoint = null!;   
         }
     }
 }

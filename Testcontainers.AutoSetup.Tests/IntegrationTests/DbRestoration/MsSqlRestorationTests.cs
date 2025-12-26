@@ -1,0 +1,106 @@
+using DotNet.Testcontainers.Containers;
+using Microsoft.Data.SqlClient;
+using System.Data.SqlTypes;
+using System.Diagnostics;
+using Testcontainers.AutoSetup.Core.Attributes;
+using Testcontainers.AutoSetup.Tests.IntegrationTests.TestCollections;
+
+namespace Testcontainers.AutoSetup.Tests.IntegrationTests.DbRestoration;
+
+[DbReset]
+[Trait("Category", "Integration")]
+[Collection(nameof(ParallelIntegrationTestsCollection))]
+public class MsSqlRestorationTests(ContainersFixture fixture) : IntegrationTestsBase(fixture)
+{
+    [Fact]
+    public async Task EfSeeder_WithMSSQLContainerBuilder_MigratesDatabase()
+    {
+        // Arrange & Act stages (containers setup and seeding) of the test are done within the GlobalTestSetup
+        // Assert
+        Assert.NotNull(Setup.MsSqlContainerFromSpecificBuilder);
+        Assert.Equal(TestcontainersStates.Running, Setup.MsSqlContainerFromSpecificBuilder.State);
+
+        var stopwatch = Stopwatch.StartNew();
+        await using var connection = new SqlConnection(Setup.MsSqlContainerFromSpecificBuilderConnStr);
+        await connection.OpenAsync();
+        stopwatch.Stop();
+        System.Console.WriteLine("[CONNECTION OPENED IN TEST IN] " + stopwatch.ElapsedMilliseconds);
+        using var historyCmd = new SqlCommand("SELECT COUNT(*) FROM __EFMigrationsHistory", connection);
+        var migrationCount = (int)(await historyCmd.ExecuteScalarAsync() ?? throw new SqlNullValueException());
+
+        Assert.True(migrationCount > 0, "No migrations were found in the history table.");
+        await connection.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task EfSeeder_WithGenericContainerBuilder_MigratesDatabase()
+    {
+        // Arrange & Act stages (containers setup and seeding) of the test are done within the GlobalTestSetup
+        // Assert
+        Assert.NotNull(Setup.MsSqlContainerFromGenericBuilder);
+        Assert.Equal(TestcontainersStates.Running, Setup.MsSqlContainerFromGenericBuilder.State);
+        
+        var stopwatch = Stopwatch.StartNew();
+        await using var connection = new SqlConnection(Setup.MsSqlContainerFromGenericBuilderConnStr);
+        await connection.OpenAsync();
+        stopwatch.Stop();
+        System.Console.WriteLine("[CONNECTION OPENED IN TEST IN] " + stopwatch.ElapsedMilliseconds);
+        using var historyCmd = new SqlCommand("SELECT COUNT(*) FROM __EFMigrationsHistory", connection);
+        var migrationCount = (int)(await historyCmd.ExecuteScalarAsync() ?? throw new SqlNullValueException());
+
+        Assert.True(migrationCount > 0, "No migrations were found in the history table.");
+    }
+
+    [Fact]
+    public async Task MsSqlRestorer_WithMSSQLContainerBuilder_RestoresDbAfterPreviousTest()
+    {
+        // Arrange & Act stages (containers setup and seeding) of the test are done within the GlobalTestSetup
+        // Assert
+        Assert.NotNull(Setup.MsSqlContainerFromSpecificBuilder);
+        Assert.Equal(TestcontainersStates.Running, Setup.MsSqlContainerFromSpecificBuilder.State);
+
+        var stopwatch = Stopwatch.StartNew();
+        await using var connection = new SqlConnection(Setup.MsSqlContainerFromSpecificBuilderConnStr);
+        await connection.OpenAsync();
+        stopwatch.Stop();
+        System.Console.WriteLine("[CONNECTION OPENED IN TEST IN] " + stopwatch.ElapsedMilliseconds);
+        using var historyCmd = new SqlCommand("SELECT COUNT(*) FROM __EFMigrationsHistory", connection);
+        var migrationCount = (int)(await historyCmd.ExecuteScalarAsync() ?? throw new SqlNullValueException());
+
+        Assert.True(migrationCount > 0, "No migrations were found in the history table.");
+        var alterQueryString = $"INSERT INTO [CatalogTest].[dbo].[Baskets] ([BuyerId]) VALUES ('{Guid.NewGuid()}');";
+        await using var alterQuery = new SqlCommand(alterQueryString, connection);
+        await alterQuery.ExecuteNonQueryAsync();
+
+        await connection.DisposeAsync();
+        SqlConnection.ClearAllPools();
+        await Setup.ResetEnvironmentAsync(this.GetType());
+
+        using var newConnection = new SqlConnection(Setup.MsSqlContainerFromSpecificBuilderConnStr);
+        await newConnection.OpenAsync();
+
+        var chechQueryString = "SELECT COUNT(1) FROM [CatalogTest].[dbo].[Baskets];";
+        await using var checkQuery = new SqlCommand(chechQueryString, newConnection);
+        var checkResult = await checkQuery.ExecuteScalarAsync();
+        Assert.Equal(0, (int)checkResult!);
+    }
+
+    [Fact]
+    public async Task MsSqlRestorer_WithGenericContainerBuilder_RestoresDbAfterPreviousTest()
+    {
+        // Arrange & Act stages (containers setup and seeding) of the test are done within the GlobalTestSetup
+        // Assert
+        Assert.NotNull(Setup.MsSqlContainerFromGenericBuilder);
+        Assert.Equal(TestcontainersStates.Running, Setup.MsSqlContainerFromGenericBuilder.State);
+
+        var stopwatch = Stopwatch.StartNew();
+        await using var connection = new SqlConnection(Setup.MsSqlContainerFromGenericBuilderConnStr);
+        await connection.OpenAsync();
+        stopwatch.Stop();
+        System.Console.WriteLine("[CONNECTION OPENED IN TEST IN] " + stopwatch.ElapsedMilliseconds);
+        using var historyCmd = new SqlCommand("SELECT COUNT(*) FROM __EFMigrationsHistory", connection);
+        var migrationCount = (int)(await historyCmd.ExecuteScalarAsync() ?? throw new SqlNullValueException());
+
+        Assert.True(migrationCount > 0, "No migrations were found in the history table.");
+    }
+}
