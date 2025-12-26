@@ -6,9 +6,9 @@ namespace Testcontainers.AutoSetup.Core;
 
 public abstract class GenericTestBase
 {
-    private const string ScopePropertyName = "Scope"; 
-
     protected readonly TestEnvironment TestEnvironment;
+
+    private bool _isInitialized = false;
 
     protected GenericTestBase()
     {
@@ -21,9 +21,16 @@ public abstract class GenericTestBase
     /// </summary>
     public async Task InitializeEnvironmentAsync()
     {
+        if (_isInitialized)
+        {
+            throw new InvalidOperationException("The test environment has already been initialized.");
+        }
+
         await ConfigureSetupAsync();
 
         await TestEnvironment.InitializeAsync();
+
+        _isInitialized = true;
     }
 
     /// <summary>
@@ -63,16 +70,13 @@ public abstract class GenericTestBase
     /// <exception cref="TypeAccessException"></exception>
     private static bool ShouldReset(Type testClassType)
     {
-        var attribute = Attribute.GetCustomAttribute(testClassType, typeof(DbResetAttribute));
-        if(attribute is null)
+
+        if (Attribute.GetCustomAttribute(testClassType, typeof(DbResetAttribute)) is DbResetAttribute attr)
         {
-            return false;
+            return attr.Scope is ResetScope.BeforeExecution;
         }
 
-        var resetScopePropertyInfo = attribute.GetType().GetProperty(ScopePropertyName)
-            ?? throw new TypeAccessException($"Cannot find a '{ScopePropertyName}' property of {typeof(DbResetAttribute)}");
-        var scopeValue = (ResetScope)resetScopePropertyInfo.GetValue(attribute)!;
-
-        return scopeValue is ResetScope.BeforeExecution;
+        // If no attribute is found, we reset by default
+        return true;
     }
 }

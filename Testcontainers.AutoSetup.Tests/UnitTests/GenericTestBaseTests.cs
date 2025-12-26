@@ -16,7 +16,7 @@ public class GenericTestBaseTests
     {
         public override Task ConfigureSetupAsync()
         {
-            throw new NotImplementedException();
+            return Task.CompletedTask;
         }
 
         // Expose the protected method so we can call it from the test
@@ -27,7 +27,7 @@ public class GenericTestBaseTests
 
         public override Task ResetEnvironmentAsync(Type testClassType)
         {
-            throw new NotImplementedException();
+            return Task.CompletedTask;
         }
 
         // Helper to swap the hard-coded Environment with our Mock
@@ -52,7 +52,7 @@ public class GenericTestBaseTests
     private class ClassWithResetBefore { }
 
     [Fact]
-    public async Task OnTestStartAsync_Should_Execute_UserAction()
+    public async Task OnTestStartAsync_ExecutesUserAction()
     {
         // Arrange
         var sut = new TestableGenericTestBase();
@@ -70,7 +70,7 @@ public class GenericTestBaseTests
     }
 
     [Fact]
-    public async Task OnTestStartAsync_Should_NOT_Reset_Environment_If_Attribute_Missing()
+    public async Task OnTestStartAsync_ResetsEnvironment_IfAttributeMissing()
     {
         // Arrange
         var sut = new TestableGenericTestBase();
@@ -81,11 +81,11 @@ public class GenericTestBaseTests
         await sut.InvokeOnTestStartAsync(typeof(ClassWithNoAttribute), () => { });
 
         // Assert
-        envMock.Verify(e => e.ResetAsync(), Times.Never, "Should not reset if no DbResetAttribute is present");
+        envMock.Verify(e => e.ResetAsync(), Times.Once, "Should reset if no DbResetAttribute is present");
     }
 
     [Fact]
-    public async Task OnTestStartAsync_Should_NOT_Reset_Environment_If_Scope_Is_None()
+    public async Task OnTestStartAsync_NOTResetEnvironment_IfScopeIsNone()
     {
         // Arrange
         var sut = new TestableGenericTestBase();
@@ -100,7 +100,7 @@ public class GenericTestBaseTests
     }
 
     [Fact]
-    public async Task OnTestStartAsync_Should_Reset_Environment_If_Scope_Is_BeforeExecution()
+    public async Task OnTestStartAsync_ResetsEnvironment_IfScopeIsBeforeExecution()
     {
         // Arrange
         var sut = new TestableGenericTestBase();
@@ -117,5 +117,16 @@ public class GenericTestBaseTests
 
         // Assert
         envMock.Verify(e => e.ResetAsync(), Times.Once, "Should call ResetAsync when Scope is BeforeExecution");
+    }
+
+    [Fact]
+    public async Task InitializeEnvironmentAsync_ExecutesOnlyOnce()
+    {
+        // Arrange
+        var sut = new TestableGenericTestBase();
+
+        // Act & Assert
+        await sut.InitializeEnvironmentAsync();
+        await Assert.ThrowsAsync<InvalidOperationException>(sut.InitializeEnvironmentAsync);
     }
 }

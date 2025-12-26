@@ -111,7 +111,7 @@ Each test class must be decorated with `[DbReset]` attribute. For example:
 [Collection(nameof(ParallelIntegrationTestsCollection))]
 public class MsSqlRestorationTests(ContainersFixture fixture) : IntegrationTestsBase(fixture)
 ```
-The attribute has one argument `ResetScope` with two possible values: `None` and `BeforeExecution`, with `BeforeExecution` being a default value.
+The attribute has one argument `ResetScope` with two possible values: `None` and `BeforeExecution`, with `BeforeExecution` being a default value. Classes without this attribute would be reset automatically. Nevertheless, it is recommended to mark classes explicitly.
 
 ## Test environments
 The Testcontainers.AutoSetup.Net library is designed to work with any test framwork, like xUnit, NUnit, or MSTest. It provides an abstract `TestEnvironment` class which encapsulates all containers that are required to be reset, as well as executes the Init and Reset operations for each of them in parallel. The class also provides abstract methods `ConfigureSetupAsync` and `ResetEnvironmentAsync`. The intended usage of this class would be a craetion a common class (e.g. `GlobalTestSetup`) which inherits from the `TestEnvironment`, creates and configures containers before the test.
