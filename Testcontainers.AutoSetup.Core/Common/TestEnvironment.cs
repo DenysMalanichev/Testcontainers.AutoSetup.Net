@@ -1,4 +1,5 @@
 using DotNet.Testcontainers.Containers;
+using Microsoft.Extensions.Logging;
 using Testcontainers.AutoSetup.Core.Abstractions;
 using Testcontainers.AutoSetup.Core.Common.Entities;
 
@@ -26,7 +27,8 @@ public class TestEnvironment
         DbSetup dbSetup,
         IContainer container,
         bool tryInitialRestoreFromSnapshot = true,
-        string? restorationStateFilesPath = null!)
+        string? restorationStateFilesPath = null!,
+        ILogger? logger = null)
             where TSeeder : IDbSeeder, new()
             where TRestorer : DbRestorer
     {
@@ -34,7 +36,8 @@ public class TestEnvironment
             dbSetup,
             container,
             tryInitialRestoreFromSnapshot,
-            restorationStateFilesPath);
+            restorationStateFilesPath,
+            logger);
         _initializeTasks.Add(resetStrategy.InitializeGlobalAsync);
         _resetTasks.Add(resetStrategy.ResetAsync);
     }

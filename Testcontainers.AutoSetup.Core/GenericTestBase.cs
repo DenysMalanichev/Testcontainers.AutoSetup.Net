@@ -1,3 +1,5 @@
+using DotNet.Testcontainers;
+using Microsoft.Extensions.Logging;
 using Testcontainers.AutoSetup.Core.Attributes;
 using Testcontainers.AutoSetup.Core.Common;
 using Testcontainers.AutoSetup.Core.Common.Enums;
@@ -6,12 +8,14 @@ namespace Testcontainers.AutoSetup.Core;
 
 public abstract class GenericTestBase
 {
+    protected ILogger? Logger { get; set; }
     protected readonly TestEnvironment TestEnvironment;
 
     private bool _isInitialized = false;
 
-    protected GenericTestBase()
+    protected GenericTestBase(ILogger? logger = null)
     {
+        Logger = logger ?? ConsoleLogger.Instance;
         TestEnvironment = new TestEnvironment();
     }
 
