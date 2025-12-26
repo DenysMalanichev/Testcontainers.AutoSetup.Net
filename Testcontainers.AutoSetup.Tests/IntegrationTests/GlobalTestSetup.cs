@@ -11,7 +11,7 @@ using DotNet.Testcontainers.Configurations;
 using DotNet.Testcontainers.Containers;
 using Testcontainers.AutoSetup.Core;
 using Testcontainers.AutoSetup.Core.Extensions;
-
+using Microsoft.Extensions.Logging;
 namespace Testcontainers.AutoSetup.Tests.IntegrationTests;
 
 public class GlobalTestSetup : GenericTestBase
@@ -21,8 +21,11 @@ public class GlobalTestSetup : GenericTestBase
     public IContainer MsSqlContainerFromGenericBuilder = null!;
     public string? MsSqlContainerFromGenericBuilderConnStr { get; private set; } = null!;
 
-
     public readonly string? DockerEndpoint = EnvironmentHelper.GetDockerEndpoint();
+
+    public GlobalTestSetup(ILogger? logger = null)
+        : base(logger)
+    { }
 
     /// <inheritdoc/>
     public override async Task ConfigureSetupAsync()
@@ -41,14 +44,16 @@ public class GlobalTestSetup : GenericTestBase
         MsSqlContainerFromSpecificBuilderConnStr = dbSetup.BuildDbConnectionString(); 
         TestEnvironment.Register<EfSeeder, MsSqlDbRestorer>(
             dbSetup,
-            MsSqlContainerFromSpecificBuilder);
+            MsSqlContainerFromSpecificBuilder,
+            logger: Logger);
 
         var mappedPort = MsSqlContainerFromGenericBuilder.GetMappedPublicPort(1433);
         var genericDbSetup = GenericMsSqlDbSetup(mappedPort);
         MsSqlContainerFromGenericBuilderConnStr = genericDbSetup.BuildDbConnectionString();
         TestEnvironment.Register<EfSeeder, MsSqlDbRestorer>(
             genericDbSetup,
-            MsSqlContainerFromGenericBuilder);
+            MsSqlContainerFromGenericBuilder,
+            logger: Logger);
     }
 
     /// <inheritdoc/>

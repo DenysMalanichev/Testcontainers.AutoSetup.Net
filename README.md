@@ -113,7 +113,7 @@ public class MsSqlRestorationTests(ContainersFixture fixture) : IntegrationTests
 ```
 The attribute has one argument `ResetScope` with two possible values: `None` and `BeforeExecution`, with `BeforeExecution` being a default value. Classes without this attribute would be reset automatically. Nevertheless, it is recommended to mark classes explicitly.
 
-## Test environments
+### Test environments
 The Testcontainers.AutoSetup.Net library is designed to work with any test framwork, like xUnit, NUnit, or MSTest. It provides an abstract `TestEnvironment` class which encapsulates all containers that are required to be reset, as well as executes the Init and Reset operations for each of them in parallel. The class also provides abstract methods `ConfigureSetupAsync` and `ResetEnvironmentAsync`. The intended usage of this class would be a craetion a common class (e.g. `GlobalTestSetup`) which inherits from the `TestEnvironment`, creates and configures containers before the test.
 Then this `GlobalTestSetup` may be used as a property in a base class for integration tests. In case of xUnit:
 ```CSharp
@@ -137,6 +137,9 @@ public abstract class IntegrationTestsBase : IAsyncLifetime
     }
 }
 ```
+
+### Logging
+By default **Testcontainers.AutoSetup.Net** library utilizes a default `ConsoleLogger` from **Testcontainers.Net**. Nevertheless, just as with **Testcontainers.Net** users are able to provide a custom logger into `GenericTestBase(ILogger? logger)` constructor.
 
 ## Docker under WSL
 In case your Docker is running under WSL2 do not forget to 

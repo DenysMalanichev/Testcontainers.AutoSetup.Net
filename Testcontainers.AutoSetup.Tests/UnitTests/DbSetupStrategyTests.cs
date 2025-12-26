@@ -1,4 +1,5 @@
 using DotNet.Testcontainers.Containers;
+using Microsoft.Extensions.Logging;
 using Moq;
 using Testcontainers.AutoSetup.Core.Abstractions;
 using Testcontainers.AutoSetup.Core.Common;
@@ -184,7 +185,7 @@ public class DbSetupStrategyTests
             dbSetupMock.Object,
             containerMock.Object,
             tryInitialRestoreFromSnapshot: true,
-            restorationStateFilesPath: restorationPath);
+            restorationStateFilesDirectory: restorationPath);
 
         // Act
         await strategy.ResetAsync();
@@ -214,7 +215,7 @@ public class DbSetupStrategyTests
             dbSetupMock.Object,
             containerMock.Object,
             tryInitialRestoreFromSnapshot: true,
-            restorationStateFilesPath: restorationPath);
+            restorationStateFilesDirectory: restorationPath);
 
         // Act
         await strategy.InitializeGlobalAsync();
@@ -250,7 +251,7 @@ public class DbSetupStrategyTests
             dbSetupMock.Object,
             containerMock.Object,
             tryInitialRestoreFromSnapshot: true,
-            restorationStateFilesPath: restorationPath);
+            restorationStateFilesDirectory: restorationPath);
 
         // Act & Assert
         await Assert.ThrowsAsync<ExecFailedException>(async () => 
@@ -291,7 +292,7 @@ public class DbSetupStrategyTests
             dbSetupMock.Object,
             containerMock.Object,
             tryInitialRestoreFromSnapshot: true,
-            restorationStateFilesPath: restorationPath);
+            restorationStateFilesDirectory: restorationPath);
 
         // Act
         await strategy.InitializeGlobalAsync();
@@ -326,7 +327,7 @@ public class DbSetupStrategyTests
             dbSetupMock.Object,
             containerMock.Object,
             tryInitialRestoreFromSnapshot: true,
-            restorationStateFilesPath: restorationPath);
+            restorationStateFilesDirectory: restorationPath);
 
         // Act & Assert
         await Assert.ThrowsAsync<ExecFailedException>(async () => 
@@ -373,7 +374,7 @@ public class DbSetupStrategyTests
         public bool WasSnapshotCalled { get; private set; }
 
         // Constructor must match the base arguments for Activator to find it
-        public TestDbRestorer(DbSetup dbSetup, IContainer container, string containerConnectionString, string restorationStateFilesDirectory) 
+        public TestDbRestorer(DbSetup dbSetup, IContainer container, string containerConnectionString, string restorationStateFilesDirectory, ILogger? logger) 
             : base(dbSetup, container, containerConnectionString, restorationStateFilesDirectory)
         {
         }

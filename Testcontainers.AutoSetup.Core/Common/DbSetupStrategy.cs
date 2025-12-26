@@ -1,4 +1,6 @@
 using DotNet.Testcontainers.Containers;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.IdentityModel.Tokens;
 using Testcontainers.AutoSetup.Core.Abstractions;
 using Testcontainers.AutoSetup.Core.Common.Entities;
@@ -15,13 +17,16 @@ public class DbSetupStrategy<TSeeder, TRestorer> : IDbStrategy
     private readonly IContainer _container;
     private readonly DbSetup _dbSetup;
     private readonly bool _tryInitialRestoreFromSnapshot = true;
+    private ILogger? _logger {get;}
 
     public DbSetupStrategy(
         DbSetup dbSetup,
         IContainer container,
         bool tryInitialRestoreFromSnapshot = true,
-        string? restorationStateFilesPath = null!)
+        string? restorationStateFilesDirectory = null!,
+        ILogger? logger = null)
     {
+        _logger = logger ?? NullLogger.Instance;
         _container = container ?? throw new ArgumentNullException(nameof(container));
         _dbSetup = dbSetup ?? throw new ArgumentNullException(nameof(dbSetup));
 
@@ -37,8 +42,8 @@ public class DbSetupStrategy<TSeeder, TRestorer> : IDbStrategy
         try
         {
             _restorer = (TRestorer)Activator.CreateInstance(
-            typeof(TRestorer),
-            [dbSetup, container, dbSetup.ContainerConnectionString, restorationStateFilesPath])!;
+                typeof(TRestorer),
+                [dbSetup, container, dbSetup.ContainerConnectionString, restorationStateFilesDirectory, logger])!;
         }
         catch(Exception ex)
         {
@@ -103,12 +108,12 @@ public class DbSetupStrategy<TSeeder, TRestorer> : IDbStrategy
 
         if (result.ExitCode == 0 && result.Stderr.IsNullOrEmpty())
         {
-            Console.WriteLine("Snapshot is up to date (No newer migrations found).");
+            _logger!.LogInformation("Snapshot is up to date (No newer migrations found).");
             return true; 
         }
         else if (result.ExitCode == 1 || result.ExitCode == 2)
         {
-            Console.WriteLine("No up-to-date snapshot exists, recreation required.");
+            _logger!.LogWarning("No up-to-date snapshot exists, recreation required.");
             return false;
         }
 
@@ -132,11 +137,12 @@ public class DbSetupStrategy<TSeeder, TRestorer> : IDbStrategy
 
         if (result.ExitCode == 0)
         {
+            _logger!.LogInformation($"Required mount found.");
             return true;
         }
         else if (result.ExitCode == 1)
         {
-            Console.WriteLine($"[WARNING] No mount found at {_restorer.RestorationStateFilesDirectory}. Skipping initial restoration.");
+            _logger!.LogWarning($"No mount found at {_restorer.RestorationStateFilesDirectory}. Skipping initial restoration.");
             return false;
         }
         

@@ -1,6 +1,8 @@
 using System.Diagnostics;
 using DotNet.Testcontainers.Containers;
 using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Testcontainers.AutoSetup.Core.Abstractions;
 using Testcontainers.AutoSetup.Core.Common.Entities;
 
@@ -10,19 +12,26 @@ public class MsSqlDbRestorer : DbRestorer
 {
     private const string DefaultRestorationStateFilesPath = "/var/opt/mssql/Restoration";
 
+    private ILogger _logger {get;}
+
     public MsSqlDbRestorer(
         DbSetup dbSetup,
         IContainer container,
         string containerConnectionString,
-        string restorationStateFilesDirectory = DefaultRestorationStateFilesPath)
-        : base(dbSetup, container, containerConnectionString, restorationStateFilesDirectory ?? DefaultRestorationStateFilesPath)
-    { }
+        string restorationStateFilesDirectory,
+        ILogger logger)
+        : base(
+            dbSetup,
+            container,
+            containerConnectionString,
+            restorationStateFilesDirectory ?? DefaultRestorationStateFilesPath)
+    {
+        _logger = logger ?? NullLogger.Instance;
+    }
 
     /// <inheritdoc/>
     public override async Task RestoreAsync(CancellationToken cancellationToken = default)
     {
-        var stopwatch = Stopwatch.StartNew();
-
         await using var connection = CreateMasterConnectionAsync(_containerConnectionString);
         await connection.OpenAsync(cancellationToken);
 
@@ -86,14 +95,11 @@ public class MsSqlDbRestorer : DbRestorer
         catch (SqlException ex)
         {
             await connection.DisposeAsync();
-            Console.WriteLine($"[Restore Error] {ex.Message}");
+            _logger.LogError($"Restore failed: {ex.Message}");
             throw;
         }
 
         SqlConnection.ClearPool(connection);
-
-        stopwatch.Stop();
-        Console.WriteLine("[DB RESET IN] " + stopwatch.ElapsedMilliseconds + "ms");
     }
 
     /// <inheritdoc/>

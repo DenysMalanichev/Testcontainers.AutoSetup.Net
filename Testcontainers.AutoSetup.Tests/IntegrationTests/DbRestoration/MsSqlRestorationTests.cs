@@ -4,14 +4,23 @@ using System.Data.SqlTypes;
 using System.Diagnostics;
 using Testcontainers.AutoSetup.Core.Attributes;
 using Testcontainers.AutoSetup.Tests.IntegrationTests.TestCollections;
+using Xunit.Abstractions;
 
 namespace Testcontainers.AutoSetup.Tests.IntegrationTests.DbRestoration;
 
 [DbReset]
 [Trait("Category", "Integration")]
 [Collection(nameof(ParallelIntegrationTestsCollection))]
-public class MsSqlRestorationTests(ContainersFixture fixture) : IntegrationTestsBase(fixture)
+public class MsSqlRestorationTests : IntegrationTestsBase
 {
+    private readonly ITestOutputHelper _output;
+
+    public MsSqlRestorationTests(ITestOutputHelper output, ContainersFixture fixture)
+        : base(fixture)
+    {
+        _output = output;
+    }
+
     [Fact]
     public async Task EfSeeder_WithMSSQLContainerBuilder_MigratesDatabase()
     {
@@ -24,7 +33,7 @@ public class MsSqlRestorationTests(ContainersFixture fixture) : IntegrationTests
         await using var connection = new SqlConnection(Setup.MsSqlContainerFromSpecificBuilderConnStr);
         await connection.OpenAsync();
         stopwatch.Stop();
-        System.Console.WriteLine("[CONNECTION OPENED IN TEST IN] " + stopwatch.ElapsedMilliseconds);
+        _output.WriteLine("[CONNECTION OPENED IN TEST IN] " + stopwatch.ElapsedMilliseconds);
         using var historyCmd = new SqlCommand("SELECT COUNT(*) FROM __EFMigrationsHistory", connection);
         var migrationCount = (int)(await historyCmd.ExecuteScalarAsync() ?? throw new SqlNullValueException());
 
@@ -44,7 +53,7 @@ public class MsSqlRestorationTests(ContainersFixture fixture) : IntegrationTests
         await using var connection = new SqlConnection(Setup.MsSqlContainerFromGenericBuilderConnStr);
         await connection.OpenAsync();
         stopwatch.Stop();
-        System.Console.WriteLine("[CONNECTION OPENED IN TEST IN] " + stopwatch.ElapsedMilliseconds);
+        _output.WriteLine("[CONNECTION OPENED IN TEST IN] " + stopwatch.ElapsedMilliseconds);
         using var historyCmd = new SqlCommand("SELECT COUNT(*) FROM __EFMigrationsHistory", connection);
         var migrationCount = (int)(await historyCmd.ExecuteScalarAsync() ?? throw new SqlNullValueException());
 
@@ -63,7 +72,7 @@ public class MsSqlRestorationTests(ContainersFixture fixture) : IntegrationTests
         await using var connection = new SqlConnection(Setup.MsSqlContainerFromSpecificBuilderConnStr);
         await connection.OpenAsync();
         stopwatch.Stop();
-        System.Console.WriteLine("[CONNECTION OPENED IN TEST IN] " + stopwatch.ElapsedMilliseconds);
+        _output.WriteLine("[CONNECTION OPENED IN TEST IN] " + stopwatch.ElapsedMilliseconds);
         using var historyCmd = new SqlCommand("SELECT COUNT(*) FROM __EFMigrationsHistory", connection);
         var migrationCount = (int)(await historyCmd.ExecuteScalarAsync() ?? throw new SqlNullValueException());
 
@@ -97,7 +106,7 @@ public class MsSqlRestorationTests(ContainersFixture fixture) : IntegrationTests
         await using var connection = new SqlConnection(Setup.MsSqlContainerFromGenericBuilderConnStr);
         await connection.OpenAsync();
         stopwatch.Stop();
-        System.Console.WriteLine("[CONNECTION OPENED IN TEST IN] " + stopwatch.ElapsedMilliseconds);
+        _output.WriteLine("[CONNECTION OPENED IN TEST IN] " + stopwatch.ElapsedMilliseconds);
         using var historyCmd = new SqlCommand("SELECT COUNT(*) FROM __EFMigrationsHistory", connection);
         var migrationCount = (int)(await historyCmd.ExecuteScalarAsync() ?? throw new SqlNullValueException());
 
