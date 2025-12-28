@@ -12,6 +12,8 @@ using DotNet.Testcontainers.Containers;
 using Testcontainers.AutoSetup.Core;
 using Testcontainers.AutoSetup.Core.Extensions;
 using Microsoft.Extensions.Logging;
+using Testcontainers.AutoSetup.Core.Common.Entities;
+using Testcontainers.AutoSetup.Core.DbSeeding;
 namespace Testcontainers.AutoSetup.Tests.IntegrationTests;
 
 public class GlobalTestSetup : GenericTestBase
@@ -40,18 +42,34 @@ public class GlobalTestSetup : GenericTestBase
         );
 
         // 2. Register containers within the environment
-        var dbSetup = MsSqlDbSetup(MsSqlContainerFromSpecificBuilder.GetConnectionString());        
+
+        // Register MsSql with EF Seeder
+        var dbSetup = MsSqlEFDbSetup(MsSqlContainerFromSpecificBuilder.GetConnectionString());        
         MsSqlContainerFromSpecificBuilderConnStr = dbSetup.BuildDbConnectionString(); 
         TestEnvironment.Register<EfSeeder, MsSqlDbRestorer>(
             dbSetup,
             MsSqlContainerFromSpecificBuilder,
             logger: Logger);
+        // Register MsSql with Raw SQL Seeder
+        var rawSqlDbSetup = MsSqlRawSqlDbSetup(MsSqlContainerFromSpecificBuilder.GetConnectionString());        
+        TestEnvironment.Register<RawSqlDbSeeder, MsSqlDbRestorer>(
+            rawSqlDbSetup,
+            MsSqlContainerFromSpecificBuilder,
+            logger: Logger);
 
+        // Register Generic MsSql with EF Seeder
         var mappedPort = MsSqlContainerFromGenericBuilder.GetMappedPublicPort(1433);
-        var genericDbSetup = GenericMsSqlDbSetup(mappedPort);
+        var genericDbSetup = GenericMsSqlEFDbSetup(mappedPort);
         MsSqlContainerFromGenericBuilderConnStr = genericDbSetup.BuildDbConnectionString();
         TestEnvironment.Register<EfSeeder, MsSqlDbRestorer>(
             genericDbSetup,
+            MsSqlContainerFromGenericBuilder,
+            logger: Logger);
+
+        // Register Generic MsSql with Raw SQL Seeder
+        var genericRawSqlDbSetup = GenericMsSqlRawSqlDbSetup(mappedPort);
+        TestEnvironment.Register<RawSqlDbSeeder, MsSqlDbRestorer>(
+            genericRawSqlDbSetup,
             MsSqlContainerFromGenericBuilder,
             logger: Logger);
     }
@@ -96,7 +114,7 @@ public class GlobalTestSetup : GenericTestBase
         return container;
     }
 
-    private static EfDbSetup MsSqlDbSetup(string containerConnectionString) => new() 
+    private static EfDbSetup MsSqlEFDbSetup(string containerConnectionString) => new() 
             {
                 DbName = "CatalogTest", 
                 DbType = Core.Common.Enums.DbType.MsSQL,
@@ -108,16 +126,42 @@ public class GlobalTestSetup : GenericTestBase
                 MigrationsPath = "./IntegrationTests/Migrations",
             };
 
-    private static EfDbSetup GenericMsSqlDbSetup(int mappedPort) => new() 
+    private static EfDbSetup GenericMsSqlEFDbSetup(int mappedPort) => new() 
             {
                 DbType = Core.Common.Enums.DbType.MsSQL,
                 DbName = "GenericCatalogTest", 
-                ContainerConnectionString = $"Server={EnvironmentHelper.DockerHostAddress},{mappedPort};Database=GenericCatalogTest;User ID=sa;Password=YourStrongPassword123!;Encrypt=False;",
+                ContainerConnectionString = $"Server={EnvironmentHelper.DockerHostAddress},{mappedPort};Database=master;User ID=sa;Password=YourStrongPassword123!;Encrypt=False;",
                 ContextFactory = connString => new CatalogContext(
                     new DbContextOptionsBuilder<CatalogContext>()
                     .UseSqlServer(connString)
                     .Options),
                 MigrationsPath = "./IntegrationTests/Migrations",
+            };
+    
+    private static RawSqlDbSetup MsSqlRawSqlDbSetup(string containerConnectionString) => new() 
+            {
+                DbName = "RawSql_CatalogTest", 
+                DbType = Core.Common.Enums.DbType.MsSQL,
+                ContainerConnectionString = containerConnectionString,
+                MigrationsPath = "./IntegrationTests/Migrations/SqlScripts",
+                SqlFiles = 
+                [
+                    "001_CreateCatalogTable.sql",
+                    "002_InsertInitialData.sql"
+                ]
+            };
+
+    private static RawSqlDbSetup GenericMsSqlRawSqlDbSetup(int mappedPort) => new() 
+            {
+                DbType = Core.Common.Enums.DbType.MsSQL,
+                DbName = "RawSql_CatalogTest", 
+                ContainerConnectionString = $"Server={EnvironmentHelper.DockerHostAddress},{mappedPort};Database=master;User ID=sa;Password=YourStrongPassword123!;Encrypt=False;",
+                MigrationsPath = "./IntegrationTests/Migrations/SqlScripts",
+                SqlFiles = 
+                [
+                    "001_CreateCatalogTable.sql",
+                    "002_InsertInitialData.sql"
+                ]
             };
 
     /// <inheritdoc cref="IWaitUntil" />

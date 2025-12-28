@@ -4,7 +4,7 @@ using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Testcontainers.AutoSetup.Core.Abstractions;
-using Testcontainers.AutoSetup.Core.Common.Entities;
+using Testcontainers.AutoSetup.Core.Abstractions.Entities;
 
 namespace Testcontainers.AutoSetup.Core.DbRestoration;
 

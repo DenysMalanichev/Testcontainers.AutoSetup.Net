@@ -1,6 +1,6 @@
 
 using DotNet.Testcontainers.Containers;
-using Testcontainers.AutoSetup.Core.Common.Entities;
+using Testcontainers.AutoSetup.Core.Abstractions.Entities;
 
 namespace Testcontainers.AutoSetup.Core.Abstractions;
 

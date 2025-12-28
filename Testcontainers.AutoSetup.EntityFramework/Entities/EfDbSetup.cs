@@ -1,5 +1,5 @@
 using Microsoft.EntityFrameworkCore;
-using Testcontainers.AutoSetup.Core.Common.Entities;
+using Testcontainers.AutoSetup.Core.Abstractions.Entities;
 
 namespace Testcontainers.AutoSetup.EntityFramework.Entities;
 
@@ -9,20 +9,7 @@ public record EfDbSetup : DbSetup
     /// A <see cref="Func<>"/> taking a connection string and 
     /// returning an instance of <see cref="DbContext"/>
     /// </summary>
-    public required Func<string, DbContext> ContextFactory { get; init; }
-
-    /// <inheritdoc/>
-    public override string BuildDbConnectionString()
-    {
-        var containerConnStr = ContainerConnectionString ?? throw new InvalidOperationException(
-            "ContainerConnectionString must be provided to build the full connection string.");
-        if(DbName is not null)
-        {
-            containerConnStr = containerConnStr.Replace("Database=master", $"Database={DbName}");            
-        }
-
-        return containerConnStr;
-    }
+    public virtual required Func<string, DbContext> ContextFactory { get; init; }
 
     /// <inheridoc />
     public override Task<DateTime> GetMigrationsLastModificationDateAsync(CancellationToken cancellationToken = default)
@@ -34,6 +21,7 @@ public record EfDbSetup : DbSetup
             throw new FileNotFoundException($"Specified migrations folder does not exist ({MigrationsPath})");
         }
 
+        // TODO fix possible bug (look at RawSqlDbSetup logic)
         var files = dirInfo.GetFiles("*", SearchOption.AllDirectories);
 
         if (files.Length == 0)
