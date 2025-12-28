@@ -48,7 +48,7 @@ public class DbSetupStrategy<TSeeder, TRestorer> : IDbStrategy
         {
             _restorer = (TRestorer)Activator.CreateInstance(
                 typeof(TRestorer),
-                [dbSetup, container, dbSetup.ContainerConnectionString, restorationStateFilesDirectory, logger])!;
+                [dbSetup, container, new SqlDbConnectionFactory(), dbSetup.ContainerConnectionString, restorationStateFilesDirectory, logger])!;
         }
         catch(Exception ex)
         {

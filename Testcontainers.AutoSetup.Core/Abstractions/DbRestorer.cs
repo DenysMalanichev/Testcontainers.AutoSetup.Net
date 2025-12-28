@@ -15,6 +15,7 @@ public abstract class DbRestorer
     protected readonly string _containerConnectionString;
     protected readonly DbSetup _dbSetup;
     protected readonly IContainer _container;
+    protected readonly IDbConnectionFactory _dbConnectionFactory;
 
     /// <summary>
     /// Returns the <see cref="string?"/> path to the current DB snapshot or null, if no snapshots exist
@@ -43,11 +44,13 @@ public abstract class DbRestorer
     public DbRestorer(
         DbSetup dbSetup, 
         IContainer container,
+        IDbConnectionFactory dbConnectionFactory,
         string containerConnectionString,
         string restorationStateFilesDirectory)
     {
         _dbSetup = dbSetup ?? throw new ArgumentNullException(nameof(dbSetup));   
         _container = container ?? throw new ArgumentNullException(nameof(container));
+        _dbConnectionFactory = dbConnectionFactory ?? throw new ArgumentNullException(nameof(dbConnectionFactory));
 
         if(string.IsNullOrEmpty(restorationStateFilesDirectory))
         {

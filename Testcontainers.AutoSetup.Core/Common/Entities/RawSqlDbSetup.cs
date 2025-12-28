@@ -1,3 +1,4 @@
+using System.IO.Abstractions;
 using Testcontainers.AutoSetup.Core.Abstractions.Entities;
 
 namespace Testcontainers.AutoSetup.Core.Common.Entities;
@@ -12,10 +13,10 @@ public record RawSqlDbSetup : DbSetup
     /// <inheridoc />
     public override Task<DateTime> GetMigrationsLastModificationDateAsync(CancellationToken cancellationToken = default)
     {
-        var dirInfo = new DirectoryInfo(MigrationsPath);
+        var dirInfo = _fileSystem.DirectoryInfo.New(MigrationsPath);
         if (!dirInfo.Exists)
         {
-            throw new FileNotFoundException($"Specified migrations folder does not exist ({MigrationsPath})");
+            throw new DirectoryNotFoundException($"Specified migrations folder does not exist ({MigrationsPath})");
         }
 
         var files = GetMigrationFilesInfo(dirInfo);
@@ -36,7 +37,7 @@ public record RawSqlDbSetup : DbSetup
     /// </summary>
     /// <param name="files">Array of file information objects</param>
     /// <returns>The latest modification date among all files</returns>
-    private DateTime GetFilesLastModificationDate(FileInfo[] files)
+    private static DateTime GetFilesLastModificationDate(IFileInfo[] files)
     {
         var maxTime = DateTime.MinValue;
 
@@ -57,9 +58,9 @@ public record RawSqlDbSetup : DbSetup
     /// <param name="directoryInfo">The directory to search for SQL files</param>
     /// <returns>An array of FileInfo objects for the specified SQL files</returns>
     /// <exception cref="FileNotFoundException"></exception>
-    private FileInfo[] GetMigrationFilesInfo(DirectoryInfo directoryInfo)
+    private IFileInfo[] GetMigrationFilesInfo(IDirectoryInfo directoryInfo)
     {
-        var files = directoryInfo.GetFiles("*", SearchOption.AllDirectories)
+        var files = directoryInfo.GetFiles("*", SearchOption.AllDirectories)?
             .Where(f => SqlFiles.Contains(f.Name))
             .ToArray();
 

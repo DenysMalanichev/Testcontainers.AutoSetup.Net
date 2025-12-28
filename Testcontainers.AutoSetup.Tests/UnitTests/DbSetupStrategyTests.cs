@@ -357,7 +357,7 @@ public class DbSetupStrategyTests
         }
     }
 
-    public class TestDbSeeder : DbSeeder
+    private class TestDbSeeder : DbSeeder
     {
         public bool WasSeedCalled { get; private set; }
         public TestDbSeeder(IDbConnectionFactory dbConnectionFactory, IFileSystem fileSystem, ILogger logger) : base(dbConnectionFactory, fileSystem, logger)
@@ -375,9 +375,19 @@ public class DbSetupStrategyTests
         public bool WasRestoreCalled { get; private set; }
         public bool WasSnapshotCalled { get; private set; }
 
-        // Constructor must match the base arguments for Activator to find it
-        public TestDbRestorer(DbSetup dbSetup, IContainer container, string containerConnectionString, string restorationStateFilesDirectory, ILogger? logger) 
-            : base(dbSetup, container, containerConnectionString, restorationStateFilesDirectory)
+        public TestDbRestorer(
+            DbSetup dbSetup,
+            IContainer container,
+            IDbConnectionFactory dbConnectionFactory,
+            string containerConnectionString,
+            string restorationStateFilesDirectory,
+            ILogger? logger = null) 
+            : base(
+                dbSetup,
+                container,
+                dbConnectionFactory,
+                containerConnectionString,
+                restorationStateFilesDirectory)
         {
         }
 
@@ -396,7 +406,18 @@ public class DbSetupStrategyTests
 
     private class TestFailedCtorDbRestorer : DbRestorer
     {
-        public TestFailedCtorDbRestorer(DbSetup dbSetup, IContainer container, string containerConnectionString, string restorationStateFilesDirectory) : base(dbSetup, container, containerConnectionString, restorationStateFilesDirectory)
+        public TestFailedCtorDbRestorer(
+            DbSetup dbSetup,
+            IContainer container,
+            IDbConnectionFactory dbConnectionFactory,
+            string containerConnectionString,
+            string restorationStateFilesDirectory) 
+            : base(
+                dbSetup,
+                container,
+                dbConnectionFactory,
+                containerConnectionString,
+                restorationStateFilesDirectory)
         {
             throw new Exception("Test restorer exception");
         }

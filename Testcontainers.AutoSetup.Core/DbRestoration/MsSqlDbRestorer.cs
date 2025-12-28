@@ -1,4 +1,4 @@
-using System.Diagnostics;
+using System.Data.Common;
 using DotNet.Testcontainers.Containers;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
@@ -17,12 +17,14 @@ public class MsSqlDbRestorer : DbRestorer
     public MsSqlDbRestorer(
         DbSetup dbSetup,
         IContainer container,
+        IDbConnectionFactory dbConnectionFactory,
         string containerConnectionString,
         string restorationStateFilesDirectory = DefaultRestorationStateFilesPath,
         ILogger logger = null!)
         : base(
             dbSetup,
             container,
+            dbConnectionFactory,
             containerConnectionString,
             restorationStateFilesDirectory ?? DefaultRestorationStateFilesPath)
     {
@@ -89,7 +91,9 @@ public class MsSqlDbRestorer : DbRestorer
 
         try
         {
-            await using var command = new SqlCommand(sql, connection) { CommandTimeout = 60 };
+            await using var command = connection.CreateCommand();
+            command.CommandText = sql;
+            command.CommandTimeout = 60;
             await command.ExecuteNonQueryAsync(cancellationToken);
         }
         catch (SqlException ex)
@@ -99,7 +103,7 @@ public class MsSqlDbRestorer : DbRestorer
             throw;
         }
 
-        SqlConnection.ClearPool(connection);
+        SqlConnection.ClearPool((SqlConnection)connection);
     }
 
     /// <inheritdoc/>
@@ -126,7 +130,9 @@ public class MsSqlDbRestorer : DbRestorer
             ON ( NAME = [{_dbSetup.DbName}], FILENAME = '{RestorationStateFilesPath}' )
             AS SNAPSHOT OF [{_dbSetup.DbName}];";
 
-        await using var command = new SqlCommand(sql, connection);
+        await using var command = connection.CreateCommand();
+        command.CommandText = sql;
+        command.CommandTimeout = 60;
         await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
@@ -134,7 +140,7 @@ public class MsSqlDbRestorer : DbRestorer
     /// Creates a connection to 'master' with Pooling ENABLED.
     /// We rely on ADO.NET internal pooling, which is efficient and thread-safe.
     /// </summary>
-    private static SqlConnection CreateMasterConnectionAsync(string containerConnStr)
+    private DbConnection CreateMasterConnectionAsync(string containerConnStr)
     {
         var masterBuilder = new SqlConnectionStringBuilder(containerConnStr)
         {
@@ -145,6 +151,6 @@ public class MsSqlDbRestorer : DbRestorer
             Encrypt = false,
         };
 
-        return new SqlConnection(masterBuilder.ConnectionString);
+        return _dbConnectionFactory.CreateDbConnection(masterBuilder.ConnectionString);
     }
 }

@@ -1,4 +1,4 @@
-using ICSharpCode.SharpZipLib;
+using System.IO.Abstractions;
 using Testcontainers.AutoSetup.Core.Common.Enums;
 
 namespace Testcontainers.AutoSetup.Core.Abstractions.Entities;
@@ -15,6 +15,8 @@ public abstract record DbSetup
 
     public virtual DbType DbType { get; init; } = DbType.Other;
     public virtual bool RestoreFromDump { get; init; } = false;
+
+    protected virtual IFileSystem _fileSystem { get; init; } = new FileSystem();
 
     /// <summary>
     /// Builds and returns a connection string to desiered DB
