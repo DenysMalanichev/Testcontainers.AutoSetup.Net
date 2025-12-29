@@ -19,7 +19,7 @@ Current POC works
         <td> ✅ </td>
         <td>Both with official Testcontainers MsSqlBuilder and generic builds</td>
         <td>From snapshot, ~300ms</td>
-        <td>EF Core</td>
+        <td>EF Core <br> Raw SQL</td>
     </tr>
     <tr>
         <td>PostresQL</td>
