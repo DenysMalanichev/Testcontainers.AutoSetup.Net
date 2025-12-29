@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Testcontainers.AutoSetup.Core.Abstractions;
 using Testcontainers.AutoSetup.Core.Abstractions.Entities;
+using Testcontainers.AutoSetup.Core.Common.SqlDbHelpers;
 
 namespace Testcontainers.AutoSetup.Core.DbRestoration;
 
@@ -13,8 +14,24 @@ public class MsSqlDbRestorer : DbRestorer
     private const string DefaultRestorationStateFilesPath = "/var/opt/mssql/Restoration";
 
     private ILogger _logger {get;}
+    private IDbConnectionFactory _dbConnectionFactory;
 
     public MsSqlDbRestorer(
+        DbSetup dbSetup,
+        IContainer container,
+        string containerConnectionString,
+        string restorationStateFilesDirectory = DefaultRestorationStateFilesPath,
+        ILogger logger = null!)
+        : this(
+            dbSetup,
+            container,
+            new SqlDbConnectionFactory(),
+            containerConnectionString,
+            restorationStateFilesDirectory ?? DefaultRestorationStateFilesPath,
+            logger)
+    { }
+
+    internal MsSqlDbRestorer(
         DbSetup dbSetup,
         IContainer container,
         IDbConnectionFactory dbConnectionFactory,
@@ -24,11 +41,11 @@ public class MsSqlDbRestorer : DbRestorer
         : base(
             dbSetup,
             container,
-            dbConnectionFactory,
             containerConnectionString,
             restorationStateFilesDirectory ?? DefaultRestorationStateFilesPath)
     {
         _logger = logger ?? NullLogger.Instance;
+        _dbConnectionFactory = dbConnectionFactory ?? throw new ArgumentNullException(nameof(dbConnectionFactory));
     }
 
     /// <inheritdoc/>

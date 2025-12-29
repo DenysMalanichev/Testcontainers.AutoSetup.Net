@@ -25,10 +25,7 @@ public class EfSeederTests
         var contextFactoryMock = new Mock<Func<string, DbContext>>();
         contextFactoryMock.Setup(f => f.Invoke(It.IsAny<string>())).Returns(dbContextMock.Object);
         dbSetupMock.Setup(ds => ds.ContextFactory).Returns(contextFactoryMock.Object);
-        var seederMock = new Mock<EfSeeder>(
-            Mock.Of<IDbConnectionFactory>(), 
-            Mock.Of<IFileSystem>(), 
-            Mock.Of<ILogger>())
+        var seederMock = new Mock<EfSeeder>(Mock.Of<ILogger>())
         { CallBase = true };
         seederMock.Protected()
             .Setup<Task>("ExecuteMigrateAsync", ItExpr.IsAny<DbContext>(), ItExpr.IsAny<CancellationToken>())

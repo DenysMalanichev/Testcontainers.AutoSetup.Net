@@ -32,12 +32,11 @@ public class DbSetupStrategy<TSeeder, TRestorer> : IDbStrategy
         _container = container ?? throw new ArgumentNullException(nameof(container));
         _dbSetup = dbSetup ?? throw new ArgumentNullException(nameof(dbSetup));
 
-        // TODO investigate better instanciation approach, without passing redundant arguments
         try
         {
             _seeder = (TSeeder)Activator.CreateInstance(
                 typeof(TSeeder),
-                [new SqlDbConnectionFactory(), new FileSystem(), logger])!;
+                [logger])!;
         }
         catch(Exception ex)
         {
@@ -48,7 +47,7 @@ public class DbSetupStrategy<TSeeder, TRestorer> : IDbStrategy
         {
             _restorer = (TRestorer)Activator.CreateInstance(
                 typeof(TRestorer),
-                [dbSetup, container, new SqlDbConnectionFactory(), dbSetup.ContainerConnectionString, restorationStateFilesDirectory, logger])!;
+                [dbSetup, container, dbSetup.ContainerConnectionString, restorationStateFilesDirectory, logger])!;
         }
         catch(Exception ex)
         {

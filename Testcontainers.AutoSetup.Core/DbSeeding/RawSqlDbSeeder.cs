@@ -6,11 +6,14 @@ using Microsoft.Extensions.Logging;
 using Testcontainers.AutoSetup.Core.Abstractions;
 using Testcontainers.AutoSetup.Core.Abstractions.Entities;
 using Testcontainers.AutoSetup.Core.Common.Entities;
+using Testcontainers.AutoSetup.Core.Common.SqlDbHelpers;
 
 namespace Testcontainers.AutoSetup.Core.DbSeeding;
 
 public sealed class RawSqlDbSeeder : DbSeeder
 {
+    private IDbConnectionFactory _dbConnectionFactory;
+    private IFileSystem _fileSystem;
     // Regex explanation:
     // ^\s* -> Start of a line, allow optional whitespace
     // GO        -> The literal word GO
@@ -21,9 +24,15 @@ public sealed class RawSqlDbSeeder : DbSeeder
     private static readonly Regex GoSplitter = new(@"^\s*GO\s*$", 
         RegexOptions.IgnoreCase | RegexOptions.Multiline | RegexOptions.Compiled);
 
-    public RawSqlDbSeeder(IDbConnectionFactory dbConnectionFactory, IFileSystem fileSystem, ILogger? logger = null)
-        : base(dbConnectionFactory, fileSystem, logger)
+    public RawSqlDbSeeder(ILogger logger) : this(new SqlDbConnectionFactory(), new FileSystem(), logger)
     { }
+
+    internal RawSqlDbSeeder(IDbConnectionFactory dbConnectionFactory, IFileSystem fileSystem, ILogger? logger = null)
+        : base(logger)
+    {
+        _dbConnectionFactory = dbConnectionFactory ?? throw new ArgumentNullException(nameof(dbConnectionFactory));
+        _fileSystem = fileSystem ?? throw new ArgumentNullException(nameof(fileSystem));
+    }
 
     /// <inheridoc />
     public override async Task SeedAsync(DbSetup dbSetup, IContainer container, CancellationToken cancellationToken = default)

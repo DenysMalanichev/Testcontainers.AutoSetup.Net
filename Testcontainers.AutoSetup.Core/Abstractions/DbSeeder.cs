@@ -8,14 +8,10 @@ namespace Testcontainers.AutoSetup.Core.Abstractions;
 
 public abstract class DbSeeder
 {
-    protected readonly IDbConnectionFactory _dbConnectionFactory;
-    protected readonly IFileSystem _fileSystem;
     protected readonly ILogger _logger;
 
-    public DbSeeder(IDbConnectionFactory dbConnectionFactory, IFileSystem fileSystem, ILogger? logger = null)
+    public DbSeeder(ILogger? logger = null)
     {
-        _dbConnectionFactory = dbConnectionFactory ?? throw new ArgumentNullException(nameof(dbConnectionFactory));
-        _fileSystem = fileSystem ?? throw new ArgumentNullException(nameof(fileSystem));
         _logger = logger ?? NullLogger.Instance;
     }
 

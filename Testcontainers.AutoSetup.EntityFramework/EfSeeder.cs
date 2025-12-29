@@ -1,4 +1,3 @@
-using System.IO.Abstractions;
 using DotNet.Testcontainers.Containers;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -10,8 +9,8 @@ namespace Testcontainers.AutoSetup.EntityFramework;
 
 public class EfSeeder : DbSeeder
 {
-    public EfSeeder(IDbConnectionFactory dbConnectionFactory, IFileSystem fileSystem, ILogger? logger = null)
-        : base(dbConnectionFactory, fileSystem, logger)
+    public EfSeeder(ILogger? logger = null)
+        : base(logger)
     { }
 
     /// <inheridoc />

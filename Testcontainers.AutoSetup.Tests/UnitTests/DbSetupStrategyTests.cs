@@ -346,7 +346,7 @@ public class DbSetupStrategyTests
 
     private class TestFailedCtorDbSeeder : DbSeeder
     {
-        public TestFailedCtorDbSeeder(IDbConnectionFactory dbConnectionFactory, IFileSystem fileSystem) : base(dbConnectionFactory, fileSystem)
+        public TestFailedCtorDbSeeder(IDbConnectionFactory dbConnectionFactory, IFileSystem fileSystem) : base()
         {
             throw new Exception("Test exception");
         }
@@ -360,7 +360,7 @@ public class DbSetupStrategyTests
     private class TestDbSeeder : DbSeeder
     {
         public bool WasSeedCalled { get; private set; }
-        public TestDbSeeder(IDbConnectionFactory dbConnectionFactory, IFileSystem fileSystem, ILogger logger) : base(dbConnectionFactory, fileSystem, logger)
+        public TestDbSeeder(ILogger logger) : base(logger)
         { }
 
         public override Task SeedAsync(DbSetup dbSetup, IContainer container, CancellationToken cancellationToken)
@@ -378,14 +378,12 @@ public class DbSetupStrategyTests
         public TestDbRestorer(
             DbSetup dbSetup,
             IContainer container,
-            IDbConnectionFactory dbConnectionFactory,
             string containerConnectionString,
             string restorationStateFilesDirectory,
             ILogger? logger = null) 
             : base(
                 dbSetup,
                 container,
-                dbConnectionFactory,
                 containerConnectionString,
                 restorationStateFilesDirectory)
         {
@@ -415,7 +413,6 @@ public class DbSetupStrategyTests
             : base(
                 dbSetup,
                 container,
-                dbConnectionFactory,
                 containerConnectionString,
                 restorationStateFilesDirectory)
         {

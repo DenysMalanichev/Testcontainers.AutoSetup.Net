@@ -18,11 +18,9 @@ public class DbRestorerTests
         const string restorationStateFilesDirectory = "/test/path";
         var dbSetupMock = new Mock<DbSetup>();
         var containerMock = new Mock<IContainer>();
-        var dbConnectionFactoryMock = new Mock<IDbConnectionFactory>();
         var dbRestorer = new TestDbRestorer(
             dbSetupMock.Object,
             containerMock.Object,
-            dbConnectionFactoryMock.Object,
             "test-conn-str", restorationStateFilesDirectory, restorationSnapshotName);
 
         // Act & Assert
@@ -37,12 +35,7 @@ public class DbRestorerTests
         const string restorationStateFilesDirectory = "/test/path";
         var dbSetupMock = new Mock<DbSetup>();
         var containerMock = new Mock<IContainer>();
-        var dbConnectionFactoryMock = new Mock<IDbConnectionFactory>();
-        var dbRestorer = new TestDbRestorer(
-            dbSetupMock.Object,
-            containerMock.Object,
-            dbConnectionFactoryMock.Object,
-            "test-conn-str", restorationStateFilesDirectory, restorationSnapshotName);
+        var dbRestorer = new TestDbRestorer(dbSetupMock.Object, containerMock.Object, "test-conn-str", restorationStateFilesDirectory, restorationSnapshotName);
 
         // Act & Assert
         Assert.Equal($"{restorationStateFilesDirectory}/{restorationSnapshotName}", dbRestorer.RestorationStateFilesPath);
@@ -56,12 +49,10 @@ public class DbRestorerTests
         const string restorationStateFilesDirectory = "/test/path";
         DbSetup dbSetupMock = null!;
         var containerMock = new Mock<IContainer>();
-        var dbConnectionFactoryMock = new Mock<IDbConnectionFactory>();
 
         // Act & Assert
         Assert.Throws<ArgumentNullException>(() =>
-            new TestDbRestorer(dbSetupMock, containerMock.Object, dbConnectionFactoryMock.Object,
-            "test-conn-str", restorationStateFilesDirectory, restorationSnapshotName));
+            new TestDbRestorer(dbSetupMock, containerMock.Object, "test-conn-str", restorationStateFilesDirectory, restorationSnapshotName));
     }
 
     [Fact]
@@ -72,12 +63,10 @@ public class DbRestorerTests
         const string restorationStateFilesDirectory = "/test/path";
         var dbSetupMock = new Mock<DbSetup>();
         IContainer containerMock = null!;
-        var dbConnectionFactoryMock = new Mock<IDbConnectionFactory>();
 
         // Act & Assert
         Assert.Throws<ArgumentNullException>(() =>
-            new TestDbRestorer(dbSetupMock.Object, containerMock, dbConnectionFactoryMock.Object,
-            "test-conn-str", restorationStateFilesDirectory, restorationSnapshotName));
+            new TestDbRestorer(dbSetupMock.Object, containerMock, "test-conn-str", restorationStateFilesDirectory, restorationSnapshotName));
     }
 
     [Fact]
@@ -88,12 +77,10 @@ public class DbRestorerTests
         const string restorationStateFilesDirectory = "/test/path";
         var dbSetupMock = new Mock<DbSetup>();
         var containerMock = new Mock<IContainer>();
-        var dbConnectionFactoryMock = new Mock<IDbConnectionFactory>();
 
         // Act & Assert
         Assert.Throws<ArgumentNullException>(() =>
-            new TestDbRestorer(dbSetupMock.Object, containerMock.Object,
-            dbConnectionFactoryMock.Object, containerConnectionString: null!, restorationStateFilesDirectory, restorationSnapshotName));
+            new TestDbRestorer(dbSetupMock.Object, containerMock.Object, containerConnectionString: null!, restorationStateFilesDirectory, restorationSnapshotName));
     }
 
     [Fact]
@@ -104,12 +91,10 @@ public class DbRestorerTests
         const string restorationStateFilesDirectory = "/test/path";
         var dbSetupMock = new Mock<DbSetup>();
         var containerMock = new Mock<IContainer>();
-        var dbConnectionFactoryMock = new Mock<IDbConnectionFactory>();
 
         // Act & Assert
         Assert.Throws<ArgumentNullException>(() =>
-            new TestDbRestorer(dbSetupMock.Object, containerMock.Object,
-            dbConnectionFactoryMock.Object, containerConnectionString: string.Empty, restorationStateFilesDirectory, restorationSnapshotName));
+            new TestDbRestorer(dbSetupMock.Object, containerMock.Object, containerConnectionString: string.Empty, restorationStateFilesDirectory, restorationSnapshotName));
     }
 
     [Fact]
@@ -119,12 +104,10 @@ public class DbRestorerTests
         const string restorationSnapshotName = "TestRestorationSnapshotName";
         var dbSetupMock = new Mock<DbSetup>();
         var containerMock = new Mock<IContainer>();
-        var dbConnectionFactoryMock = new Mock<IDbConnectionFactory>();
 
         // Act & Assert
         Assert.Throws<ArgumentNullException>(() =>
-            new TestDbRestorer(dbSetupMock.Object, containerMock.Object,
-            dbConnectionFactoryMock.Object, "test-conn-str", restorationStateFilesDirectory: null!, restorationSnapshotName));
+            new TestDbRestorer(dbSetupMock.Object, containerMock.Object,"test-conn-str", restorationStateFilesDirectory: null!, restorationSnapshotName));
     }
 
     [Fact]
@@ -134,12 +117,10 @@ public class DbRestorerTests
         const string restorationSnapshotName = "TestRestorationSnapshotName";
         var dbSetupMock = new Mock<DbSetup>();
         var containerMock = new Mock<IContainer>();
-        var dbConnectionFactoryMock = new Mock<IDbConnectionFactory>();
 
         // Act & Assert
         Assert.Throws<ArgumentNullException>(() =>
-            new TestDbRestorer(dbSetupMock.Object, containerMock.Object,
-            dbConnectionFactoryMock.Object, "test-conn-str", restorationStateFilesDirectory: string.Empty, restorationSnapshotName));
+            new TestDbRestorer(dbSetupMock.Object, containerMock.Object, "test-conn-str", restorationStateFilesDirectory: string.Empty, restorationSnapshotName));
     }
 
     [Fact]
@@ -149,12 +130,10 @@ public class DbRestorerTests
         const string restorationSnapshotName = "TestRestorationSnapshotName";
         const string restorationStateFilesDirectory = "/test/path";
         var dbSetupMock = new Mock<DbSetup>();
-        var dbConnectionFactoryMock = new Mock<IDbConnectionFactory>();
         var containerMock = new Mock<IContainer>();
         containerMock.Setup(c => c.ExecAsync(It.IsAny<IList<string>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ExecResult(stdout: string.Empty, stderr: string.Empty, exitCode: 1));
-        var dbRestorer = new TestDbRestorer(dbSetupMock.Object, containerMock.Object,
-            dbConnectionFactoryMock.Object, "test-conn-str", restorationStateFilesDirectory, restorationSnapshotName);
+        var dbRestorer = new TestDbRestorer(dbSetupMock.Object, containerMock.Object, "test-conn-str", restorationStateFilesDirectory, restorationSnapshotName);
 
         // Act & Assert
         await Assert.ThrowsAsync<ExecFailedException>(dbRestorer.TestEnsureRestorationDirectoryExistsAsync);
@@ -167,12 +146,10 @@ public class DbRestorerTests
         const string restorationSnapshotName = "TestRestorationSnapshotName";
         const string restorationStateFilesDirectory = "/test/path";
         var dbSetupMock = new Mock<DbSetup>();
-        var dbConnectionFactoryMock = new Mock<IDbConnectionFactory>();
         var containerMock = new Mock<IContainer>();
         containerMock.Setup(c => c.ExecAsync(It.IsAny<IList<string>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ExecResult(stdout: string.Empty, stderr: "test-std-err-text", exitCode: 0));
-        var dbRestorer = new TestDbRestorer(dbSetupMock.Object, containerMock.Object,
-            dbConnectionFactoryMock.Object, "test-conn-str", restorationStateFilesDirectory, restorationSnapshotName);
+        var dbRestorer = new TestDbRestorer(dbSetupMock.Object, containerMock.Object,  "test-conn-str", restorationStateFilesDirectory, restorationSnapshotName);
 
         // Act & Assert
         await Assert.ThrowsAsync<ExecFailedException>(dbRestorer.TestEnsureRestorationDirectoryExistsAsync);
@@ -183,11 +160,10 @@ public class DbRestorerTests
         public TestDbRestorer(
             DbSetup dbSetup,
             IContainer container,
-            IDbConnectionFactory dbConnectionFactory,
             string containerConnectionString,
             string restorationStateFilesDirectory,
             string restorationSnapshotName) 
-            : base(dbSetup, container, dbConnectionFactory, containerConnectionString, restorationStateFilesDirectory)
+            : base(dbSetup, container, containerConnectionString, restorationStateFilesDirectory)
         {
             _restorationSnapshotName = restorationSnapshotName;
         }
