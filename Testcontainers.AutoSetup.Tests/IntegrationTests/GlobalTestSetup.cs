@@ -14,14 +14,17 @@ using Testcontainers.AutoSetup.Core.Extensions;
 using Microsoft.Extensions.Logging;
 using Testcontainers.AutoSetup.Core.Common.Entities;
 using Testcontainers.AutoSetup.Core.DbSeeding;
+using Testcontainers.AutoSetup.Core.Abstractions.Entities;
 namespace Testcontainers.AutoSetup.Tests.IntegrationTests;
 
 public class GlobalTestSetup : GenericTestBase
 {
     public MsSqlContainer MsSqlContainerFromSpecificBuilder = null!;
-    public string? MsSqlContainerFromSpecificBuilderConnStr { get; private set; } = null!;
+    public DbSetup? MsSqlContainer_SpecificBuilder_EfDbSetup { get; private set; } = null!;
+    public DbSetup? MsSqlContainer_SpecificBuilder_RawSqlDbSetup { get; private set; } = null!;
     public IContainer MsSqlContainerFromGenericBuilder = null!;
-    public string? MsSqlContainerFromGenericBuilderConnStr { get; private set; } = null!;
+    public DbSetup? MsSqlContainer_GenericBuilder_EfDbSetup { get; private set; } = null!;
+    public DbSetup? MsSqlContainer_GenericBuilder_RawSqlDbSetup { get; private set; } = null!;
 
     public readonly string? DockerEndpoint = EnvironmentHelper.GetDockerEndpoint();
 
@@ -44,32 +47,30 @@ public class GlobalTestSetup : GenericTestBase
         // 2. Register containers within the environment
 
         // Register MsSql with EF Seeder
-        var dbSetup = MsSqlEFDbSetup(MsSqlContainerFromSpecificBuilder.GetConnectionString());        
-        MsSqlContainerFromSpecificBuilderConnStr = dbSetup.BuildDbConnectionString(); 
+        MsSqlContainer_SpecificBuilder_EfDbSetup = MsSqlEFDbSetup(MsSqlContainerFromSpecificBuilder.GetConnectionString());        
         TestEnvironment.Register<EfSeeder, MsSqlDbRestorer>(
-            dbSetup,
+            MsSqlContainer_SpecificBuilder_EfDbSetup,
             MsSqlContainerFromSpecificBuilder,
             logger: Logger);
         // Register MsSql with Raw SQL Seeder
-        var rawSqlDbSetup = MsSqlRawSqlDbSetup(MsSqlContainerFromSpecificBuilder.GetConnectionString());        
+        MsSqlContainer_SpecificBuilder_RawSqlDbSetup = MsSqlRawSqlDbSetup(MsSqlContainerFromSpecificBuilder.GetConnectionString());        
         TestEnvironment.Register<RawSqlDbSeeder, MsSqlDbRestorer>(
-            rawSqlDbSetup,
+            MsSqlContainer_SpecificBuilder_RawSqlDbSetup,
             MsSqlContainerFromSpecificBuilder,
             logger: Logger);
 
         // Register Generic MsSql with EF Seeder
         var mappedPort = MsSqlContainerFromGenericBuilder.GetMappedPublicPort(1433);
-        var genericDbSetup = GenericMsSqlEFDbSetup(mappedPort);
-        MsSqlContainerFromGenericBuilderConnStr = genericDbSetup.BuildDbConnectionString();
+        MsSqlContainer_GenericBuilder_EfDbSetup = GenericMsSqlEFDbSetup(mappedPort);
         TestEnvironment.Register<EfSeeder, MsSqlDbRestorer>(
-            genericDbSetup,
+            MsSqlContainer_GenericBuilder_EfDbSetup,
             MsSqlContainerFromGenericBuilder,
             logger: Logger);
 
         // Register Generic MsSql with Raw SQL Seeder
-        var genericRawSqlDbSetup = GenericMsSqlRawSqlDbSetup(mappedPort);
+        MsSqlContainer_GenericBuilder_RawSqlDbSetup = GenericMsSqlRawSqlDbSetup(mappedPort);
         TestEnvironment.Register<RawSqlDbSeeder, MsSqlDbRestorer>(
-            genericRawSqlDbSetup,
+            MsSqlContainer_GenericBuilder_RawSqlDbSetup,
             MsSqlContainerFromGenericBuilder,
             logger: Logger);
     }
