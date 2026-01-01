@@ -1,6 +1,6 @@
 using DotNet.Testcontainers.Containers;
 using Microsoft.IdentityModel.Tokens;
-using Testcontainers.AutoSetup.Core.Common.Entities;
+using Testcontainers.AutoSetup.Core.Abstractions.Entities;
 
 namespace Testcontainers.AutoSetup.Core.Abstractions;
 
@@ -8,7 +8,7 @@ namespace Testcontainers.AutoSetup.Core.Abstractions;
 /// An abstract class intended to create a DB snapshot
 /// and restore this DB (its structure, seeded data) using created snapshot before each test. 
 /// </summary>
-public abstract class DbRestorer : IDbRestorer
+public abstract class DbRestorer
 {
     internal readonly string RestorationStateFilesDirectory;
     protected string _restorationSnapshotName = null!;
@@ -16,7 +16,9 @@ public abstract class DbRestorer : IDbRestorer
     protected readonly DbSetup _dbSetup;
     protected readonly IContainer _container;
 
-    /// <inheridoc/>
+    /// <summary>
+    /// Returns the <see cref="string?"/> path to the current DB snapshot or null, if no snapshots exist
+    /// </summary>
     public string? RestorationStateFilesPath 
     {
         get 
@@ -75,9 +77,15 @@ public abstract class DbRestorer : IDbRestorer
         }
     }
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Restores a DB from the created snapshot
+    /// </summary>
+    /// <param name="cancellationToken"></param>
     public abstract Task RestoreAsync(CancellationToken cancellationToken = default);
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Creates a snapshot of the DB from which it will be restored
+    /// </summary>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/></param>
     public abstract Task SnapshotAsync(CancellationToken cancellationToken = default);
 }

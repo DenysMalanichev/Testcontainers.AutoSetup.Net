@@ -1,7 +1,7 @@
 using DotNet.Testcontainers.Containers;
 using Microsoft.Extensions.Logging;
 using Testcontainers.AutoSetup.Core.Abstractions;
-using Testcontainers.AutoSetup.Core.Common.Entities;
+using Testcontainers.AutoSetup.Core.Abstractions.Entities;
 
 namespace Testcontainers.AutoSetup.Core.Common;
 
@@ -29,7 +29,7 @@ public class TestEnvironment
         bool tryInitialRestoreFromSnapshot = true,
         string? restorationStateFilesPath = null!,
         ILogger? logger = null)
-            where TSeeder : IDbSeeder, new()
+            where TSeeder : DbSeeder
             where TRestorer : DbRestorer
     {
         var resetStrategy = new DbSetupStrategy<TSeeder, TRestorer>(

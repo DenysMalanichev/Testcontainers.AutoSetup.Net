@@ -30,7 +30,7 @@ public class MsSqlRestorationTests : IntegrationTestsBase
         Assert.Equal(TestcontainersStates.Running, Setup.MsSqlContainerFromSpecificBuilder.State);
 
         var stopwatch = Stopwatch.StartNew();
-        await using var connection = new SqlConnection(Setup.MsSqlContainerFromSpecificBuilderConnStr);
+        await using var connection = new SqlConnection(Setup.MsSqlContainer_SpecificBuilder_EfDbSetup!.BuildDbConnectionString());
         await connection.OpenAsync();
         stopwatch.Stop();
         _output.WriteLine("[CONNECTION OPENED IN TEST IN] " + stopwatch.ElapsedMilliseconds);
@@ -50,7 +50,7 @@ public class MsSqlRestorationTests : IntegrationTestsBase
         Assert.Equal(TestcontainersStates.Running, Setup.MsSqlContainerFromGenericBuilder.State);
         
         var stopwatch = Stopwatch.StartNew();
-        await using var connection = new SqlConnection(Setup.MsSqlContainerFromGenericBuilderConnStr);
+        await using var connection = new SqlConnection(Setup.MsSqlContainer_GenericBuilder_EfDbSetup!.BuildDbConnectionString());
         await connection.OpenAsync();
         stopwatch.Stop();
         _output.WriteLine("[CONNECTION OPENED IN TEST IN] " + stopwatch.ElapsedMilliseconds);
@@ -69,7 +69,8 @@ public class MsSqlRestorationTests : IntegrationTestsBase
         Assert.Equal(TestcontainersStates.Running, Setup.MsSqlContainerFromSpecificBuilder.State);
 
         var stopwatch = Stopwatch.StartNew();
-        await using var connection = new SqlConnection(Setup.MsSqlContainerFromSpecificBuilderConnStr);
+        var connStr = Setup.MsSqlContainer_SpecificBuilder_EfDbSetup!.BuildDbConnectionString();
+        await using var connection = new SqlConnection(connStr);
         await connection.OpenAsync();
         stopwatch.Stop();
         _output.WriteLine("[CONNECTION OPENED IN TEST IN] " + stopwatch.ElapsedMilliseconds);
@@ -85,7 +86,7 @@ public class MsSqlRestorationTests : IntegrationTestsBase
         SqlConnection.ClearAllPools();
         await Setup.ResetEnvironmentAsync(this.GetType());
 
-        using var newConnection = new SqlConnection(Setup.MsSqlContainerFromSpecificBuilderConnStr);
+        using var newConnection = new SqlConnection(connStr);
         await newConnection.OpenAsync();
 
         var chechQueryString = "SELECT COUNT(1) FROM [CatalogTest].[dbo].[Baskets];";
@@ -103,11 +104,49 @@ public class MsSqlRestorationTests : IntegrationTestsBase
         Assert.Equal(TestcontainersStates.Running, Setup.MsSqlContainerFromGenericBuilder.State);
 
         var stopwatch = Stopwatch.StartNew();
-        await using var connection = new SqlConnection(Setup.MsSqlContainerFromGenericBuilderConnStr);
+        await using var connection = new SqlConnection(Setup.MsSqlContainer_GenericBuilder_EfDbSetup!.BuildDbConnectionString());
         await connection.OpenAsync();
         stopwatch.Stop();
         _output.WriteLine("[CONNECTION OPENED IN TEST IN] " + stopwatch.ElapsedMilliseconds);
         using var historyCmd = new SqlCommand("SELECT COUNT(*) FROM __EFMigrationsHistory", connection);
+        var migrationCount = (int)(await historyCmd.ExecuteScalarAsync() ?? throw new SqlNullValueException());
+
+        Assert.True(migrationCount > 0, "No migrations were found in the history table.");
+    }
+
+    [Fact]
+    public async Task MsSqlRestorer_WithSpecificContainerBuilder_RestoresDBFromRawSqlFiles()
+    {
+        // Arrange & Act stages (containers setup and seeding) of the test are done within the GlobalTestSetup
+        // Assert
+        Assert.NotNull(Setup.MsSqlContainerFromSpecificBuilder);
+        Assert.Equal(TestcontainersStates.Running, Setup.MsSqlContainerFromSpecificBuilder.State);
+
+        var stopwatch = Stopwatch.StartNew();
+        await using var connection = new SqlConnection(Setup.MsSqlContainer_SpecificBuilder_RawSqlDbSetup!.BuildDbConnectionString());
+        await connection.OpenAsync();
+        stopwatch.Stop();
+        _output.WriteLine("[CONNECTION OPENED IN TEST IN] " + stopwatch.ElapsedMilliseconds);
+        using var historyCmd = new SqlCommand("SELECT COUNT(*) FROM Catalog", connection);
+        var migrationCount = (int)(await historyCmd.ExecuteScalarAsync() ?? throw new SqlNullValueException());
+
+        Assert.True(migrationCount > 0, "No migrations were found in the history table.");
+    }
+
+    [Fact]
+    public async Task MsSqlRestorer_WithGenericContainerBuilder_RestoresDBFromRawSqlFiles()
+    {
+        // Arrange & Act stages (containers setup and seeding) of the test are done within the GlobalTestSetup
+        // Assert
+        Assert.NotNull(Setup.MsSqlContainerFromGenericBuilder);
+        Assert.Equal(TestcontainersStates.Running, Setup.MsSqlContainerFromGenericBuilder.State);
+
+        var stopwatch = Stopwatch.StartNew();
+        await using var connection = new SqlConnection(Setup.MsSqlContainer_GenericBuilder_RawSqlDbSetup!.BuildDbConnectionString());
+        await connection.OpenAsync();
+        stopwatch.Stop();
+        _output.WriteLine("[CONNECTION OPENED IN TEST IN] " + stopwatch.ElapsedMilliseconds);
+        using var historyCmd = new SqlCommand("SELECT COUNT(*) FROM Catalog", connection);
         var migrationCount = (int)(await historyCmd.ExecuteScalarAsync() ?? throw new SqlNullValueException());
 
         Assert.True(migrationCount > 0, "No migrations were found in the history table.");

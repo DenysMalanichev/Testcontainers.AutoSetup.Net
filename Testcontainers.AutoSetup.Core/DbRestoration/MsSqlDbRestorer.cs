@@ -1,10 +1,11 @@
-using System.Diagnostics;
+using System.Data.Common;
 using DotNet.Testcontainers.Containers;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Testcontainers.AutoSetup.Core.Abstractions;
-using Testcontainers.AutoSetup.Core.Common.Entities;
+using Testcontainers.AutoSetup.Core.Abstractions.Entities;
+using Testcontainers.AutoSetup.Core.Common.SqlDbHelpers;
 
 namespace Testcontainers.AutoSetup.Core.DbRestoration;
 
@@ -13,10 +14,27 @@ public class MsSqlDbRestorer : DbRestorer
     private const string DefaultRestorationStateFilesPath = "/var/opt/mssql/Restoration";
 
     private ILogger _logger {get;}
+    private IDbConnectionFactory _dbConnectionFactory;
 
     public MsSqlDbRestorer(
         DbSetup dbSetup,
         IContainer container,
+        string containerConnectionString,
+        string restorationStateFilesDirectory = DefaultRestorationStateFilesPath,
+        ILogger logger = null!)
+        : this(
+            dbSetup,
+            container,
+            new SqlDbConnectionFactory(),
+            containerConnectionString,
+            restorationStateFilesDirectory ?? DefaultRestorationStateFilesPath,
+            logger)
+    { }
+
+    internal MsSqlDbRestorer(
+        DbSetup dbSetup,
+        IContainer container,
+        IDbConnectionFactory dbConnectionFactory,
         string containerConnectionString,
         string restorationStateFilesDirectory = DefaultRestorationStateFilesPath,
         ILogger logger = null!)
@@ -27,6 +45,7 @@ public class MsSqlDbRestorer : DbRestorer
             restorationStateFilesDirectory ?? DefaultRestorationStateFilesPath)
     {
         _logger = logger ?? NullLogger.Instance;
+        _dbConnectionFactory = dbConnectionFactory ?? throw new ArgumentNullException(nameof(dbConnectionFactory));
     }
 
     /// <inheritdoc/>
@@ -89,7 +108,9 @@ public class MsSqlDbRestorer : DbRestorer
 
         try
         {
-            await using var command = new SqlCommand(sql, connection) { CommandTimeout = 60 };
+            await using var command = connection.CreateCommand();
+            command.CommandText = sql;
+            command.CommandTimeout = 60;
             await command.ExecuteNonQueryAsync(cancellationToken);
         }
         catch (SqlException ex)
@@ -99,7 +120,7 @@ public class MsSqlDbRestorer : DbRestorer
             throw;
         }
 
-        SqlConnection.ClearPool(connection);
+        SqlConnection.ClearPool((SqlConnection)connection);
     }
 
     /// <inheritdoc/>
@@ -126,7 +147,9 @@ public class MsSqlDbRestorer : DbRestorer
             ON ( NAME = [{_dbSetup.DbName}], FILENAME = '{RestorationStateFilesPath}' )
             AS SNAPSHOT OF [{_dbSetup.DbName}];";
 
-        await using var command = new SqlCommand(sql, connection);
+        await using var command = connection.CreateCommand();
+        command.CommandText = sql;
+        command.CommandTimeout = 60;
         await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
@@ -134,7 +157,7 @@ public class MsSqlDbRestorer : DbRestorer
     /// Creates a connection to 'master' with Pooling ENABLED.
     /// We rely on ADO.NET internal pooling, which is efficient and thread-safe.
     /// </summary>
-    private static SqlConnection CreateMasterConnectionAsync(string containerConnStr)
+    private DbConnection CreateMasterConnectionAsync(string containerConnStr)
     {
         var masterBuilder = new SqlConnectionStringBuilder(containerConnStr)
         {
@@ -145,6 +168,6 @@ public class MsSqlDbRestorer : DbRestorer
             Encrypt = false,
         };
 
-        return new SqlConnection(masterBuilder.ConnectionString);
+        return _dbConnectionFactory.CreateDbConnection(masterBuilder.ConnectionString);
     }
 }

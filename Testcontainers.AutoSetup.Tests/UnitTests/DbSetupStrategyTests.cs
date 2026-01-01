@@ -3,8 +3,10 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using Testcontainers.AutoSetup.Core.Abstractions;
 using Testcontainers.AutoSetup.Core.Common;
-using Testcontainers.AutoSetup.Core.Common.Entities;
+using Testcontainers.AutoSetup.Core.Abstractions.Entities;
 using Testcontainers.AutoSetup.Tests.TestCollections;
+using Testcontainers.AutoSetup.Core.Common.SqlDbHelpers;
+using System.IO.Abstractions;
 
 namespace Testcontainers.AutoSetup.Tests.UnitTests;
 
@@ -342,26 +344,26 @@ public class DbSetupStrategyTests
     }
 
 
-    private class TestFailedCtorDbSeeder : IDbSeeder
+    private class TestFailedCtorDbSeeder : DbSeeder
     {
-        public TestFailedCtorDbSeeder()
+        public TestFailedCtorDbSeeder(IDbConnectionFactory dbConnectionFactory, IFileSystem fileSystem) : base()
         {
             throw new Exception("Test exception");
         }
 
-        public Task SeedAsync(DbSetup dbSetup, IContainer container, string containerConnectionString, CancellationToken cancellationToken)
+        public override Task SeedAsync(DbSetup dbSetup, IContainer container, CancellationToken cancellationToken)
         {
             throw new NotImplementedException();
         }
     }
 
-    public class TestDbSeeder : IDbSeeder
+    private class TestDbSeeder : DbSeeder
     {
         public bool WasSeedCalled { get; private set; }
-        public TestDbSeeder()
+        public TestDbSeeder(ILogger logger) : base(logger)
         { }
 
-        public Task SeedAsync(DbSetup dbSetup, IContainer container, string containerConnectionString, CancellationToken cancellationToken)
+        public override Task SeedAsync(DbSetup dbSetup, IContainer container, CancellationToken cancellationToken)
         {
             WasSeedCalled = true;
             return Task.CompletedTask;
@@ -373,9 +375,17 @@ public class DbSetupStrategyTests
         public bool WasRestoreCalled { get; private set; }
         public bool WasSnapshotCalled { get; private set; }
 
-        // Constructor must match the base arguments for Activator to find it
-        public TestDbRestorer(DbSetup dbSetup, IContainer container, string containerConnectionString, string restorationStateFilesDirectory, ILogger? logger) 
-            : base(dbSetup, container, containerConnectionString, restorationStateFilesDirectory)
+        public TestDbRestorer(
+            DbSetup dbSetup,
+            IContainer container,
+            string containerConnectionString,
+            string restorationStateFilesDirectory,
+            ILogger? logger = null) 
+            : base(
+                dbSetup,
+                container,
+                containerConnectionString,
+                restorationStateFilesDirectory)
         {
         }
 
@@ -394,7 +404,17 @@ public class DbSetupStrategyTests
 
     private class TestFailedCtorDbRestorer : DbRestorer
     {
-        public TestFailedCtorDbRestorer(DbSetup dbSetup, IContainer container, string containerConnectionString, string restorationStateFilesDirectory) : base(dbSetup, container, containerConnectionString, restorationStateFilesDirectory)
+        public TestFailedCtorDbRestorer(
+            DbSetup dbSetup,
+            IContainer container,
+            IDbConnectionFactory dbConnectionFactory,
+            string containerConnectionString,
+            string restorationStateFilesDirectory) 
+            : base(
+                dbSetup,
+                container,
+                containerConnectionString,
+                restorationStateFilesDirectory)
         {
             throw new Exception("Test restorer exception");
         }

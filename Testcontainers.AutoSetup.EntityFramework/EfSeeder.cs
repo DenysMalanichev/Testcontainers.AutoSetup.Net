@@ -1,31 +1,53 @@
 using DotNet.Testcontainers.Containers;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Testcontainers.AutoSetup.Core.Abstractions;
-using Testcontainers.AutoSetup.Core.Common.Entities;
+using Testcontainers.AutoSetup.Core.Abstractions.Entities;
 using Testcontainers.AutoSetup.EntityFramework.Entities;
 
 namespace Testcontainers.AutoSetup.EntityFramework;
 
-public class EfSeeder : IDbSeeder
+public class EfSeeder : DbSeeder
 {
-    public async Task SeedAsync(
+    public EfSeeder(ILogger? logger = null)
+        : base(logger)
+    { }
+
+    /// <inheridoc />
+    public override async Task SeedAsync(
         DbSetup dbSetup,
-        IContainer container,
-        string connectionString,
+        IContainer? container = null,
         CancellationToken cancellationToken = default)
-    {
-        await ApplyEFMigrationsAsync((EfDbSetup)dbSetup, connectionString, cancellationToken).ConfigureAwait(false);
+    {        
+        _logger.LogInformation("Applying EF migrations to database '{Database}'", dbSetup.DbName);
+
+        await ApplyEFMigrationsAsync((EfDbSetup)dbSetup, cancellationToken).ConfigureAwait(false);
     }
 
-    private static async Task ApplyEFMigrationsAsync(
+    /// <summary>
+    /// Applies Entity Framework migrations to the target database.
+    /// </summary>
+    /// <param name="dbSetup"></param>
+    /// <param name="cancellationToken"></param>
+    private async Task ApplyEFMigrationsAsync(
         EfDbSetup dbSetup,
-        string connectionString,
         CancellationToken cancellationToken = default)
     {
         var finalConnectionString = dbSetup.BuildDbConnectionString();
 
-        using var dbContext = dbSetup.ContextFactory(finalConnectionString);
+        await using var dbContext = dbSetup.ContextFactory(finalConnectionString);
 
-        await dbContext.Database.MigrateAsync(cancellationToken);
+        await ExecuteMigrateAsync(dbContext, cancellationToken).ConfigureAwait(false);
+
+        _logger.LogInformation("Successfully applied EF migrations to database '{Database}'", dbSetup.DbName);
+    }
+
+    /// <summary>
+    /// Executes the migration using the provided DbContext.
+    /// Isolates the migration logic for easier testing.
+    /// </summary>
+    protected virtual Task ExecuteMigrateAsync(DbContext dbContext, CancellationToken cancellationToken)
+    {
+        return dbContext.Database.MigrateAsync(cancellationToken);
     }
 }

@@ -1,16 +1,14 @@
 using System.IO.Abstractions;
-using Microsoft.EntityFrameworkCore;
 using Testcontainers.AutoSetup.Core.Abstractions.Entities;
 
-namespace Testcontainers.AutoSetup.EntityFramework.Entities;
+namespace Testcontainers.AutoSetup.Core.Common.Entities;
 
-public record EfDbSetup : DbSetup
+public record RawSqlDbSetup : DbSetup
 {
     /// <summary>
-    /// A <see cref="Func<>"/> taking a connection string and 
-    /// returning an instance of <see cref="DbContext"/>
+    /// A list of SQL files that will be executed in a provided DB in listed order.
     /// </summary>
-    public virtual required Func<string, DbContext> ContextFactory { get; init; }
+    public virtual required IList<string> SqlFiles { get; init; }
 
     /// <inheridoc />
     public override Task<DateTime> GetMigrationsLastModificationDateAsync(CancellationToken cancellationToken = default)
@@ -22,17 +20,21 @@ public record EfDbSetup : DbSetup
         }
 
         // Use GetFileSystemInfos to get Files AND Directories recursively
-        var allFileSystemEntries = dirInfo.GetFileSystemInfos("*", SearchOption.AllDirectories);
+        var fileSystemEntries = dirInfo.GetFileSystemInfos("*", SearchOption.AllDirectories)
+            .Where(f => SqlFiles.Contains(f.Name))
+            .ToArray();
 
-        if (allFileSystemEntries == null || allFileSystemEntries.Length == 0)
+        if (fileSystemEntries == null || fileSystemEntries.Length == 0)
         {
             throw new FileNotFoundException($"Specified migrations folder is empty ({MigrationsPath})");
         }
+        if (fileSystemEntries.Length != SqlFiles.Count)
+        {
+            throw new FileNotFoundException($"Some of the specified SQL files were not found in the migrations folder ({MigrationsPath})");
+        }
 
-        // Find the max date among files AND subdirectories
-        var newestChange = allFileSystemEntries.Max(x => x.LastWriteTimeUtc);
-        
-        // Also compare against the root directory itself (in case a direct child was deleted)
+        var newestChange = fileSystemEntries.Max(x => x.LastWriteTimeUtc);
+
         if (dirInfo.LastWriteTimeUtc > newestChange)
         {
             newestChange = dirInfo.LastWriteTimeUtc;

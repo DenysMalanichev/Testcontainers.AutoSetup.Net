@@ -1,14 +1,16 @@
+using System.IO.Abstractions;
 using DotNet.Testcontainers.Containers;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.IdentityModel.Tokens;
 using Testcontainers.AutoSetup.Core.Abstractions;
-using Testcontainers.AutoSetup.Core.Common.Entities;
+using Testcontainers.AutoSetup.Core.Abstractions.Entities;
+using Testcontainers.AutoSetup.Core.Common.SqlDbHelpers;
 
 namespace Testcontainers.AutoSetup.Core.Common;
 
 public class DbSetupStrategy<TSeeder, TRestorer> : IDbStrategy
-    where TSeeder : IDbSeeder, new()
+    where TSeeder : DbSeeder
     where TRestorer : DbRestorer
 {
     private readonly TSeeder _seeder;
@@ -32,7 +34,9 @@ public class DbSetupStrategy<TSeeder, TRestorer> : IDbStrategy
 
         try
         {
-            _seeder = new TSeeder();
+            _seeder = (TSeeder)Activator.CreateInstance(
+                typeof(TSeeder),
+                [logger])!;
         }
         catch(Exception ex)
         {
@@ -63,11 +67,9 @@ public class DbSetupStrategy<TSeeder, TRestorer> : IDbStrategy
             await _restorer.RestoreAsync(cancellationToken);
             return;
         }
-        var connectionString = _dbSetup.BuildDbConnectionString();
         await _seeder.SeedAsync(
             _dbSetup,
             _container,
-            connectionString,
             cancellationToken);
 
         await _restorer.SnapshotAsync(cancellationToken);
@@ -92,13 +94,13 @@ public class DbSetupStrategy<TSeeder, TRestorer> : IDbStrategy
         // "ls ... > /dev/null 2>&1" silence the output, returns true (0) if files exist, false (2) if not - masked.
         // find ... -newermt ...  -> Looks for files in the dir newer than the snapshot LMD
         // -print -quit         -> Stop searching as soon as we find ONE new file
-        // test -z "..."        -> Returns Exit Code 0 (Success) if the string is EMPTY (no new files found)
-        //                      -> Returns Exit Code 1 (Fail) if the string is NOT EMPTY (new files found)
+        // test -n "..."        -> Returns Exit Code 0 (Success) if the string is NOT EMPTY (new files found)
+        //                      -> Returns Exit Code 1 (Fail) if the string is EMPTY (no new files found)
         var migrationsLMD = await _dbSetup.GetMigrationsLastModificationDateAsync(cancellationToken);
-        var cmd = $"ls {_restorer.RestorationStateFilesDirectory}/*snapshot_* > /dev/null 2>&1 && " + 
-          $"test -z \"$(find {_restorer.RestorationStateFilesDirectory} " +
-           "-maxdepth 1 -name '*_snapshot_*' " +
-          $"-newermt '{migrationsLMD:yyyy-MM-dd HH:mm:ss}' -print -quit)\"";
+        var cmd = $"ls {_restorer.RestorationStateFilesDirectory}/{_dbSetup.DbName}_snapshot_* > /dev/null 2>&1 && " + 
+           $"test -n \"$(find {_restorer.RestorationStateFilesDirectory} " +
+           $"-maxdepth 1 -name '{_dbSetup.DbName}_snapshot_*' " +
+           $"-newermt '{migrationsLMD:yyyy-MM-dd HH:mm:ss}' -print -quit)\"";
         var result = await _container.ExecAsync( 
         [
             "/bin/bash", 

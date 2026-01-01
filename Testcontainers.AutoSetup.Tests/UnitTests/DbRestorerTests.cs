@@ -1,7 +1,7 @@
 using DotNet.Testcontainers.Containers;
 using Moq;
 using Testcontainers.AutoSetup.Core.Abstractions;
-using Testcontainers.AutoSetup.Core.Common.Entities;
+using Testcontainers.AutoSetup.Core.Abstractions.Entities;
 using Testcontainers.AutoSetup.Tests.TestCollections;
 
 namespace Testcontainers.AutoSetup.Tests.UnitTests;
@@ -35,10 +35,7 @@ public class DbRestorerTests
         const string restorationStateFilesDirectory = "/test/path";
         var dbSetupMock = new Mock<DbSetup>();
         var containerMock = new Mock<IContainer>();
-        var dbRestorer = new TestDbRestorer(
-            dbSetupMock.Object,
-            containerMock.Object,
-            "test-conn-str", restorationStateFilesDirectory, restorationSnapshotName);
+        var dbRestorer = new TestDbRestorer(dbSetupMock.Object, containerMock.Object, "test-conn-str", restorationStateFilesDirectory, restorationSnapshotName);
 
         // Act & Assert
         Assert.Equal($"{restorationStateFilesDirectory}/{restorationSnapshotName}", dbRestorer.RestorationStateFilesPath);
@@ -55,8 +52,7 @@ public class DbRestorerTests
 
         // Act & Assert
         Assert.Throws<ArgumentNullException>(() =>
-            new TestDbRestorer(dbSetupMock, containerMock.Object,
-            "test-conn-str", restorationStateFilesDirectory, restorationSnapshotName));
+            new TestDbRestorer(dbSetupMock, containerMock.Object, "test-conn-str", restorationStateFilesDirectory, restorationSnapshotName));
     }
 
     [Fact]
@@ -70,8 +66,7 @@ public class DbRestorerTests
 
         // Act & Assert
         Assert.Throws<ArgumentNullException>(() =>
-            new TestDbRestorer(dbSetupMock.Object, containerMock,
-            "test-conn-str", restorationStateFilesDirectory, restorationSnapshotName));
+            new TestDbRestorer(dbSetupMock.Object, containerMock, "test-conn-str", restorationStateFilesDirectory, restorationSnapshotName));
     }
 
     [Fact]
@@ -85,8 +80,7 @@ public class DbRestorerTests
 
         // Act & Assert
         Assert.Throws<ArgumentNullException>(() =>
-            new TestDbRestorer(dbSetupMock.Object, containerMock.Object,
-            containerConnectionString: null!, restorationStateFilesDirectory, restorationSnapshotName));
+            new TestDbRestorer(dbSetupMock.Object, containerMock.Object, containerConnectionString: null!, restorationStateFilesDirectory, restorationSnapshotName));
     }
 
     [Fact]
@@ -100,8 +94,7 @@ public class DbRestorerTests
 
         // Act & Assert
         Assert.Throws<ArgumentNullException>(() =>
-            new TestDbRestorer(dbSetupMock.Object, containerMock.Object,
-            containerConnectionString: string.Empty, restorationStateFilesDirectory, restorationSnapshotName));
+            new TestDbRestorer(dbSetupMock.Object, containerMock.Object, containerConnectionString: string.Empty, restorationStateFilesDirectory, restorationSnapshotName));
     }
 
     [Fact]
@@ -114,8 +107,7 @@ public class DbRestorerTests
 
         // Act & Assert
         Assert.Throws<ArgumentNullException>(() =>
-            new TestDbRestorer(dbSetupMock.Object, containerMock.Object,
-            "test-conn-str", restorationStateFilesDirectory: null!, restorationSnapshotName));
+            new TestDbRestorer(dbSetupMock.Object, containerMock.Object,"test-conn-str", restorationStateFilesDirectory: null!, restorationSnapshotName));
     }
 
     [Fact]
@@ -128,8 +120,7 @@ public class DbRestorerTests
 
         // Act & Assert
         Assert.Throws<ArgumentNullException>(() =>
-            new TestDbRestorer(dbSetupMock.Object, containerMock.Object,
-            "test-conn-str", restorationStateFilesDirectory: string.Empty, restorationSnapshotName));
+            new TestDbRestorer(dbSetupMock.Object, containerMock.Object, "test-conn-str", restorationStateFilesDirectory: string.Empty, restorationSnapshotName));
     }
 
     [Fact]
@@ -142,8 +133,7 @@ public class DbRestorerTests
         var containerMock = new Mock<IContainer>();
         containerMock.Setup(c => c.ExecAsync(It.IsAny<IList<string>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ExecResult(stdout: string.Empty, stderr: string.Empty, exitCode: 1));
-        var dbRestorer = new TestDbRestorer(dbSetupMock.Object, containerMock.Object,
-            "test-conn-str", restorationStateFilesDirectory, restorationSnapshotName);
+        var dbRestorer = new TestDbRestorer(dbSetupMock.Object, containerMock.Object, "test-conn-str", restorationStateFilesDirectory, restorationSnapshotName);
 
         // Act & Assert
         await Assert.ThrowsAsync<ExecFailedException>(dbRestorer.TestEnsureRestorationDirectoryExistsAsync);
@@ -159,8 +149,7 @@ public class DbRestorerTests
         var containerMock = new Mock<IContainer>();
         containerMock.Setup(c => c.ExecAsync(It.IsAny<IList<string>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ExecResult(stdout: string.Empty, stderr: "test-std-err-text", exitCode: 0));
-        var dbRestorer = new TestDbRestorer(dbSetupMock.Object, containerMock.Object,
-            "test-conn-str", restorationStateFilesDirectory, restorationSnapshotName);
+        var dbRestorer = new TestDbRestorer(dbSetupMock.Object, containerMock.Object,  "test-conn-str", restorationStateFilesDirectory, restorationSnapshotName);
 
         // Act & Assert
         await Assert.ThrowsAsync<ExecFailedException>(dbRestorer.TestEnsureRestorationDirectoryExistsAsync);
