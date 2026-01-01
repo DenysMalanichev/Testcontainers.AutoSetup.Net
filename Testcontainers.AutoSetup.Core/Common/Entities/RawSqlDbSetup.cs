@@ -19,61 +19,27 @@ public record RawSqlDbSetup : DbSetup
             throw new DirectoryNotFoundException($"Specified migrations folder does not exist ({MigrationsPath})");
         }
 
-        var files = GetMigrationFilesInfo(dirInfo);
-
-        var newestFileTime = GetFilesLastModificationDate(files);
-
-        // In case a file was deleted recently, which updates the folder but leaves no file "newer"
-        if (dirInfo.LastWriteTimeUtc > newestFileTime)
-        {
-            return Task.FromResult(dirInfo.LastWriteTimeUtc);
-        }
-
-        return Task.FromResult(newestFileTime);
-    }
-
-    /// <summary>
-    /// Gets the latest modification date from a list of files and their parrent directories
-    /// </summary>
-    /// <param name="files">Array of file information objects</param>
-    /// <returns>The latest modification date among all files</returns>
-    private static DateTime GetFilesLastModificationDate(IFileInfo[] files)
-    {
-        var maxTime = DateTime.MinValue;
-
-        foreach (var fileInfo in files)
-        {
-            if (fileInfo.LastWriteTimeUtc > maxTime)
-            {
-                maxTime = fileInfo.LastWriteTimeUtc;
-            }
-        }
-
-        return maxTime;
-    }
-
-    /// <summary>
-    /// Gets file information objects for the specified SQL files in the migrations directory
-    /// </summary>
-    /// <param name="directoryInfo">The directory to search for SQL files</param>
-    /// <returns>An array of FileInfo objects for the specified SQL files</returns>
-    /// <exception cref="FileNotFoundException"></exception>
-    private IFileInfo[] GetMigrationFilesInfo(IDirectoryInfo directoryInfo)
-    {
-        var files = directoryInfo.GetFiles("*", SearchOption.AllDirectories)?
+        // Use GetFileSystemInfos to get Files AND Directories recursively
+        var fileSystemEntries = dirInfo.GetFileSystemInfos("*", SearchOption.AllDirectories)
             .Where(f => SqlFiles.Contains(f.Name))
             .ToArray();
 
-        if (files is null || files.Length == 0)
+        if (fileSystemEntries == null || fileSystemEntries.Length == 0)
         {
             throw new FileNotFoundException($"Specified migrations folder is empty ({MigrationsPath})");
         }
-        if (files.Length != SqlFiles.Count)
+        if (fileSystemEntries.Length != SqlFiles.Count)
         {
-            var missingFiles = SqlFiles.Except(files.Select(f => f.Name));
-            throw new FileNotFoundException($"The following specified SQL files were not found in the migrations folder ({MigrationsPath}): {string.Join(", ", missingFiles)}");
+            throw new FileNotFoundException($"Some of the specified SQL files were not found in the migrations folder ({MigrationsPath})");
         }
 
-        return files;
+        var newestChange = fileSystemEntries.Max(x => x.LastWriteTimeUtc);
+
+        if (dirInfo.LastWriteTimeUtc > newestChange)
+        {
+            newestChange = dirInfo.LastWriteTimeUtc;
+        }
+
+        return Task.FromResult(newestChange);
     }
 }

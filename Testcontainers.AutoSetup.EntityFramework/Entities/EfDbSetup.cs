@@ -1,3 +1,4 @@
+using System.IO.Abstractions;
 using Microsoft.EntityFrameworkCore;
 using Testcontainers.AutoSetup.Core.Abstractions.Entities;
 
@@ -14,29 +15,29 @@ public record EfDbSetup : DbSetup
     /// <inheridoc />
     public override Task<DateTime> GetMigrationsLastModificationDateAsync(CancellationToken cancellationToken = default)
     {
-        var dirInfo = new DirectoryInfo(MigrationsPath);
-
+        var dirInfo = _fileSystem.DirectoryInfo.New(MigrationsPath);
         if (!dirInfo.Exists)
         {
-            throw new FileNotFoundException($"Specified migrations folder does not exist ({MigrationsPath})");
+            throw new DirectoryNotFoundException($"Specified migrations folder does not exist ({MigrationsPath})");
         }
 
-        // TODO fix possible bug (look at RawSqlDbSetup logic)
-        var files = dirInfo.GetFiles("*", SearchOption.AllDirectories);
+        // Use GetFileSystemInfos to get Files AND Directories recursively
+        var allFileSystemEntries = dirInfo.GetFileSystemInfos("*", SearchOption.AllDirectories);
 
-        if (files.Length == 0)
+        if (allFileSystemEntries == null || allFileSystemEntries.Length == 0)
         {
             throw new FileNotFoundException($"Specified migrations folder is empty ({MigrationsPath})");
         }
 
-        var newestFileTime = files.Max(f => f.LastWriteTimeUtc);
-
-        // In case a file was deleted recently, which updates the folder but leaves no file "newer"
-        if (dirInfo.LastWriteTimeUtc > newestFileTime)
+        // Find the max date among files AND subdirectories
+        var newestChange = allFileSystemEntries.Max(x => x.LastWriteTimeUtc);
+        
+        // Also compare against the root directory itself (in case a direct child was deleted)
+        if (dirInfo.LastWriteTimeUtc > newestChange)
         {
-            return Task.FromResult(dirInfo.LastWriteTimeUtc);
+            newestChange = dirInfo.LastWriteTimeUtc;
         }
 
-        return Task.FromResult(newestFileTime);
+        return Task.FromResult(newestChange);
     }
 }
