@@ -82,6 +82,7 @@ public static class AutoSetupExtensions
         // 2. Apply "AutoSetup" Logic (CI checks, Reuse, Volumes)
         if (!isCiRun)
         {
+            // TODO mounts are not required for all Db engines, make this configurable per engine
             builder = builder
                 .WithReuse(true)
                 .WithName(containerName)

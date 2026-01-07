@@ -26,8 +26,8 @@ public class TestEnvironment
     public void Register<TSeeder, TRestorer>(
         DbSetup dbSetup,
         IContainer container,
+        IDbConnectionFactory connectionFactory,
         bool tryInitialRestoreFromSnapshot = true,
-        string? restorationStateFilesPath = null!,
         ILogger? logger = null)
             where TSeeder : DbSeeder
             where TRestorer : DbRestorer
@@ -35,9 +35,9 @@ public class TestEnvironment
         var resetStrategy = new DbSetupStrategy<TSeeder, TRestorer>(
             dbSetup,
             container,
-            tryInitialRestoreFromSnapshot,
-            restorationStateFilesPath,
-            logger);
+            connectionFactory,
+            tryInitialRestoreFromSnapshot: tryInitialRestoreFromSnapshot,
+            logger: logger);
         _initializeTasks.Add(resetStrategy.InitializeGlobalAsync);
         _resetTasks.Add(resetStrategy.ResetAsync);
     }

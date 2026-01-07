@@ -255,4 +255,4 @@ If any of these are true, GetDockerEndpoint() returns null. This is the desired 
 
 ## DB Restore Logic
 
-> NOTE: if you experience delays (5-10 seconds) between tests with MS SQL DB - most likely it is an issue with Reverse DNS lookup. The easiest workaround here is to register the IP of WSL in Windows hosts file.
+> NOTE: if you experience delays (5-10 seconds) between tests with MS SQL DB - most likely it is an issue with Reverse DNS lookup. While some DBs allow skipping Reverse DNS lookup, like `--skip-name-resolve` flag in MySQL, some, like MS SQL -do not. The easiest workaround here is to register the IP of the WSL machine in Windows hosts file.

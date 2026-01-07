@@ -18,7 +18,7 @@ public class AutoSetupExtensionsTests
         // Arrange
         const string containerName = "MsSqlContainer-unit-test";
         const string dockerEndpoint = "tcp://127.0.0.1:2375";
-        var builder = new MsSqlBuilder();
+        var builder = new MsSqlBuilder("mcr.microsoft.com/mssql/server:2019-CU18-ubuntu-20.04");
         builder = builder.WithAutoSetupDefaultsInternal(containerName, dockerEndpoint, isCiRun: false);
 
         //Act
@@ -61,7 +61,7 @@ public class AutoSetupExtensionsTests
         // Arrange
         const string containerName = "MsSqlContainer-unit-test";
         const string dockerEndpoint = "tcp://127.0.0.1:2375";
-        var builder = new MsSqlBuilder();
+        var builder = new MsSqlBuilder("mcr.microsoft.com/mssql/server:2019-CU18-ubuntu-20.04");
         builder = builder.WithAutoSetupDefaultsInternal(containerName, dockerEndpoint, isCiRun: true);
 
         // Act
