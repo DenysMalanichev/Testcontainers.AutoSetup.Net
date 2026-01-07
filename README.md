@@ -22,6 +22,13 @@ Current POC works
         <td>EF Core <br> Raw SQL</td>
     </tr>
     <tr>
+        <td>MySQL</td>
+        <td> ✅ </td>
+        <td>Both with official Testcontainers MsSqlBuilder and generic builds</td>
+        <td>From golden state DB, from ~200ms, depends on a DB size</td>
+        <td>EF Core <!--<br> Raw SQL --></td>
+    </tr>
+    <tr>
         <td>PostresQL</td>
         <td>❌ (Comming soon)</td>
         <td> - </td>

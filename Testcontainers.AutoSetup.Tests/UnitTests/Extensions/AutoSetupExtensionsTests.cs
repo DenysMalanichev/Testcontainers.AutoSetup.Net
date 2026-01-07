@@ -13,7 +13,7 @@ namespace Testcontainers.AutoSetup.Tests.UnitTests.Extensions;
 public class AutoSetupExtensionsTests
 {
     [Fact]
-    public void MsSqlContainerBuidler_BuiltWithAutoSetupDefaultsLocally_HasAllRequiredConfigurations()
+    public void WithAutoSetupDefaultsInternal_BuiltWithAutoSetupDefaultsLocally_HasAllRequiredConfigurations()
     {
         // Arrange
         const string containerName = "MsSqlContainer-unit-test";
@@ -32,6 +32,25 @@ public class AutoSetupExtensionsTests
         Assert.Equal(containerName, configuration.Name);
         Assert.Equal($"{containerName}-reuse-hash", configuration.Labels["reuse-id"]);
         Assert.NotNull(configuration.DockerEndpointAuthConfig);
+    }
+
+    [Fact]
+    public void WithAutoSetupDefaultsInternal_WithMSSQLAutoSetupDefaultsInternal_HasAllRequiredConfigurations()
+    {
+        // Arrange
+        const string containerName = "MsSqlContainer-unit-test";
+        const string dockerEndpoint = "tcp://127.0.0.1:2375";
+        var builder = new MsSqlBuilder("mcr.microsoft.com/mssql/server:2019-CU18-ubuntu-20.04");
+        builder = builder.WithDockerEndpoint(dockerEndpoint);
+        builder = builder.WithMSSQLAutoSetupDefaultsInternal(containerName);
+
+        //Act
+        var container = builder.Build();
+
+        //Assert
+        Assert.NotNull(container);
+        var configuration = container.GetConfiguration();
+
         Assert.Single(
             configuration.Mounts, 
             m => 
@@ -75,20 +94,6 @@ public class AutoSetupExtensionsTests
         Assert.Null(configuration.Name);
         Assert.DoesNotContain(configuration.Labels, l => l.Key == "reuse-id");
         Assert.StartsWith(dockerEndpoint, configuration.DockerEndpointAuthConfig.Endpoint.ToString());
-        Assert.DoesNotContain(
-            configuration.Mounts, 
-            m => 
-                m.Source.Equals($"{containerName}-Restoration") && 
-                m.Target.Equals("/var/opt/mssql/Restoration") && 
-                m.Type.Type == MountType.Volume.Type &&
-                m.AccessMode == AccessMode.ReadWrite);
-        Assert.DoesNotContain(
-            configuration.Mounts,
-            m =>
-                m.Type.Type == MountType.Tmpfs.Type &&
-                m.AccessMode == AccessMode.ReadWrite &&
-                m.Target.Equals("/var/opt/mssql/data")
-        );
     }
 }
 

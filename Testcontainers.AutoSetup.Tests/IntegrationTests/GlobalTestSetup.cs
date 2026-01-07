@@ -12,12 +12,12 @@ using Testcontainers.AutoSetup.Core;
 using Testcontainers.AutoSetup.Core.Extensions;
 using Microsoft.Extensions.Logging;
 using Testcontainers.AutoSetup.Core.Common.Entities;
-using Testcontainers.AutoSetup.Core.DbSeeding;
 using Testcontainers.AutoSetup.Core.Abstractions.Entities;
 using Testcontainers.MySql;
 using Testcontainers.AutoSetup.Tests.IntegrationTests.Migrations.MSSQL.EfMigrations;
 using Testcontainers.AutoSetup.Tests.IntegrationTests.Migrations.MySQL.EfMigrations;
 using Testcontainers.AutoSetup.Tests.IntegrationTests.TestHelpers;
+using Testcontainers.AutoSetup.Core.DbSeeding;
 namespace Testcontainers.AutoSetup.Tests.IntegrationTests;
 
 public class GlobalTestSetup : GenericTestBase
@@ -30,6 +30,8 @@ public class GlobalTestSetup : GenericTestBase
     public DbSetup? MsSqlContainer_GenericBuilder_RawSqlDbSetup { get; private set; } = null!;
     public MySqlContainer MySqlContainerFromSpecificBuilder = null!;
     public DbSetup? MySqlContainer_SpecificBuilder_EfDbSetup { get; private set; } = null!;
+    public IContainer MySqlContainerFromGenericBuilder = null!;
+    public DbSetup? MySqlContainer_GenericBuilder_EfDbSetup { get; private set; } = null!;
 
     public readonly string? DockerEndpoint = EnvironmentHelper.GetDockerEndpoint();
 
@@ -43,12 +45,16 @@ public class GlobalTestSetup : GenericTestBase
         // 1. Build & Start Containers
         MsSqlContainerFromSpecificBuilder = CreateMsSqlContainerFromSpecificBuilder();
         MsSqlContainerFromGenericBuilder = CreateMsSqlContainerFromGenericBuilder();
+
         MySqlContainerFromSpecificBuilder = CreateMySqlContainerFromSpecificBuilder();
+        MySqlContainerFromGenericBuilder = CreateMySqlContainerFromGenericBuilder();
         
         await Task.WhenAll(
             MsSqlContainerFromSpecificBuilder.StartAsync(),
             MsSqlContainerFromGenericBuilder.StartAsync(),
-            MySqlContainerFromSpecificBuilder.StartAsync()
+
+            MySqlContainerFromSpecificBuilder.StartAsync(),
+            MySqlContainerFromGenericBuilder.StartAsync()
         );
 
         // 2. Register containers within the environment
@@ -92,6 +98,15 @@ public class GlobalTestSetup : GenericTestBase
             MySqlContainerFromSpecificBuilder,
             new MySqlDbConnectionFactory(),
             logger: Logger);
+
+        // Register MySql container with EF Seeder
+        var mappedPortMySql = MySqlContainerFromGenericBuilder.GetMappedPublicPort(3306);
+        MySqlContainer_GenericBuilder_EfDbSetup = GenericMySqlEFDbSetup(mappedPortMySql);
+        TestEnvironment.Register<EfSeeder, MySqlDbRestorer>(
+            MySqlContainer_GenericBuilder_EfDbSetup,
+            MySqlContainerFromGenericBuilder,
+            new MySqlDbConnectionFactory(),
+            logger: Logger);
     }
 
     /// <inheritdoc/>
@@ -104,7 +119,7 @@ public class GlobalTestSetup : GenericTestBase
     {
         var builder = new MsSqlBuilder("mcr.microsoft.com/mssql/server:2019-CU18-ubuntu-20.04");
         var container = builder
-            .WithAutoSetupDefaults(containerName: "MsSQL-testcontainer")
+            .WithMSSQLAutoSetupDefaults(containerName: "MsSQL-testcontainer")
             .WithPassword("#AdminPass123")
             .Build();
 
@@ -114,15 +129,8 @@ public class GlobalTestSetup : GenericTestBase
     private static IContainer CreateMsSqlContainerFromGenericBuilder()
     {
         var builder = new ContainerBuilder("mcr.microsoft.com/mssql/server:2019-CU18-ubuntu-20.04");
-        builder = builder.WithAutoSetupDefaults(containerName: "GenericMsSQL-testcontainer");
-        if (EnvironmentHelper.IsCiRun())
-        {
-            builder = builder.WithPortBinding(1433, assignRandomHostPort: true);
-        }
-        else
-        {
-            builder = builder.WithPortBinding(Constants.GenericContainerPort, 1433);
-        }
+        builder = builder.WithMSSQLAutoSetupDefaults(containerName: "GenericMsSQL-testcontainer")
+            .WithPortBinding(1433, assignRandomHostPort: true);
         var container = builder
             .WithEnvironment("ACCEPT_EULA", "Y")            
             .WithEnvironment("MSSQL_SA_PASSWORD", "YourStrongPassword123!")
@@ -137,7 +145,20 @@ public class GlobalTestSetup : GenericTestBase
     {
         var builder = new MySqlBuilder("mysql:8.0.44-debian");
         var container = builder
-            .WithAutoSetupDefaults(containerName: "MySQL-testcontainer")
+            .WithMySQLAutoSetupDefaults(containerName: "MySQL-testcontainer")
+            .WithCommand("--skip-name-resolve")
+            .Build();
+
+        return container;
+    }
+    
+    private static IContainer CreateMySqlContainerFromGenericBuilder()
+    {
+        var builder = new ContainerBuilder("mysql:8.0.44-debian");
+        builder = builder.WithMySQLAutoSetupDefaults(containerName: "GenericMySQL-testcontainer")
+           .WithPortBinding(3306, assignRandomHostPort: true);
+        var container = builder
+            .WithEnvironment("MYSQL_ROOT_PASSWORD", "mysql")
             .WithCommand("--skip-name-resolve")
             .Build();
 
@@ -200,6 +221,19 @@ public class GlobalTestSetup : GenericTestBase
                     .Options),
             migrationsPath: "./IntegrationTests/Migrations/MySQL/EfMigrations"
         );
+
+    private static EfDbSetup GenericMySqlEFDbSetup(int mappedPort) => new( 
+            dbName: "GenericCatalogTestMySql", 
+            dbType: Core.Common.Enums.DbType.MySQL,
+            containerConnectionString: $"Server={EnvironmentHelper.DockerHostAddress};Port={mappedPort};Database=mysql;Uid=root;Pwd=mysql;",
+            contextFactory: connString => new MySQLCatalogContext(
+                new DbContextOptionsBuilder<MySQLCatalogContext>()
+                    .UseMySQL(connString, providerOptions => { providerOptions.EnableRetryOnFailure(); })
+                    .Options),
+            migrationsPath: "./IntegrationTests/Migrations/MySQL/EfMigrations"
+        );
+
+    
 
     /// <inheritdoc cref="IWaitUntil" />
     /// <remarks>

@@ -1,10 +1,11 @@
 using System.IO.Abstractions;
+using System.Text.RegularExpressions;
 using Testcontainers.AutoSetup.Core.Common.Enums;
 using Testcontainers.AutoSetup.Core.Common.Helpers;
 
 namespace Testcontainers.AutoSetup.Core.Abstractions.Entities;
 
-public abstract record DbSetup
+public abstract partial record DbSetup
 {   
     public virtual string DbName { get; init; }
 
@@ -43,13 +44,12 @@ public abstract record DbSetup
     /// </summary>
     public virtual string BuildDbConnectionString()
     {
-        // TODO make specific Dbsetups and their BuildDbConnectionString abstract to make user create connection string 
         var containerConnStr = ContainerConnectionString ?? throw new InvalidOperationException(
             "ContainerConnectionString must be provided to build the full connection string.");
         if(DbName is not null)
         {
-            containerConnStr = containerConnStr.Replace($"Database={DefaultDbResolver.Resolve(DbType)}", $"Database={DbName}"); 
-            // TODO consider a better approach
+            containerConnStr = DbNameRegex().Replace(containerConnStr, $"Database={DbName};"); 
+
             if(DbType == DbType.MySQL)
                 containerConnStr = containerConnStr.Replace("Uid=mysql", "Uid=root");           
         }
@@ -62,4 +62,7 @@ public abstract record DbSetup
     /// </summary>
     /// <param name="cancellationToken"></param>
     public abstract Task<DateTime> GetMigrationsLastModificationDateAsync(CancellationToken cancellationToken = default);
+    
+    [GeneratedRegex("Database=[^;]*;")]
+    private static partial Regex DbNameRegex();
 }

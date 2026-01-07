@@ -1,5 +1,5 @@
 using System.Data.Common;
-using System.Data.SqlTypes;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Text;
 using DotNet.Testcontainers.Containers;
@@ -7,14 +7,12 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Testcontainers.AutoSetup.Core.Abstractions;
 using Testcontainers.AutoSetup.Core.Abstractions.Entities;
+using Testcontainers.AutoSetup.Core.Common.Exceptions;
 
 namespace Testcontainers.AutoSetup.Core.DbRestoration;
 
 public class MySqlDbRestorer : DbRestorer
 {
-    // TODO think where to store this constant
-    private const string DefaultRestorationStateFilesPath = "/var/lib/mysql/Restoration";
-
     private readonly ILogger _logger;
     private readonly IDbConnectionFactory _dbConnectionFactory;
 
@@ -33,6 +31,7 @@ public class MySqlDbRestorer : DbRestorer
     public override async Task RestoreAsync(CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Starting restoration of MySQL {DbName} database...", _dbSetup.DbName);
+        var stopwatch = Stopwatch.StartNew();
         await using var connection = _dbConnectionFactory.CreateDbConnection(_dbSetup.ContainerConnectionString);
         await connection.OpenAsync(cancellationToken);
 
@@ -42,6 +41,9 @@ public class MySqlDbRestorer : DbRestorer
         command.CommandText = restoreCommand;
         var result = await command.ExecuteNonQueryAsync(cancellationToken);
 
+        stopwatch.Stop();
+        _logger.LogInformation("Restored MySQL DB in {time}", stopwatch.ElapsedMilliseconds);
+
         _logger.LogInformation("MySQL {DbName} database restored successfully.", _dbSetup.DbName);
     }
 
@@ -49,11 +51,15 @@ public class MySqlDbRestorer : DbRestorer
     public override async Task SnapshotAsync(CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Starting snapshot of MySQL {DbName} database...", _dbSetup.DbName);
+        var stopwatch = Stopwatch.StartNew();
         await using var connection = _dbConnectionFactory.CreateDbConnection(_dbSetup.ContainerConnectionString);
         await connection.OpenAsync(cancellationToken);
 
         await DisableRedoLogAsync(connection, cancellationToken);
         await CreateGoldenStateDbAsync(connection, cancellationToken);
+
+        stopwatch.Stop();
+        _logger.LogInformation("Snapshoted MySQL DB in {time}", stopwatch.ElapsedMilliseconds);
 
         _logger.LogInformation("MySQL {DbName} database snapshot created successfully.", _dbSetup.DbName);
     }
@@ -104,27 +110,26 @@ public class MySqlDbRestorer : DbRestorer
     private async Task CreateGoldenStateDbAsync(DbConnection connection, CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Creating golden state database...");
-        var goldenStateDb = $"{_dbSetup.DbName}_golden_state";
+        var goldenStateDbName = $"{_dbSetup.DbName}_golden_state";
         await using var createDbCmd = connection.CreateCommand();
-        createDbCmd.CommandText = $"DROP DATABASE IF EXISTS `{goldenStateDb}`; CREATE DATABASE `{goldenStateDb}`;";
+        createDbCmd.CommandText = $"DROP DATABASE IF EXISTS `{goldenStateDbName}`; CREATE DATABASE `{goldenStateDbName}`;";
         var result = await createDbCmd.ExecuteNonQueryAsync(cancellationToken);
 
         if (result is not 1)
         {
             _logger.LogError("Failed to create golden state database.");
-            // TODO create an exception type
-            throw new Exception("Failed to create golden state database.");
+            throw new DbSetupException(goldenStateDbName);
         }
 
         var dataRestorationCommandBuilder = new StringBuilder();
-        dataRestorationCommandBuilder.AppendLine($@"USE `{goldenStateDb}`;");
+        dataRestorationCommandBuilder.AppendLine($@"USE `{goldenStateDbName}`;");
         dataRestorationCommandBuilder.Append(
             $@"SET FOREIGN_KEY_CHECKS=0;
             SET UNIQUE_CHECKS = 0;");
         await foreach (var table in GetAllDbTablesAsync(connection, cancellationToken))
         {
-            dataRestorationCommandBuilder.AppendLine($"CREATE TABLE IF NOT EXISTS `{goldenStateDb}`.`{table}` LIKE `{_dbSetup.DbName}`.`{table}`;");
-            dataRestorationCommandBuilder.AppendLine($"INSERT INTO `{goldenStateDb}`.`{table}` SELECT * FROM `{_dbSetup.DbName}`.`{table}`;");
+            dataRestorationCommandBuilder.AppendLine($"CREATE TABLE IF NOT EXISTS `{goldenStateDbName}`.`{table}` LIKE `{_dbSetup.DbName}`.`{table}`;");
+            dataRestorationCommandBuilder.AppendLine($"INSERT INTO `{goldenStateDbName}`.`{table}` SELECT * FROM `{_dbSetup.DbName}`.`{table}`;");
         }
         dataRestorationCommandBuilder.Append($@"   
             SET FOREIGN_KEY_CHECKS=1;
@@ -138,7 +143,7 @@ public class MySqlDbRestorer : DbRestorer
     }
 
     /// <summary>
-    /// Retrieves all table names from the specified database.
+    /// Retrieves all tables' names from the specified database.
     /// </summary>
     /// <param name="connection"></param>
     /// <param name="cancellationToken"></param>
@@ -165,11 +170,9 @@ public class MySqlDbRestorer : DbRestorer
                 yield return result.GetString(0);
         }
         else
-        {
-            
-        _logger.LogError("Failed to identify DB tables.");
-        // TODO create an exception type
-        throw new Exception("Failed to identify DB tables.");   
+        {   
+            _logger.LogError("Failed to identify DB tables.");
+            throw new DbSetupException($"Failed to identify {_dbSetup.DbName} DB tables", $"{_dbSetup.DbName}_golden_state");   
         }
     }
 

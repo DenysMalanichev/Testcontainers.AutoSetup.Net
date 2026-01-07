@@ -41,4 +41,24 @@ public class MySqlRestorationTests : IntegrationTestsBase
         Assert.True(migrationCount > 0, "No migrations were found in the history table.");
         await connection.DisposeAsync();
     }
+
+    [Fact]
+    public async Task EfSeeder_WithGenericMySQLContainerBuilder_MigratesDatabase()
+    {
+        // Arrange & Act stages (containers setup and seeding) of the test are done within the GlobalTestSetup
+        // Assert
+        Assert.NotNull(Setup.MySqlContainerFromGenericBuilder);
+        Assert.Equal(TestcontainersStates.Running, Setup.MySqlContainerFromGenericBuilder.State);
+
+        var stopwatch = Stopwatch.StartNew();
+        await using var connection = new MySqlConnection(Setup.MySqlContainer_GenericBuilder_EfDbSetup!.BuildDbConnectionString());
+        await connection.OpenAsync();
+        stopwatch.Stop();
+        Console.WriteLine("[CONNECTION OPENED IN TEST IN] " + stopwatch.ElapsedMilliseconds);
+        using var historyCmd = new MySqlCommand("SELECT COUNT(*) FROM __EFMigrationsHistory", connection);
+        var migrationCount = (long)(await historyCmd.ExecuteScalarAsync() ?? throw new SqlNullValueException());
+
+        Assert.True(migrationCount > 0, "No migrations were found in the history table.");
+        await connection.DisposeAsync();
+    }
 }
