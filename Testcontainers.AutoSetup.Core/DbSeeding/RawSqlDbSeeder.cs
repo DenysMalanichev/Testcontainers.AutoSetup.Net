@@ -6,7 +6,6 @@ using Microsoft.Extensions.Logging;
 using Testcontainers.AutoSetup.Core.Abstractions;
 using Testcontainers.AutoSetup.Core.Abstractions.Entities;
 using Testcontainers.AutoSetup.Core.Common.Entities;
-using Testcontainers.AutoSetup.Core.Common.SqlDbHelpers;
 
 namespace Testcontainers.AutoSetup.Core.DbSeeding;
 
@@ -24,10 +23,7 @@ public sealed class RawSqlDbSeeder : DbSeeder
     private static readonly Regex GoSplitter = new(@"^\s*GO\s*$", 
         RegexOptions.IgnoreCase | RegexOptions.Multiline | RegexOptions.Compiled);
 
-    public RawSqlDbSeeder(ILogger logger) : this(new SqlDbConnectionFactory(), new FileSystem(), logger)
-    { }
-
-    internal RawSqlDbSeeder(IDbConnectionFactory dbConnectionFactory, IFileSystem fileSystem, ILogger? logger = null)
+    public RawSqlDbSeeder(IDbConnectionFactory dbConnectionFactory, IFileSystem fileSystem, ILogger? logger = null)
         : base(logger)
     {
         _dbConnectionFactory = dbConnectionFactory ?? throw new ArgumentNullException(nameof(dbConnectionFactory));
@@ -40,6 +36,9 @@ public sealed class RawSqlDbSeeder : DbSeeder
         await ExecuteSqlFilesAsync((RawSqlDbSetup)dbSetup, cancellationToken).ConfigureAwait(false);
     }
 
+    /// <summary>
+    /// Executes the SQL files defined in the RawSqlDbSetup against the target database.
+    /// </summary>
     internal async Task ExecuteSqlFilesAsync(
         RawSqlDbSetup dbSetup,
         CancellationToken cancellationToken)

@@ -50,7 +50,127 @@ public static class AutoSetupExtensions
     /// </item>
     /// </list>
     /// </remarks>
-    public static TBuilder WithAutoSetupDefaults<TBuilder, TContainer, TConfiguration>(
+    public static TBuilder WithMSSQLAutoSetupDefaults<TBuilder, TContainer, TConfiguration>(
+        this ContainerBuilder<TBuilder, TContainer, TConfiguration> builder, 
+        string containerName)
+        where TBuilder : ContainerBuilder<TBuilder, TContainer, TConfiguration>
+        where TContainer : IContainer
+        where TConfiguration : IContainerConfiguration
+    {
+        var commonSetup = WithAutoSetupReuseDefaults(builder, containerName);
+        return commonSetup
+            .WithVolumeMount($"{containerName}-Restoration", RestorationPath, AccessMode.ReadWrite)
+            .WithTmpfsMount(DataPath, AccessMode.ReadWrite)
+            .WithCreateParameterModifier(config =>
+            {
+                config.User = "root";
+            });
+    }
+
+    internal static TBuilder WithMSSQLAutoSetupDefaultsInternal<TBuilder, TContainer, TConfiguration>(
+        this ContainerBuilder<TBuilder, TContainer, TConfiguration> builder, 
+        string containerName)
+        where TBuilder : ContainerBuilder<TBuilder, TContainer, TConfiguration>
+        where TContainer : IContainer
+        where TConfiguration : IContainerConfiguration
+    {
+        return builder
+            .WithVolumeMount($"{containerName}-Restoration", RestorationPath, AccessMode.ReadWrite)
+            .WithTmpfsMount(DataPath, AccessMode.ReadWrite)
+            .WithCreateParameterModifier(config =>
+            {
+                config.User = "root";
+            });
+    }
+
+    /// <summary>
+    /// Configures the Testcontainer builder with the essential settings required by the AutoSetup library.
+    /// <para>
+    /// This includes configuring Docker endpoints, file system permissions, 
+    /// and reuse strategies based on the current execution environment (CI vs. Local).
+    /// </para>
+    /// </summary>
+    /// <typeparam name="TBuilder">The type of the container builder (e.g., <see cref="MsSqlBuilder"/>).</typeparam>
+    /// <typeparam name="TContainer">The type of the container being built.</typeparam>
+    /// <typeparam name="TConfiguration">The configuration entity for the container.</typeparam>
+    /// <param name="builder">The builder instance to configure.</param>
+    /// <param name="containerName">
+    /// A unique identifier used to generate the reuse hash. 
+    /// This ensures that the container is reused across test runs when running locally, 
+    /// allowing for the "Snapshot and Restore" optimization.
+    /// </param>
+    /// <returns>The configured builder instance for method chaining.</returns>
+    /// <remarks>
+    /// <strong>Applied Configurations:</strong>
+    /// <list type="bullet">
+    /// <item>
+    ///     <term>Docker Endpoint</term>
+    ///     <description>Automatically detects and sets the Docker endpoint via <c>EnvironmentHelper</c>.</description>
+    /// </item>
+    /// <item>
+    ///     <term>Local Execution</term>
+    ///     <description>
+    ///     When not running in CI:
+    ///     <br/> - Enables <strong>Container Reuse</strong> using the provided <paramref name="containerName"/>,
+    ///     utilizing a reuse hash.
+    ///     </description>
+    /// </item>
+    /// <item>
+    ///     <term>CI Execution</term>
+    ///     <description>Skips reuse strategies to ensure fresh containers for isolated build pipelines.</description>
+    /// </item>
+    /// </list>
+    /// </remarks>
+    public static TBuilder WithMySQLAutoSetupDefaults<TBuilder, TContainer, TConfiguration>(
+        this ContainerBuilder<TBuilder, TContainer, TConfiguration> builder, 
+        string containerName)
+        where TBuilder : ContainerBuilder<TBuilder, TContainer, TConfiguration>
+        where TContainer : IContainer
+        where TConfiguration : IContainerConfiguration
+    {
+        var commonSetup = WithAutoSetupReuseDefaults(builder, containerName);
+        return commonSetup;
+    }
+
+    /// <summary>
+    /// Configures the Testcontainer builder with the essential settings required by the AutoSetup library.
+    /// <para>
+    /// This includes configuring Docker endpoints, file system permissions, 
+    /// and reuse strategies based on the current execution environment (CI vs. Local).
+    /// </para>
+    /// </summary>
+    /// <typeparam name="TBuilder">The type of the container builder (e.g., <see cref="MsSqlBuilder"/>).</typeparam>
+    /// <typeparam name="TContainer">The type of the container being built.</typeparam>
+    /// <typeparam name="TConfiguration">The configuration entity for the container.</typeparam>
+    /// <param name="builder">The builder instance to configure.</param>
+    /// <param name="containerName">
+    /// A unique identifier used to generate the reuse hash. 
+    /// This ensures that the container is reused across test runs when running locally, 
+    /// allowing for the "Snapshot and Restore" optimization.
+    /// </param>
+    /// <returns>The configured builder instance for method chaining.</returns>
+    /// <remarks>
+    /// <strong>Applied Configurations:</strong>
+    /// <list type="bullet">
+    /// <item>
+    ///     <term>Docker Endpoint</term>
+    ///     <description>Automatically detects and sets the Docker endpoint via <c>EnvironmentHelper</c>.</description>
+    /// </item>
+    /// <item>
+    ///     <term>Local Execution</term>
+    ///     <description>
+    ///     When not running in CI:
+    ///     <br/> - Enables <strong>Container Reuse</strong> using the provided <paramref name="containerName"/>,
+    ///     utilizing a reuse hash.
+    ///     </description>
+    /// </item>
+    /// <item>
+    ///     <term>CI Execution</term>
+    ///     <description>Skips reuse strategies to ensure fresh containers for isolated build pipelines.</description>
+    /// </item>
+    /// </list>
+    /// </remarks>
+    public static TBuilder WithAutoSetupReuseDefaults<TBuilder, TContainer, TConfiguration>(
         this ContainerBuilder<TBuilder, TContainer, TConfiguration> builder, 
         string containerName)
         where TBuilder : ContainerBuilder<TBuilder, TContainer, TConfiguration>
@@ -63,12 +183,9 @@ public static class AutoSetupExtensions
         return WithAutoSetupDefaultsInternal(builder, containerName, dockerEndpoint, isCiRun);
     }
 
-    // "Internal Seam" 
     internal static TBuilder WithAutoSetupDefaultsInternal<TBuilder, TContainer, TConfiguration>(
         this ContainerBuilder<TBuilder, TContainer, TConfiguration> builder, 
-        string containerName,
-        string? dockerEndpoint,
-        bool isCiRun)
+        string containerName, string? dockerEndpoint, bool isCiRun)
         where TBuilder : ContainerBuilder<TBuilder, TContainer, TConfiguration>
         where TContainer : IContainer
         where TConfiguration : IContainerConfiguration
@@ -85,17 +202,10 @@ public static class AutoSetupExtensions
             builder = builder
                 .WithReuse(true)
                 .WithName(containerName)
-                .WithLabel("reuse-id", $"{containerName}-reuse-hash")
-                .WithVolumeMount($"{containerName}-Restoration", RestorationPath, AccessMode.ReadWrite)
-                .WithTmpfsMount(DataPath, AccessMode.ReadWrite)
-                .WithCreateParameterModifier(config => 
-                { 
-                    // This works for any container that respects the User param
-                    config.User = "root"; 
-                });
+                .WithLabel("reuse-id", $"{containerName}-reuse-hash");
         }
 
         // Cast back to the specific TBuilder type to keep the fluent API working
-        return (TBuilder)builder;   
+        return (TBuilder)builder;
     }
 }

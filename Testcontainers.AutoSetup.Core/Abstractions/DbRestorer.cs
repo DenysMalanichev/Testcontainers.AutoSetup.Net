@@ -10,9 +10,7 @@ namespace Testcontainers.AutoSetup.Core.Abstractions;
 /// </summary>
 public abstract class DbRestorer
 {
-    internal readonly string RestorationStateFilesDirectory;
     protected string _restorationSnapshotName = null!;
-    protected readonly string _containerConnectionString;
     protected readonly DbSetup _dbSetup;
     protected readonly IContainer _container;
 
@@ -25,10 +23,10 @@ public abstract class DbRestorer
         {
             if(_restorationSnapshotName.IsNullOrEmpty())
             {
-                return null!;
+                return null;
             }
             
-            return Path.Combine(RestorationStateFilesDirectory, _restorationSnapshotName).Replace("\\", "/");
+            return Path.Combine(_dbSetup.RestorationStateFilesDirectory, _restorationSnapshotName).Replace("\\", "/");
         }
     }
 
@@ -40,26 +38,10 @@ public abstract class DbRestorer
     /// <param name="containerConnectionString"><see cref="string"/> connection string to connect to the database</param>    
     /// <param name="restorationStateFilesDirectory">A path where the DB snapshot is stored</param>
     /// <exception cref="ArgumentNullException"></exception>
-    public DbRestorer(
-        DbSetup dbSetup, 
-        IContainer container,
-        string containerConnectionString,
-        string restorationStateFilesDirectory)
+    public DbRestorer(DbSetup dbSetup, IContainer container)
     {
         _dbSetup = dbSetup ?? throw new ArgumentNullException(nameof(dbSetup));   
-        _container = container ?? throw new ArgumentNullException(nameof(container));
-
-        if(string.IsNullOrEmpty(restorationStateFilesDirectory))
-        {
-            throw new ArgumentNullException(nameof(restorationStateFilesDirectory));   
-        }
-        RestorationStateFilesDirectory = restorationStateFilesDirectory;
-
-        if(string.IsNullOrEmpty(containerConnectionString))
-        {
-            throw new ArgumentNullException(nameof(containerConnectionString));   
-        }
-        _containerConnectionString = containerConnectionString;        
+        _container = container ?? throw new ArgumentNullException(nameof(container));      
     }
 
     /// <summary>
@@ -70,7 +52,7 @@ public abstract class DbRestorer
     /// </exception>
     protected async Task EnsureRestorationDirectoryExistsAsync()
     {        
-        var result = await _container.ExecAsync(["/bin/bash", "-c", $"mkdir -p {RestorationStateFilesDirectory}"]);
+        var result = await _container.ExecAsync(["/bin/bash", "-c", $"mkdir -p {_dbSetup.RestorationStateFilesDirectory}"]);
         if(result.ExitCode != 0 || !string.IsNullOrEmpty(result.Stderr))
         {
             throw new ExecFailedException(result);
@@ -88,4 +70,11 @@ public abstract class DbRestorer
     /// </summary>
     /// <param name="cancellationToken"><see cref="CancellationToken"/></param>
     public abstract Task SnapshotAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Verifies whether a current snapshot is up to date with latest migrations
+    /// </summary>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    public abstract Task<bool> IsSnapshotUpToDateAsync(CancellationToken cancellationToken = default);
 }

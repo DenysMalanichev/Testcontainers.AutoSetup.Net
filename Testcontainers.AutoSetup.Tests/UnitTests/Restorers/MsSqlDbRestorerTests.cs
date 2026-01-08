@@ -1,11 +1,13 @@
 using System.ComponentModel;
 using System.Data.Common;
+using System.IO.Abstractions;
 using DotNet.Testcontainers.Containers;
 using Microsoft.Data.SqlClient;
 using Moq;
 using Moq.Protected;
 using Testcontainers.AutoSetup.Core.Abstractions;
 using Testcontainers.AutoSetup.Core.Abstractions.Entities;
+using Testcontainers.AutoSetup.Core.Common.Enums;
 using Testcontainers.AutoSetup.Core.DbRestoration;
 using Testcontainers.AutoSetup.Tests.TestCollections;
 using IContainer = DotNet.Testcontainers.Containers.IContainer;
@@ -31,14 +33,20 @@ public class MsSqlDbRestorerTests
         connectionFactoryMock.Setup(f => f.CreateDbConnection(It.IsAny<string>()))
             .Returns(connectionMock.Object);
 
-        var dbSetupMock = new Mock<DbSetup>();
-        dbSetupMock.SetupGet(d => d.DbName).Returns("TestDb");
+        var dbSetupMock = new Mock<DbSetup>( 
+            "dbName",
+            "testConnStr",
+            "migrationPath",
+            DbType.MsSQL,
+            false,
+            "restorationPath",
+            new Mock<IFileSystem>().Object
+        );
         var containerMock = new Mock<IContainer>();
         
         var msSqlRestorer = new MsSqlDbRestorer(
             dbSetup: dbSetupMock.Object,
             container: containerMock.Object,
-            containerConnectionString: "Server=localhost;Database=master;User Id=sa;Password=Password123;",
             dbConnectionFactory: connectionFactoryMock.Object);
 
         // Act & Assert
@@ -66,10 +74,19 @@ public class MsSqlDbRestorerTests
         connectionFactoryMock.Setup(f => f.CreateDbConnection(It.IsAny<string>()))
             .Returns(connectionMock.Object);
         
+        var dbSetupMock = new Mock<DbSetup>( 
+            "dbName",
+            "testConnStr",
+            "migrationPath",
+            DbType.MsSQL,
+            false,
+            "restorationPath",
+            new Mock<IFileSystem>().Object
+        ) { CallBase = true };
+
         var msSqlRestorer = new MsSqlDbRestorer(
-            dbSetup: Mock.Of<DbSetup>(),
+            dbSetup: dbSetupMock.Object,
             container: containerMock.Object,
-            containerConnectionString: "Server=localhost;Database=master;User Id=sa;Password=Password123;",
             dbConnectionFactory: connectionFactoryMock.Object);
 
         // Act
@@ -87,14 +104,169 @@ public class MsSqlDbRestorerTests
         containerMock.Setup(c => c.ExecAsync(It.IsAny<IList<string>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ExecResult(stderr: "Directory does not exist", exitCode: 1, stdout: string.Empty));
         
+        var dbSetupMock = new Mock<DbSetup>( 
+            "dbName",
+            "testConnStr",
+            "migrationPath",
+            DbType.MsSQL,
+            false,
+            "restorationPath",
+            new Mock<IFileSystem>().Object
+        );
+        
+
         var msSqlRestorer = new MsSqlDbRestorer(
-            dbSetup: Mock.Of<DbSetup>(),
-            container: containerMock.Object,
-            containerConnectionString: "Server=localhost;Database=master;User Id=sa;Password=Password123;",
-            dbConnectionFactory: Mock.Of<IDbConnectionFactory>());
+            dbSetupMock.Object,
+            Mock.Of<IContainer>(),
+            Mock.Of<IDbConnectionFactory>());
 
         // Act & Assert
         await Assert.ThrowsAsync<ExecFailedException>(async () => await msSqlRestorer.SnapshotAsync());
+    }
+
+    [Fact]
+    public async Task MsSqlDbRestorer_IsSnapshotUpToDateAsyncFalse_IfMountCheckFailed()
+    {
+        // Arrange
+        var containerMock = new Mock<IContainer>();
+        const string restorationPath = "/tmp/missing-mount";
+
+        containerMock.Setup(c => c.ExecAsync(It.Is<IList<string>>(args => 
+            args.Contains($"findmnt {restorationPath}")), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ExecResult(string.Empty, string.Empty, 1));
+        
+        containerMock.Setup(
+            c => c.ExecAsync(It.Is<IList<string>>(
+                args => args.Any(arg => arg.StartsWith($"ls {restorationPath}"))), 
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ExecResult(string.Empty, string.Empty, 0));
+
+        var dbSetupMock = new Mock<DbSetup>( 
+            "dbName",
+            "testConnStr",
+            "migrationPath",
+            DbType.MsSQL,
+            false,
+            restorationPath,
+            new Mock<IFileSystem>().Object
+        ) { CallBase = true };
+
+        var msSqlRestorer = new MsSqlDbRestorer(
+            dbSetupMock.Object,
+            containerMock.Object,
+            Mock.Of<IDbConnectionFactory>());
+
+        // Act 
+        var result = await msSqlRestorer.IsSnapshotUpToDateAsync();
+
+        // Assert
+        Assert.False(result);
+    }
+
+    [Fact]
+    public async Task IsMountExistsAsync_ThrowsExecFailedException_IfFailedCheckForMount()
+    {
+        // Arrange
+        var containerMock = new Mock<IContainer>();
+        const string restorationPath = "/tmp/missing-mount";
+
+        containerMock.Setup(c => c.ExecAsync(It.Is<IList<string>>(args => 
+            args.Contains($"findmnt {restorationPath}")), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ExecResult(string.Empty, string.Empty, 100));
+        
+        containerMock.Setup(
+            c => c.ExecAsync(It.Is<IList<string>>(
+                args => args.Any(arg => arg.StartsWith($"ls {restorationPath}"))), 
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ExecResult(string.Empty, string.Empty, 0));
+
+        var dbSetupMock = new Mock<DbSetup>( 
+            "dbName",
+            "testConnStr",
+            "migrationPath",
+            DbType.MsSQL,
+            false,
+            restorationPath,
+            new Mock<IFileSystem>().Object
+        ) { CallBase = true };
+
+        var msSqlRestorer = new MsSqlDbRestorer(
+            dbSetupMock.Object,
+            containerMock.Object,
+            Mock.Of<IDbConnectionFactory>());
+
+        // Act 
+        await Assert.ThrowsAsync<ExecFailedException>(async () => 
+            await msSqlRestorer.IsSnapshotUpToDateAsync());
+    }
+
+    [Fact]
+    public async Task IsSnapshotValidAsync_ThrowsExecFailedException_IfSnapshotCheckFailed()
+    {
+        // Arrange
+        var containerMock = new Mock<IContainer>();
+        const string restorationPath = "/tmp/missing-mount";
+        
+        containerMock.Setup(
+            c => c.ExecAsync(It.Is<IList<string>>(
+                args => args.Any(arg => arg.StartsWith($"ls {restorationPath}"))), 
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ExecResult(string.Empty, string.Empty, 100));
+
+        var dbSetupMock = new Mock<DbSetup>( 
+            "dbName",
+            "testConnStr",
+            "migrationPath",
+            DbType.MsSQL,
+            false,
+            restorationPath,
+            new Mock<IFileSystem>().Object
+        ) { CallBase = true };
+
+        var msSqlRestorer = new MsSqlDbRestorer(
+            dbSetupMock.Object,
+            containerMock.Object,
+            Mock.Of<IDbConnectionFactory>());
+
+        // Act 
+        await Assert.ThrowsAsync<ExecFailedException>(async () => 
+            await msSqlRestorer.IsSnapshotUpToDateAsync());
+    }
+
+    [Fact]
+    public async Task IsSnapshotUpToDateAsyncc_ReturnsTrue_IfSnapshotAndMountsChecksSucceeded()
+    {
+        // Arrange
+        var containerMock = new Mock<IContainer>();
+        const string restorationPath = "/tmp/missing-mount";
+        
+        containerMock.Setup(
+            c => c.ExecAsync(It.Is<IList<string>>(
+                args => args.Any(arg => arg.StartsWith($"ls {restorationPath}"))), 
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ExecResult(string.Empty, string.Empty, 0));
+
+                containerMock.Setup(c => c.ExecAsync(It.Is<IList<string>>(args => 
+            args.Contains($"findmnt {restorationPath}")), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ExecResult(string.Empty, string.Empty, 0));
+
+        var dbSetupMock = new Mock<DbSetup>( 
+            "dbName",
+            "testConnStr",
+            "migrationPath",
+            DbType.MsSQL,
+            false,
+            restorationPath,
+            new Mock<IFileSystem>().Object
+        ) { CallBase = true };
+
+        var msSqlRestorer = new MsSqlDbRestorer(
+            dbSetupMock.Object,
+            containerMock.Object,
+            Mock.Of<IDbConnectionFactory>());
+
+        // Act 
+        Assert.True(await msSqlRestorer.IsSnapshotUpToDateAsync());
     }
 
     private static SqlException MakeSqlException() {

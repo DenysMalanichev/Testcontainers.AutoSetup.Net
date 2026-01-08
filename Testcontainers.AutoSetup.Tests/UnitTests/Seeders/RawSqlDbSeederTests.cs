@@ -18,19 +18,23 @@ public class RawSqlDbSeederTests
     public async Task SeedAsync_ExecutesRawSql()
     {
         // Arrange
-        var sqlFiles = new List<string> { "script1.sql" };
-
-        var dbSetupMock = new Mock<RawSqlDbSetup>();
-        dbSetupMock.Setup(ds => ds.SqlFiles).Returns(sqlFiles);
-        dbSetupMock.Setup(ds => ds.DbType).Returns(DbType.PostgreSQL);
-        dbSetupMock.Setup(ds => ds.ContainerConnectionString).Returns("Server=dummy;");
-        dbSetupMock.Setup(ds => ds.MigrationsPath).Returns("./migrations");
-
         var fileSystemMock = new Mock<IFileSystem>();
         fileSystemMock.Setup(fs => fs.Path.GetFullPath(It.IsAny<string>())).Returns("C:/migrations");
         fileSystemMock.Setup(fs => fs.Path.Combine(It.IsAny<string>(), It.IsAny<string>())).Returns("C:/migrations/script1.sql");
         fileSystemMock.Setup(fs => fs.File.ReadAllTextAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
                       .ReturnsAsync("CREATE TABLE Foo (Id int);");
+        var sqlFiles = new List<string> { "script1.sql" };
+
+        var dbSetupMock = new Mock<RawSqlDbSetup>(
+            sqlFiles,
+            "TestDbName",
+            "conn-str",
+            "./migrations",
+            DbType.Other,
+            true,
+            null!,
+            fileSystemMock.Object
+        ) { CallBase = true };
 
         var mockCommand = new Mock<DbCommand>();
         var capturedSql = string.Empty;
@@ -63,13 +67,7 @@ public class RawSqlDbSeederTests
     {
         // Arrange
         var sqlFiles = new List<string> { "script1.sql" };
-
-        var dbSetupMock = new Mock<RawSqlDbSetup>();
-        dbSetupMock.Setup(ds => ds.SqlFiles).Returns(sqlFiles);
-        dbSetupMock.Setup(ds => ds.DbType).Returns(DbType.MsSQL);
-        dbSetupMock.Setup(ds => ds.ContainerConnectionString).Returns("Server=dummy;");
-        dbSetupMock.Setup(ds => ds.MigrationsPath).Returns("./migrations");
-
+        
         var fileSystemMock = new Mock<IFileSystem>();
         fileSystemMock.Setup(fs => fs.Path.GetFullPath(It.IsAny<string>())).Returns("C:/migrations");
         fileSystemMock.Setup(fs => fs.Path.Combine(It.IsAny<string>(), It.IsAny<string>())).Returns("C:/migrations/script1.sql");
@@ -79,6 +77,18 @@ public class RawSqlDbSeederTests
                         GO
                         INSERT INTO Foo (Id) VALUES (1);
                         GO");
+
+        var dbSetupMock = new Mock<RawSqlDbSetup>(
+            sqlFiles,
+            "TestDbName",
+            "conn-str",
+            "./migrations",
+            DbType.MsSQL, // Only MSSQL supports GO syntax 
+            true,
+            null!,
+            fileSystemMock.Object
+        ) { CallBase = true };
+
 
         var mockCommand = new Mock<DbCommand>();
         var capturedSql = new List<string>();

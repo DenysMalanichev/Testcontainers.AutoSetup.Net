@@ -5,13 +5,12 @@ A lightweight library to automate database setup, seeding and reset workflows fo
 Testcontainers.AutoSetup.Net provides the functionality of automatic migrations of your  EF Core, Liquibase, Flyway and raw SQL scripts.
 
 ## Support
-Current POC works
 <table>
     <tr>
         <th>Database</th>
         <th>Support</th>
         <th>Container type</th>
-        <th>Restoration strategy</th>
+        <th>Restoration strategy*</th>
         <th>Supported schema management tools</th>
     </tr>
     <tr>
@@ -20,6 +19,13 @@ Current POC works
         <td>Both with official Testcontainers MsSqlBuilder and generic builds</td>
         <td>From snapshot, ~300ms</td>
         <td>EF Core <br> Raw SQL</td>
+    </tr>
+    <tr>
+        <td>MySQL</td>
+        <td> ✅ </td>
+        <td>Both with official Testcontainers MsSqlBuilder and generic builds</td>
+        <td>From golden state DB</td>
+        <td>EF Core <!--<br> Raw SQL --></td>
     </tr>
     <tr>
         <td>PostresQL</td>
@@ -67,6 +73,8 @@ Current POC works
         <td> - </td>
     </tr>
 </table>
+
+> *restoration time depends on a DB size
 
 ## Usage
 You are free to use the default syntax of Testcontainers.NET to crate and configure a container as you need. In order for AutoSetup to work correctly it utilizes the reusable functionality with some aditional configuration, available in `WithAutoSetupDefaults(containerName)` extension method. It configures the container with required params like `.WithReuse(true)`, adds reuse labels, configures a required user and sets up mounts (Volume for snapshots and Tmpfs for DB internal data). For a user it is enough to simply call the method:
@@ -255,4 +263,4 @@ If any of these are true, GetDockerEndpoint() returns null. This is the desired 
 
 ## DB Restore Logic
 
-> NOTE: if you experience delays (5-10 seconds) between tests with MS SQL DB - most likely it is an issue with Reverse DNS lookup. The easiest workaround here is to register the IP of WSL in Windows hosts file.
+> NOTE: if you experience delays (5-10 seconds) between tests with MS SQL DB - most likely it is an issue with Reverse DNS lookup. While some DBs allow skipping Reverse DNS lookup, like `--skip-name-resolve` flag in MySQL, some, like MS SQL -do not. The easiest workaround here is to register the IP of the WSL machine in Windows hosts file.

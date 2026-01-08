@@ -1,3 +1,4 @@
+using System.IO.Abstractions;
 using Testcontainers.AutoSetup.Core.Abstractions.Entities;
 using Testcontainers.AutoSetup.Core.Common.Enums;
 using Testcontainers.AutoSetup.Tests.TestCollections;
@@ -10,6 +11,10 @@ public class DbSetupTests
 {
     private record TestDbSetup : DbSetup
     {
+        public TestDbSetup(string dbName, string containerConnectionString, string migrationsPath, DbType dbType = DbType.Other, bool restoreFromDump = false, string? restorationStateFilesDirectory = null, IFileSystem? fileSystem = null) : base(dbName, containerConnectionString, migrationsPath, dbType, restoreFromDump, restorationStateFilesDirectory, fileSystem)
+        {
+        }
+
         public override string BuildDbConnectionString() 
             => "containerConnStr";
 
@@ -27,12 +32,12 @@ public class DbSetupTests
 
         // Act
         var sut = new TestDbSetup 
-        { 
-            DbName = dbName, 
-            MigrationsPath = migrationPath,
-            ContainerConnectionString = testConnStr,
-        };
-
+        ( 
+            dbName: dbName,
+            migrationsPath: migrationPath,
+            containerConnectionString: testConnStr,
+            dbType: DbType.MsSQL
+        );
         // Assert
         Assert.Equal(dbName, sut.DbName);
         Assert.Equal(migrationPath, sut.MigrationsPath);
@@ -43,11 +48,11 @@ public class DbSetupTests
     {
         // Arrange & Act
         var sut = new TestDbSetup 
-        { 
-            DbName = "DefaultTest", 
-            MigrationsPath = "./",
-            ContainerConnectionString = "default-connection-string",
-        };
+        ( 
+            dbName: "DefaultTest",
+            migrationsPath: "./",
+            containerConnectionString: "default-connection-string"
+        );
 
         // Assert
         Assert.Equal(DbType.Other, sut.DbType);
@@ -62,13 +67,13 @@ public class DbSetupTests
         
         // Act
         var sut = new TestDbSetup 
-        { 
-            DbName = "OverrideTest", 
-            MigrationsPath = "./",
-            ContainerConnectionString = "default-connection-string",
-            DbType = specificType,
-            RestoreFromDump = true
-        };
+        (
+            dbName: "OverrideTest",
+            migrationsPath: "./",
+            containerConnectionString: "default-connection-string",
+            dbType: specificType,
+            restoreFromDump: true
+        );
 
         // Assert
         Assert.Equal(DbType.MsSQL, sut.DbType);
