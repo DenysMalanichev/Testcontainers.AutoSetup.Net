@@ -5,13 +5,12 @@ A lightweight library to automate database setup, seeding and reset workflows fo
 Testcontainers.AutoSetup.Net provides the functionality of automatic migrations of your  EF Core, Liquibase, Flyway and raw SQL scripts.
 
 ## Support
-Current POC works
 <table>
     <tr>
         <th>Database</th>
         <th>Support</th>
         <th>Container type</th>
-        <th>Restoration strategy</th>
+        <th>Restoration strategy*</th>
         <th>Supported schema management tools</th>
     </tr>
     <tr>
@@ -25,7 +24,7 @@ Current POC works
         <td>MySQL</td>
         <td> ✅ </td>
         <td>Both with official Testcontainers MsSqlBuilder and generic builds</td>
-        <td>From golden state DB, from ~200ms, depends on a DB size</td>
+        <td>From golden state DB</td>
         <td>EF Core <!--<br> Raw SQL --></td>
     </tr>
     <tr>
@@ -74,6 +73,8 @@ Current POC works
         <td> - </td>
     </tr>
 </table>
+
+> *restoration time depends on a DB size
 
 ## Usage
 You are free to use the default syntax of Testcontainers.NET to crate and configure a container as you need. In order for AutoSetup to work correctly it utilizes the reusable functionality with some aditional configuration, available in `WithAutoSetupDefaults(containerName)` extension method. It configures the container with required params like `.WithReuse(true)`, adds reuse labels, configures a required user and sets up mounts (Volume for snapshots and Tmpfs for DB internal data). For a user it is enough to simply call the method:

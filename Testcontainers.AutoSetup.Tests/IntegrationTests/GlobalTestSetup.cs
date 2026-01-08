@@ -18,6 +18,7 @@ using Testcontainers.AutoSetup.Tests.IntegrationTests.Migrations.MSSQL.EfMigrati
 using Testcontainers.AutoSetup.Tests.IntegrationTests.Migrations.MySQL.EfMigrations;
 using Testcontainers.AutoSetup.Tests.IntegrationTests.TestHelpers;
 using Testcontainers.AutoSetup.Core.DbSeeding;
+
 namespace Testcontainers.AutoSetup.Tests.IntegrationTests;
 
 public class GlobalTestSetup : GenericTestBase
