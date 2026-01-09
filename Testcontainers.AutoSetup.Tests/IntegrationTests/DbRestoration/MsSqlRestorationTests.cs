@@ -22,7 +22,7 @@ public class MsSqlRestorationTests : IntegrationTestsBase
     }
 
     [Fact]
-    public async Task EfSeeder_WithMSSQLContainerBuilder_MigratesDatabase()
+    public async Task MsSqlRestorer_WithMSSQLContainerBuilder_MigratesDatabase()
     {
         // Arrange & Act stages (containers setup and seeding) of the test are done within the GlobalTestSetup
         // Assert
@@ -42,7 +42,7 @@ public class MsSqlRestorationTests : IntegrationTestsBase
     }
 
     [Fact]
-    public async Task EfSeeder_WithGenericContainerBuilder_MigratesDatabase()
+    public async Task MsSqlRestorer_WithGenericContainerBuilder_MigratesDatabase()
     {
         // Arrange & Act stages (containers setup and seeding) of the test are done within the GlobalTestSetup
         // Assert
