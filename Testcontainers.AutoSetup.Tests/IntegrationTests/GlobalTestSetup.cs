@@ -67,6 +67,7 @@ public class GlobalTestSetup : GenericTestBase
             MsSqlContainerFromSpecificBuilder,
             new MsSqlDbConnectionFactory(),
             logger: Logger);
+
         // Register MsSql with Raw SQL Seeder
         MsSqlContainer_SpecificBuilder_RawSqlDbSetup = MsSqlRawSqlDbSetup(MsSqlContainerFromSpecificBuilder.GetConnectionString());        
         TestEnvironment.Register<RawSqlDbSeeder, MsSqlDbRestorer>(
@@ -100,10 +101,26 @@ public class GlobalTestSetup : GenericTestBase
             new MySqlDbConnectionFactory(),
             logger: Logger);
 
+        // Register MySql container with Raw SQL Seeder
+        MySqlContainer_SpecificBuilder_EfDbSetup = MySqlRawSqlDbSetup(MySqlContainerFromSpecificBuilder.GetConnectionString());
+        TestEnvironment.Register<RawSqlDbSeeder, MySqlDbRestorer>(
+            MySqlContainer_SpecificBuilder_EfDbSetup,
+            MySqlContainerFromSpecificBuilder,
+            new MySqlDbConnectionFactory(),
+            logger: Logger);
+
         // Register MySql container with EF Seeder
         var mappedPortMySql = MySqlContainerFromGenericBuilder.GetMappedPublicPort(3306);
         MySqlContainer_GenericBuilder_EfDbSetup = GenericMySqlEFDbSetup(mappedPortMySql);
         TestEnvironment.Register<EfSeeder, MySqlDbRestorer>(
+            MySqlContainer_GenericBuilder_EfDbSetup,
+            MySqlContainerFromGenericBuilder,
+            new MySqlDbConnectionFactory(),
+            logger: Logger);
+            
+        // Register MySql container with EF Seeder
+        MySqlContainer_GenericBuilder_EfDbSetup = GenericMySqlRawSqlDbSetup(mappedPortMySql);
+        TestEnvironment.Register<RawSqlDbSeeder, MySqlDbRestorer>(
             MySqlContainer_GenericBuilder_EfDbSetup,
             MySqlContainerFromGenericBuilder,
             new MySqlDbConnectionFactory(),
@@ -147,6 +164,7 @@ public class GlobalTestSetup : GenericTestBase
         var builder = new MySqlBuilder("mysql:8.0.44-debian");
         var container = builder
             .WithMySQLAutoSetupDefaults(containerName: "MySQL-testcontainer")
+            .WithUsername("root")
             .WithCommand("--skip-name-resolve")
             .Build();
 
@@ -223,6 +241,18 @@ public class GlobalTestSetup : GenericTestBase
             migrationsPath: "./IntegrationTests/Migrations/MySQL/EfMigrations"
         );
 
+    private static RawSqlDbSetup MySqlRawSqlDbSetup(string connectionString) => new(
+            dbName: "RawSql_CatalogTest", 
+            dbType: Core.Common.Enums.DbType.MySQL,
+            containerConnectionString: connectionString,
+            migrationsPath: "./IntegrationTests/Migrations/MySQL/SqlScripts",
+            sqlFiles: 
+                [
+                    "001_MySQL_CreateCatalogTable.sql",
+                    "002_MySQL_InsertInitialData.sql"
+                ]
+        );
+
     private static EfDbSetup GenericMySqlEFDbSetup(int mappedPort) => new( 
             dbName: "GenericCatalogTestMySql", 
             dbType: Core.Common.Enums.DbType.MySQL,
@@ -234,7 +264,19 @@ public class GlobalTestSetup : GenericTestBase
             migrationsPath: "./IntegrationTests/Migrations/MySQL/EfMigrations"
         );
 
-    
+    private static RawSqlDbSetup GenericMySqlRawSqlDbSetup(int mappedPort) => new(
+            dbName: "RawSql_CatalogTest",
+            dbType: Core.Common.Enums.DbType.MySQL,
+            containerConnectionString: $"Server={EnvironmentHelper.DockerHostAddress};Port={mappedPort};Database=mysql;Uid=root;Pwd=mysql;",
+            migrationsPath: "./IntegrationTests/Migrations/MySQL/SqlScripts",
+            sqlFiles:
+                [
+                    "001_MySQL_CreateCatalogTable.sql",
+                    "002_MySQL_InsertInitialData.sql"
+                ]
+        );
+
+
 
     /// <inheritdoc cref="IWaitUntil" />
     /// <remarks>

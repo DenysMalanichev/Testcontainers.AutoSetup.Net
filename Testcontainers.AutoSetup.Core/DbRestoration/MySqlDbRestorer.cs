@@ -122,7 +122,6 @@ public class MySqlDbRestorer : DbRestorer
         }
 
         var dataRestorationCommandBuilder = new StringBuilder();
-        dataRestorationCommandBuilder.AppendLine($@"USE `{goldenStateDbName}`;");
         dataRestorationCommandBuilder.Append(
             $@"SET FOREIGN_KEY_CHECKS=0;
             SET UNIQUE_CHECKS = 0;");
@@ -185,15 +184,16 @@ public class MySqlDbRestorer : DbRestorer
     private async Task<string> CreateRestorationCommand(DbConnection connection, CancellationToken cancellationToken = default)
     {
         var command = new StringBuilder();
-        command.AppendLine($@"USE `{_dbSetup.DbName}`;");
-        command.Append($@"SET FOREIGN_KEY_CHECKS=0;
+        // command.AppendLine($@"USE `{_dbSetup.DbName}`;");
+        command.Append($@"
+            SET FOREIGN_KEY_CHECKS=0;
             SET UNIQUE_CHECKS = 0;
         ");
 
         await foreach(var tableName in GetAllDbTablesAsync(connection, cancellationToken))
         {
-            command.AppendLine($@"TRUNCATE TABLE `{tableName}`;");
-            command.AppendLine($@"INSERT INTO `{tableName}` SELECT * FROM `{_dbSetup.DbName}_golden_state`.`{tableName}`;");
+            command.AppendLine($@"TRUNCATE TABLE `{_dbSetup.DbName}`.`{tableName}`;");
+            command.AppendLine($@"INSERT INTO `{_dbSetup.DbName}`.`{tableName}` SELECT * FROM `{_dbSetup.DbName}_golden_state`.`{tableName}`;");
         }
 
         command.Append($@"   

@@ -23,19 +23,19 @@ public class MySqlRestorationTests : IntegrationTestsBase
     }
 
     [Fact]
-    public async Task EfSeeder_WithMySQLContainerBuilder_MigratesDatabase()
+    public async Task MySqlRestorer_WithMySQLContainerBuilder_MigratesDatabase()
     {
         // Arrange & Act stages (containers setup and seeding) of the test are done within the GlobalTestSetup
         // Assert
         Assert.NotNull(Setup.MySqlContainerFromSpecificBuilder);
-        Assert.Equal(TestcontainersStates.Running, Setup.MsSqlContainerFromSpecificBuilder.State);
+        Assert.Equal(TestcontainersStates.Running, Setup.MySqlContainerFromSpecificBuilder.State);
 
         var stopwatch = Stopwatch.StartNew();
         await using var connection = new MySqlConnection(Setup.MySqlContainer_SpecificBuilder_EfDbSetup!.BuildDbConnectionString());
         await connection.OpenAsync();
         stopwatch.Stop();
         Console.WriteLine("[CONNECTION OPENED IN TEST IN] " + stopwatch.ElapsedMilliseconds);
-        using var historyCmd = new MySqlCommand("SELECT COUNT(*) FROM __EFMigrationsHistory", connection);
+        using var historyCmd = new MySqlCommand("SELECT COUNT(*) FROM `CatalogTestMySql`.`__EFMigrationsHistory`", connection);
         var migrationCount = (long)(await historyCmd.ExecuteScalarAsync() ?? throw new SqlNullValueException());
 
         Assert.True(migrationCount > 0, "No migrations were found in the history table.");
@@ -43,7 +43,7 @@ public class MySqlRestorationTests : IntegrationTestsBase
     }
 
     [Fact]
-    public async Task EfSeeder_WithGenericMySQLContainerBuilder_MigratesDatabase()
+    public async Task MySqlRestorer_WithGenericMySQLContainerBuilder_MigratesDatabase()
     {
         // Arrange & Act stages (containers setup and seeding) of the test are done within the GlobalTestSetup
         // Assert
@@ -55,10 +55,48 @@ public class MySqlRestorationTests : IntegrationTestsBase
         await connection.OpenAsync();
         stopwatch.Stop();
         Console.WriteLine("[CONNECTION OPENED IN TEST IN] " + stopwatch.ElapsedMilliseconds);
-        using var historyCmd = new MySqlCommand("SELECT COUNT(*) FROM __EFMigrationsHistory", connection);
+        using var historyCmd = new MySqlCommand("SELECT COUNT(*) FROM `GenericCatalogTestMySql`.`__EFMigrationsHistory`", connection);
         var migrationCount = (long)(await historyCmd.ExecuteScalarAsync() ?? throw new SqlNullValueException());
 
         Assert.True(migrationCount > 0, "No migrations were found in the history table.");
         await connection.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task MySqlRestorer_WithSpecificMySQLContainerBuilder_MigratesRawSqlDatabase()
+    {
+        // Arrange & Act stages (containers setup and seeding) of the test are done within the GlobalTestSetup
+        // Assert
+        Assert.NotNull(Setup.MySqlContainerFromSpecificBuilder);
+        Assert.Equal(TestcontainersStates.Running, Setup.MySqlContainerFromSpecificBuilder.State);
+
+        var stopwatch = Stopwatch.StartNew();
+        await using var connection = new MySqlConnection(Setup.MySqlContainer_SpecificBuilder_EfDbSetup!.BuildDbConnectionString());
+        await connection.OpenAsync();
+        stopwatch.Stop();
+        Console.WriteLine("[CONNECTION OPENED IN TEST IN] " + stopwatch.ElapsedMilliseconds);
+        using var historyCmd = new MySqlCommand("SELECT COUNT(*) FROM `RawSql_CatalogTest`.`Catalog`", connection);
+        var migrationCount = (long)(await historyCmd.ExecuteScalarAsync() ?? throw new SqlNullValueException());
+
+        Assert.True(migrationCount > 0, "No migrations were found in the history table.");
+    }
+
+    [Fact]
+    public async Task MySqlRestorer_WithGenericMySQLContainerBuilder_MigratesRawSqlDatabase()
+    {
+        // Arrange & Act stages (containers setup and seeding) of the test are done within the GlobalTestSetup
+        // Assert
+        Assert.NotNull(Setup.MySqlContainerFromGenericBuilder);
+        Assert.Equal(TestcontainersStates.Running, Setup.MySqlContainerFromGenericBuilder.State);
+
+        var stopwatch = Stopwatch.StartNew();
+        await using var connection = new MySqlConnection(Setup.MySqlContainer_GenericBuilder_EfDbSetup!.BuildDbConnectionString());
+        await connection.OpenAsync();
+        stopwatch.Stop();
+        Console.WriteLine("[CONNECTION OPENED IN TEST IN] " + stopwatch.ElapsedMilliseconds);
+        using var historyCmd = new MySqlCommand("SELECT COUNT(*) FROM `RawSql_CatalogTest`.`Catalog`", connection);
+        var migrationCount = (long)(await historyCmd.ExecuteScalarAsync() ?? throw new SqlNullValueException());
+
+        Assert.True(migrationCount > 0, "No migrations were found in the history table.");
     }
 }
