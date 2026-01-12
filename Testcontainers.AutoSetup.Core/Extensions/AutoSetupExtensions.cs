@@ -266,6 +266,10 @@ public static class AutoSetupExtensions
         {
             migrationsPath = EnvironmentHelper.ConvertToWslPath(migrationsPath);   
         }
+        else
+        {
+            migrationsPath = Path.GetFullPath(migrationsPath);
+        }
         
         return builder
             .WithTmpfsMount(DataPath, AccessMode.ReadWrite)
