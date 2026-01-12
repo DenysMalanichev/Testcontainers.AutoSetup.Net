@@ -1,4 +1,5 @@
 using DotNet.Testcontainers.Containers;
+using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
 using Testcontainers.AutoSetup.Core.Abstractions.Entities;
 
@@ -13,6 +14,7 @@ public abstract class DbRestorer
     protected string _restorationSnapshotName = null!;
     protected readonly DbSetup _dbSetup;
     protected readonly IContainer _container;
+    protected readonly ILogger _logger;
 
     /// <summary>
     /// Returns the <see cref="string?"/> path to the current DB snapshot or null, if no snapshots exist
@@ -38,10 +40,11 @@ public abstract class DbRestorer
     /// <param name="containerConnectionString"><see cref="string"/> connection string to connect to the database</param>    
     /// <param name="restorationStateFilesDirectory">A path where the DB snapshot is stored</param>
     /// <exception cref="ArgumentNullException"></exception>
-    public DbRestorer(DbSetup dbSetup, IContainer container)
+    public DbRestorer(DbSetup dbSetup, IContainer container, ILogger logger)
     {
         _dbSetup = dbSetup ?? throw new ArgumentNullException(nameof(dbSetup));   
-        _container = container ?? throw new ArgumentNullException(nameof(container));      
+        _container = container ?? throw new ArgumentNullException(nameof(container));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
     /// <summary>

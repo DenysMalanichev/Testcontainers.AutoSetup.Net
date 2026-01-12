@@ -1,13 +1,13 @@
 using DotNet.Testcontainers.Containers;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using Testcontainers.AutoSetup.Core.Abstractions;
 using Testcontainers.AutoSetup.Core.Abstractions.Entities;
+using Testcontainers.AutoSetup.Core.Abstractions.Sql;
 using Testcontainers.AutoSetup.EntityFramework.Entities;
 
 namespace Testcontainers.AutoSetup.EntityFramework;
 
-public class EfSeeder : DbSeeder
+public class EfSeeder : SqlDbSeeder
 {
     public EfSeeder(ILogger? logger = null)
         : base(logger)

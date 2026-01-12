@@ -1,8 +1,8 @@
-using System.ComponentModel;
 using System.Data.Common;
 using System.IO.Abstractions;
 using DotNet.Testcontainers.Containers;
 using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Logging;
 using Moq;
 using Moq.Protected;
 using Testcontainers.AutoSetup.Core.Abstractions;
@@ -47,7 +47,8 @@ public class MsSqlDbRestorerTests
         var msSqlRestorer = new MsSqlDbRestorer(
             dbSetup: dbSetupMock.Object,
             container: containerMock.Object,
-            dbConnectionFactory: connectionFactoryMock.Object);
+            dbConnectionFactory: connectionFactoryMock.Object,
+            logger: Mock.Of<ILogger>());
 
         // Act & Assert
         await Assert.ThrowsAsync<SqlException>(async () => await msSqlRestorer.RestoreAsync());
@@ -87,7 +88,8 @@ public class MsSqlDbRestorerTests
         var msSqlRestorer = new MsSqlDbRestorer(
             dbSetup: dbSetupMock.Object,
             container: containerMock.Object,
-            dbConnectionFactory: connectionFactoryMock.Object);
+            dbConnectionFactory: connectionFactoryMock.Object,
+            logger: Mock.Of<ILogger>());
 
         // Act
         await  msSqlRestorer.SnapshotAsync();
@@ -118,7 +120,8 @@ public class MsSqlDbRestorerTests
         var msSqlRestorer = new MsSqlDbRestorer(
             dbSetupMock.Object,
             Mock.Of<IContainer>(),
-            Mock.Of<IDbConnectionFactory>());
+            Mock.Of<IDbConnectionFactory>(),
+            Mock.Of<ILogger>());
 
         // Act & Assert
         await Assert.ThrowsAsync<ExecFailedException>(async () => await msSqlRestorer.SnapshotAsync());
@@ -154,7 +157,8 @@ public class MsSqlDbRestorerTests
         var msSqlRestorer = new MsSqlDbRestorer(
             dbSetupMock.Object,
             containerMock.Object,
-            Mock.Of<IDbConnectionFactory>());
+            Mock.Of<IDbConnectionFactory>(),
+            Mock.Of<ILogger>());
 
         // Act 
         var result = await msSqlRestorer.IsSnapshotUpToDateAsync();
@@ -193,7 +197,8 @@ public class MsSqlDbRestorerTests
         var msSqlRestorer = new MsSqlDbRestorer(
             dbSetupMock.Object,
             containerMock.Object,
-            Mock.Of<IDbConnectionFactory>());
+            Mock.Of<IDbConnectionFactory>(),
+            Mock.Of<ILogger>());
 
         // Act 
         await Assert.ThrowsAsync<ExecFailedException>(async () => 
@@ -226,7 +231,8 @@ public class MsSqlDbRestorerTests
         var msSqlRestorer = new MsSqlDbRestorer(
             dbSetupMock.Object,
             containerMock.Object,
-            Mock.Of<IDbConnectionFactory>());
+            Mock.Of<IDbConnectionFactory>(),
+            Mock.Of<ILogger>());
 
         // Act 
         await Assert.ThrowsAsync<ExecFailedException>(async () => 
@@ -263,7 +269,8 @@ public class MsSqlDbRestorerTests
         var msSqlRestorer = new MsSqlDbRestorer(
             dbSetupMock.Object,
             containerMock.Object,
-            Mock.Of<IDbConnectionFactory>());
+            Mock.Of<IDbConnectionFactory>(),
+            Mock.Of<ILogger>());
 
         // Act 
         Assert.True(await msSqlRestorer.IsSnapshotUpToDateAsync());

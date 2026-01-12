@@ -1,4 +1,5 @@
 using DotNet.Testcontainers.Containers;
+using Microsoft.Extensions.Logging;
 using Moq;
 using Moq.Protected;
 using Testcontainers.AutoSetup.Core.Abstractions;
@@ -99,7 +100,7 @@ public class DbRestorerTests
         public TestDbRestorer(
             DbSetup dbSetup,
             IContainer container) 
-            : base(dbSetup, container)
+            : base(dbSetup, container, Mock.Of<ILogger>())
         {
         }
 

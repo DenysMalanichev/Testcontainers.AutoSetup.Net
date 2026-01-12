@@ -24,6 +24,7 @@ public static class EnvironmentHelper
             "CODEBUILD_BUILD_ID"  // AWS CodeBuild
         );
 
+    private static bool? _cachedIsWslRun;
     private static bool? _cachedIsCiRun;
     private static string? _cachedDockerEndpoint;
     private static object _lock = new();
@@ -133,6 +134,47 @@ public static class EnvironmentHelper
         }
     }
 
+    /// <summary>
+    /// Returns true if detected that Docker runs under WSL2, otherwise false
+    /// </summary>
+    public static bool IsWslDocker()
+    {
+        if(_cachedIsWslRun.HasValue) return _cachedIsWslRun.Value;
+
+        lock (_lock)
+        {
+            if(_cachedIsWslRun.HasValue) return _cachedIsWslRun.Value;
+
+            // If docker host has a specific IP - we assume that it runs under WSL/Linux
+            _cachedIsWslRun = GetDockerHostAddress() != "localhost";
+            return _cachedIsWslRun.Value;
+        }
+    }
+
+    /// <summary>
+    /// Converts the relative or absolute Windows path to WSL-mounted Linux path 
+    /// </summary>
+    /// <param name="windowsPath">Relative or absolute Windows path</param>
+    /// <returns>WSL-mounted Linux path of provided Windows path</returns>
+    public static string ConvertToWslPath(string windowsPath)
+    {
+        // 1. Ensure we have an absolute path (e.g. D:\Folder\File)
+        string fullPath = Path.GetFullPath(windowsPath);
+
+        // 2. Extract Drive Letter (D)
+        char driveLetter = char.ToLowerInvariant(fullPath[0]);
+
+        // 3. Extract the rest of the path (\Folder\File)
+        // Substring(2) skips "D:"
+        string pathWithoutDrive = fullPath.Substring(2);
+
+        // 4. Swap Backslashes for Slashes
+        string unixStylePath = pathWithoutDrive.Replace('\\', '/');
+
+        // 5. Construct /mnt/d/Folder/File
+        return $"/mnt/{driveLetter}{unixStylePath}";
+    }
+
     private static string? CalculateDockerEndpoint()
     {
         // 1. Priority: Custom Manual Endpoint
@@ -228,14 +270,6 @@ public static class EnvironmentHelper
         catch
         {
             return "localhost";
-        }
-    }
-
-    private static void ResetEndpointCache()
-    {
-        lock(_lock)
-        {
-            _cachedDockerEndpoint = null!;   
         }
     }
 }

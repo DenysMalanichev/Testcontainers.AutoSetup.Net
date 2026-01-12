@@ -359,7 +359,7 @@ public class DbSetupStrategyTests
         public bool IsSnapshotUpToDate { get; set; } = true;
 
         public TestDbRestorer(DbSetup dbSetup, IContainer container) 
-            : base(dbSetup, container)
+            : base(dbSetup, container, Mock.Of<ILogger>())
         { }
 
         public override Task RestoreAsync(CancellationToken cancellationToken = default)
@@ -383,7 +383,7 @@ public class DbSetupStrategyTests
     private class TestFailedCtorDbRestorer : DbRestorer
     {
         public TestFailedCtorDbRestorer(DbSetup dbSetup, IContainer container) 
-            : base(dbSetup, container)
+            : base(dbSetup, container, Mock.Of<ILogger>())
         {
             throw new Exception("Test restorer exception");
         }

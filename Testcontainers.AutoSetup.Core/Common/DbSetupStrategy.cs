@@ -64,6 +64,49 @@ public class DbSetupStrategy<TSeeder, TRestorer> : IDbStrategy
         _tryInitialRestoreFromSnapshot = tryInitialRestoreFromSnapshot;
     }
 
+    public DbSetupStrategy(
+        DbSetup dbSetup,
+        IContainer container,
+        bool tryInitialRestoreFromSnapshot = true,
+        IFileSystem? fileSystem = null,
+        ILogger? logger = null)
+    {
+        // TODO do not pass all dependencies as arguments.
+        // Create a Register dependency method within a strategy and register only required arguments.
+        // Alternatively, make arguments params(?)
+        var resolver = new DependencyResolver();
+
+        _logger = logger ?? NullLogger.Instance; // TODO shouldn't it be Testcontainers default logger????
+        resolver.Register(_logger);
+        resolver.Register(fileSystem ?? new FileSystem());
+
+        _container = container ?? throw new ArgumentNullException(nameof(container));
+        resolver.Register(_container);
+
+        _dbSetup = dbSetup ?? throw new ArgumentNullException(nameof(dbSetup));
+        resolver.Register(_dbSetup);
+
+        try
+        {
+            _seeder = resolver.CreateInstance<TSeeder>();
+        }
+        catch(Exception ex)
+        {
+            throw new ArgumentException($"Failed to instantiate a seeder of type {typeof(TSeeder)}", ex);
+        }
+        
+        try
+        {
+            _restorer = resolver.CreateInstance<TRestorer>();
+        }
+        catch(Exception ex)
+        {
+            throw new ArgumentException($"Failed to instantiate a restorer of type {typeof(TRestorer)}", ex);   
+        }
+        
+        _tryInitialRestoreFromSnapshot = tryInitialRestoreFromSnapshot;
+    }
+
     /// <inheritdoc/>
     public async Task InitializeGlobalAsync(CancellationToken cancellationToken = default)
     {

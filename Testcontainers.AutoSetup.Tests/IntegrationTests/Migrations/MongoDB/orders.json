@@ -1,0 +1,33 @@
+[
+  {
+    "_id": { "$oid": "64f1a2b3c4d5e6f7a8000001" },
+    "customerId": { "$oid": "60d5ec49f1a2b3c4d5e6f7a8" },
+    "items": [
+      { "product": "Laptop", "sku": "LPT-001", "qty": 1, "price": 1200 },
+      { "product": "Mouse", "sku": "MSE-002", "qty": 1, "price": 25 }
+    ],
+    "total": 1225,
+    "status": "shipped",
+    "shippingAddress": {
+      "street": "123 Rabbit Hole",
+      "city": "Wonderland",
+      "zip": "12345"
+    },
+    "orderDate": { "$date": "2023-05-20T10:00:00Z" }
+  },
+  {
+    "_id": { "$oid": "64f1a2b3c4d5e6f7a8000002" },
+    "customerId": { "$oid": "60d5ec49f1a2b3c4d5e6f7a9" },
+    "items": [
+      { "product": "Hammer", "sku": "HMR-999", "qty": 2, "price": 15 }
+    ],
+    "total": 30,
+    "status": "processing",
+    "shippingAddress": {
+      "street": "456 Construction Site",
+      "city": "Buildville",
+      "zip": "67890"
+    },
+    "orderDate": { "$date": "2023-06-01T11:45:00Z" }
+  }
+]

@@ -1,28 +1,24 @@
 using DotNet.Testcontainers.Containers;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.IdentityModel.Tokens;
 using Testcontainers.AutoSetup.Core.Abstractions;
 using Testcontainers.AutoSetup.Core.Abstractions.Entities;
+using Testcontainers.AutoSetup.Core.Abstractions.Sql;
 
 namespace Testcontainers.AutoSetup.Core.DbRestoration;
 
-public class MsSqlDbRestorer : DbRestorer
+public class MsSqlDbRestorer : SqlDbRestorer
 {
-    private readonly ILogger _logger;
     private readonly IDbConnectionFactory _dbConnectionFactory;
 
     public MsSqlDbRestorer(
         DbSetup dbSetup,
         IContainer container,
         IDbConnectionFactory dbConnectionFactory,
-        ILogger logger = null!)
-        : base(
-            dbSetup,
-            container)
+        ILogger logger)
+        : base(dbSetup, container, logger)
     {
-        _logger = logger ?? NullLogger.Instance;
         _dbConnectionFactory = dbConnectionFactory ?? throw new ArgumentNullException(nameof(dbConnectionFactory));
     }
 

@@ -7,23 +7,22 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Testcontainers.AutoSetup.Core.Abstractions;
 using Testcontainers.AutoSetup.Core.Abstractions.Entities;
+using Testcontainers.AutoSetup.Core.Abstractions.Sql;
 using Testcontainers.AutoSetup.Core.Common.Exceptions;
 
 namespace Testcontainers.AutoSetup.Core.DbRestoration;
 
-public class MySqlDbRestorer : DbRestorer
+public class MySqlDbRestorer : SqlDbRestorer
 {
-    private readonly ILogger _logger;
     private readonly IDbConnectionFactory _dbConnectionFactory;
 
     public MySqlDbRestorer(
         DbSetup dbSetup,
         IContainer container,
         IDbConnectionFactory dbConnectionFactory,
-        ILogger logger = null!)
-        : base(dbSetup, container)
+        ILogger logger)
+        : base(dbSetup, container, logger)
     {
-        _logger = logger ?? NullLogger.Instance;
         _dbConnectionFactory = dbConnectionFactory ?? throw new ArgumentNullException(nameof(dbConnectionFactory));
     }
 
