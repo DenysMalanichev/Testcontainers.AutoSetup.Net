@@ -39,13 +39,16 @@ public class RawMongoDbSeeder : MongoDbSeeder
         // TODO enforce a TMPFS mount use
         // TODO import these files into containers mount
         var commandBuilder = new StringBuilder();
-        commandBuilder.AppendLine("set -e"); // fail the whole script if any single import fails
+        // commandBuilder.AppendLine("set -e && "); // fail the whole script if any single import fails
 
+        bool isFirstImport = true;
         foreach ((string collectionName, string fileName) in dbSetup.MongoFiles)
         {
+            if(isFirstImport) isFirstImport = false;
+            else commandBuilder.Append(" && ");
+
             var containerFilePath = $"/var/tmp/migrations/data/{fileName}"; // TODO move to const
-            commandBuilder.Append(" && \\");
-            commandBuilder.AppendLine();
+           
             commandBuilder.Append("mongoimport ");
             commandBuilder.Append("--db ").Append(dbSetup.DbName).Append(' ');
             commandBuilder.Append("--collection ").Append(collectionName).Append(' ');
@@ -56,7 +59,7 @@ public class RawMongoDbSeeder : MongoDbSeeder
             commandBuilder.Append("--authenticationDatabase '").Append(dbSetup.AuthenticationDatabase).Append("' ");
             commandBuilder.Append("--jsonArray");
         }
-        var commandText = commandBuilder.ToString().Replace("\r\n", "");
+        var commandText = commandBuilder.ToString();
         _logger.LogInformation("Executing Mongo files against database '{Database}'", dbSetup.DbName);
         var result = await container.ExecAsync([
                 "/bin/bash",
