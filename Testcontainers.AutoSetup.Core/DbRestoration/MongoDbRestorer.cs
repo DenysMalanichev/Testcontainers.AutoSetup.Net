@@ -4,49 +4,46 @@ using DotNet.Testcontainers.Containers;
 using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
 using Testcontainers.AutoSetup.Core.Abstractions.Entities;
+using Testcontainers.AutoSetup.Core.Common;
 using Testcontainers.AutoSetup.Core.Common.Entities;
+using Testcontainers.AutoSetup.Core.Common.Helpers;
 
 namespace Testcontainers.AutoSetup.Core.DbRestoration;
 
 public class MongoDbRestorer : Abstractions.Mongo.MongoDbRestorer
 {
-    private const string DefaultMongoMigrationPath = "/var/tmp/migrations/data";
-    private const string DefaultMongoMigrationStamps = "/var/tmp/migrations/time_staps";
 
     public MongoDbRestorer(DbSetup dbSetup, IContainer container, ILogger logger)
         : base(dbSetup, container, logger)
-        { }
+    { }
 
-    public override async Task<bool> IsSnapshotUpToDateAsync(CancellationToken cancellationToken = default)
+    /// <inheritdoc/>
+    public override async Task<bool> IsSnapshotUpToDateAsync(IFileSystem fileSystem = null!, CancellationToken cancellationToken = default)
     {
-        // TODO calculate hash of provided files in DbSetup and those stored in container. 
-        // Return true if equal
-        var originalMigrationsHash = await _dbSetup.GetMigrationsLastModificationDateAsync(cancellationToken);
-        var containerMigrationsHash = await GetContainerFilesLMDAsync(cancellationToken);
+        fileSystem ??= new FileSystem();
+
+        var originalMigrationsHash = FileLMDHelper.GetDirectoryLastModificationDate(_dbSetup.MigrationsPath, fileSystem);
+        var containerMigrationsHash = await GetContainerFilesLMDAsync(cancellationToken).ConfigureAwait(false);
         return originalMigrationsHash < containerMigrationsHash;
     }
 
+    /// <inheritdoc/>
     public override async Task RestoreAsync(CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Restoring {dbName} DB.", _dbSetup.DbName);
 
-        var mongoDbSetup = (RawMongoDbSetup)_dbSetup;
-        var sb = new StringBuilder();
-        sb.Append("mongosh test_db --eval 'db.dropDatabase()' --quiet ");
-        sb.Append($"--username '{mongoDbSetup.Username}' ");
-        sb.Append($"--password '{mongoDbSetup.Password}' ");
-        sb.Append($"--authenticationDatabase '{mongoDbSetup.AuthenticationDatabase}' && ");
-        sb.Append("mongorestore --archive=/tmp/golden.gz --gzip --noIndexRestore "); // TODO no index restore - do I need to restore them manually?
-        sb.Append($"--username '{mongoDbSetup.Username}' ");
-        sb.Append($"--password '{mongoDbSetup.Password}' ");
-        sb.Append($"--authenticationDatabase '{mongoDbSetup.AuthenticationDatabase}'");
-        var command = sb.ToString();
+            var mongoDbSetup = (RawMongoDbSetup)_dbSetup;
+            var result = await _container.ExecAsync([
+                "mongorestore",
+                "--archive=/tmp/golden.gz",
+                "--gzip",
+                "--drop",
+                "--username", mongoDbSetup.Username,
+                "--password", mongoDbSetup.Password,
+                "--authenticationDatabase", mongoDbSetup.AuthenticationDatabase
+            ], cancellationToken).ConfigureAwait(false);
 
-        var result = await _container.ExecAsync(["/bin/bash", "-c", command], cancellationToken)
-            .ConfigureAwait(false);
-
-        // TODO stderr
-        if(/*!result.Stderr.IsNullOrEmpty() ||*/ result.ExitCode != 0)
+        if(result.ExitCode != 0)
         {
             _logger.LogError("Failed to restore {dbName} DB from raw Mongo files", _dbSetup.DbName);
             throw new ExecFailedException(result);
@@ -55,6 +52,7 @@ public class MongoDbRestorer : Abstractions.Mongo.MongoDbRestorer
         _logger.LogInformation("Successfully restored {dbName} DB.", _dbSetup.DbName);
     }
 
+    ///<inheritdoc/>
     public override async Task SnapshotAsync(CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Creating a snapshot for {dbName} DB", _dbSetup.DbName);
@@ -69,16 +67,14 @@ public class MongoDbRestorer : Abstractions.Mongo.MongoDbRestorer
         sb.Append($" --password '{mongoDbSetup.Password}'");
         sb.Append($" --authenticationDatabase '{mongoDbSetup.AuthenticationDatabase}'");
         var command = sb.ToString();
-        var result = await _container.ExecAsync(["/bin/bash", "-c", command], cancellationToken);
-        
-        // TODO check Stderr
-        if(/*!result.Stderr.IsNullOrEmpty() ||*/ result.ExitCode != 0)
+        var result = await _container.ExecAsync(["/bin/bash", "-c", command], cancellationToken).ConfigureAwait(false);
+
+        if(result.ExitCode != 0)
         {
             _logger.LogError("Failed to create a snapshot for {dbName} DB", _dbSetup.DbName);
             throw new ExecFailedException(result);
         }
-        
-        // TODO do I need to call .ConfigureAwait(false)??
+
         await CreateMigrationTimeStampFile(cancellationToken).ConfigureAwait(false);
 
         _logger.LogInformation("Successfully created a snapshot for {dbName} DB", _dbSetup.DbName);
@@ -88,10 +84,10 @@ public class MongoDbRestorer : Abstractions.Mongo.MongoDbRestorer
     {
         _logger.LogTrace("Retrieving {dbName} DB migration time stamp.", _dbSetup.DbName);
 
-        var command = $"cat '{$"{DefaultMongoMigrationPath}/{_dbSetup.DbName}_migration_time.txt"}'";
+        var command = $"cat '{$"{Constants.MongoDB.DefaultMigrationsDataPath}/{_dbSetup.DbName}_migration_time.txt"}'";
 
         var result = await _container.ExecAsync(
-            ["/bin/bash", "-c", command], cancellationToken);
+            ["/bin/bash", "-c", command], cancellationToken).ConfigureAwait(false);
 
         if(result.ExitCode == 1)
         {
@@ -122,10 +118,11 @@ public class MongoDbRestorer : Abstractions.Mongo.MongoDbRestorer
         _logger.LogTrace("Creating {dbName} DB migration time stamp file.", _dbSetup.DbName);
 
         // Ensures the directory exists and write the time stamp into the files
-        var command = $"mkdir -p {DefaultMongoMigrationStamps} && echo '{DateTime.UtcNow}' > {DefaultMongoMigrationStamps}/{_dbSetup.DbName}_migration_time_stamp.txt";
+        var command = $"mkdir -p {Constants.MongoDB.DefaultMigrationsTimestampsPath} && " + 
+            $"echo '{DateTime.UtcNow}' > {Constants.MongoDB.DefaultMigrationsTimestampsPath}/{_dbSetup.DbName}_migration_time_stamp.txt";
 
         var result = await _container.ExecAsync(
-            ["/bin/bash", "-c", command], cancellationToken);
+            ["/bin/bash", "-c", command], cancellationToken).ConfigureAwait(false);
 
         if(!result.Stderr.IsNullOrEmpty() || result.ExitCode != 0)
         {

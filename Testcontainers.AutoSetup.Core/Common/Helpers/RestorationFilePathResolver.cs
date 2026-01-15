@@ -3,10 +3,7 @@ using Testcontainers.AutoSetup.Core.Common.Enums;
 namespace Testcontainers.AutoSetup.Core.Common.Helpers;
 
 public class RestorationFilePathResolver
-{
-    private const string MsSqlRestorationStateFilesPath = "/var/opt/mssql/Restoration";
-    private const string MySqlRestorationStateFilesPath = null!;
-    
+{    
     /// <summary>
     /// Resolves the restoration file path based on the database type.
     /// </summary>
@@ -17,8 +14,8 @@ public class RestorationFilePathResolver
     {
         return dbType switch
         {
-            DbType.MsSQL => MsSqlRestorationStateFilesPath,
-            DbType.MySQL => MySqlRestorationStateFilesPath,
+            DbType.MsSQL => Constants.MsSQL.DefaultRestorationStateFilesPath,
+            DbType.MySQL => Constants.MySQL.DefaultRestorationStateFilesPath,
 
             _ => null
         };

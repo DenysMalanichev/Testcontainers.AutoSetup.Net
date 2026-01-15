@@ -1,7 +1,6 @@
 using System.IO.Abstractions;
 using Microsoft.EntityFrameworkCore;
 using Moq;
-using Moq.Protected;
 using Testcontainers.AutoSetup.Core.Common.Enums;
 using Testcontainers.AutoSetup.EntityFramework.Entities;
 using Testcontainers.AutoSetup.Tests.TestCollections;
@@ -13,207 +12,76 @@ namespace Testcontainers.AutoSetup.Tests.UnitTests.Entities;
 public class EfDbSetupTests
 {
     [Fact]
-    public async Task GetMigrationsLastModificationDateAsync_ThrowsDirectoryNotFoundException_IfMigrationsPathDoesntExist()
+    public void Constructor_SetsProperties_WhenArgumentsAreValid()
     {
         // Arrange
-        var dirMock = new Mock<IDirectoryInfo>();
-        dirMock.Setup(d => d.Exists).Returns(false);
+        var contextMock = new Mock<DbContext>();
+        Func<string, DbContext> factory = (str) => contextMock.Object;
+        
+        var dbName = "TestDb";
+        var connStr = "mongodb://localhost";
+        var migrationPath = "./migrations";
         var fileSystemMock = new Mock<IFileSystem>();
-        fileSystemMock
-            .Setup(fs => fs.DirectoryInfo.New(It.IsAny<string>()))
-            .Returns(dirMock.Object);
-        var dbSetupMock = new Mock<EfDbSetup>(
-            (string connStr) => (DbContext)null!,
-            "TestDbName",
-            "conn-str",
-            "./migrations",
-            DbType.Other,
-            false,
-            null!,
-            fileSystemMock.Object
-        ) { CallBase = true };
-
-        // Act & Assert
-        await Assert.ThrowsAsync<DirectoryNotFoundException>( 
-            () => dbSetupMock.Object.GetMigrationsLastModificationDateAsync(It.IsAny<CancellationToken>()));
-    }
-
-    [Fact]
-    public async Task GetMigrationsLastModificationDateAsync_ThrowsFileNotFoundExceptionException_IfFoundFilesListIsNull()
-    {
-        // Arrange
-        var dirMock = new Mock<IDirectoryInfo>();
-        dirMock.Setup(d => d.Exists).Returns(true);
-        dirMock.Setup(d => d.GetFileSystemInfos("*", SearchOption.AllDirectories))
-            .Returns((IFileSystemInfo[]?)null!);
-
-        var fileSystemMock = new Mock<IFileSystem>();
-        fileSystemMock
-            .Setup(fs => fs.DirectoryInfo.New(It.IsAny<string>()))
-            .Returns(dirMock.Object);
-
-        var dbSetupMock = new Mock<EfDbSetup>(
-            (string connStr) => (DbContext)null!,
-            "TestDbName",
-            "conn-str",
-            "./migrations",
-            DbType.Other,
-            false,
-            null!,
-            fileSystemMock.Object
-        ) { CallBase = true };
-
-        // Act & Assert
-        await Assert.ThrowsAsync<FileNotFoundException>( 
-            () => dbSetupMock.Object.GetMigrationsLastModificationDateAsync(It.IsAny<CancellationToken>()));
-    }
-
-    [Fact]
-    public async Task GetMigrationsLastModificationDateAsync_ThrowsFileNotFoundExceptionException_IfFoundFilesListIsEmpty()
-    {
-        // Arrange
-        var dirMock = new Mock<IDirectoryInfo>();
-        dirMock.Setup(d => d.Exists).Returns(true);
-        dirMock.Setup(d => d.GetFileSystemInfos("*", SearchOption.AllDirectories))
-            .Returns([]);
-
-        var fileSystemMock = new Mock<IFileSystem>();
-        fileSystemMock
-            .Setup(fs => fs.DirectoryInfo.New(It.IsAny<string>()))
-            .Returns(dirMock.Object);
-
-        var dbSetupMock = new Mock<EfDbSetup>(
-            (string connStr) => (DbContext)null!,
-            "TestDbName",
-            "conn-str",
-            "./migrations",
-            DbType.Other,
-            false,
-            null!,
-            fileSystemMock.Object
-        ) { CallBase = true };
-
-        // Act & Assert
-        await Assert.ThrowsAsync<FileNotFoundException>( 
-            () => dbSetupMock.Object.GetMigrationsLastModificationDateAsync(It.IsAny<CancellationToken>()));
-    }
-
-    [Fact]
-    public async Task GetMigrationsLastModificationDateAsync_ReturnsLatestModifiedFileLMD()
-    {
-        // Arrange
-
-        var dirMock = new Mock<IDirectoryInfo>();
-        dirMock.Setup(d => d.Exists).Returns(true);
-        var expectedLatestLmd = new DateTime(2024, 2, 1);
-        var file1Mock = new Mock<IFileSystemInfo>();
-        file1Mock.Setup(f => f.LastWriteTimeUtc).Returns(expectedLatestLmd);
-        var file2Mock = new Mock<IFileSystemInfo>();
-        file2Mock.Setup(f => f.LastWriteTimeUtc).Returns(new DateTime(2024, 1, 1));
-        dirMock.Setup(d => d.GetFileSystemInfos("*", SearchOption.AllDirectories))
-            .Returns([file1Mock.Object, file2Mock.Object]);
-        dirMock.Setup(d => d.LastWriteTimeUtc).Returns(new DateTime(2024, 1, 1));
-
-        var fileSystemMock = new Mock<IFileSystem>();
-        fileSystemMock
-            .Setup(fs => fs.DirectoryInfo.New(It.IsAny<string>()))
-            .Returns(dirMock.Object);
-
-        var dbSetupMock = new Mock<EfDbSetup>(
-            (string connStr) => (DbContext)null!,
-            "TestDbName",
-            "conn-str",
-            "./migrations",
-            DbType.Other,
-            false,
-            null!,
-            fileSystemMock.Object
-        ) { CallBase = true };
 
         // Act
-        var result = await dbSetupMock.Object.GetMigrationsLastModificationDateAsync(It.IsAny<CancellationToken>());
+        var sut = new EfDbSetup(
+            factory,
+            dbName,
+            connStr,
+            migrationPath,
+            DbType.MongoDB,
+            true,
+            "./state",
+            fileSystemMock.Object
+        );
 
         // Assert
-        Assert.Equal(expectedLatestLmd, result);
+        Assert.Equal(dbName, sut.DbName);
+        Assert.Equal(connStr, sut.ContainerConnectionString);
+        Assert.Equal(migrationPath, sut.MigrationsPath);
+        Assert.Equal(DbType.MongoDB, sut.DbType);
+        Assert.True(sut.RestoreFromDump);
+        Assert.Same(factory, sut.ContextFactory);
+        
+        // Verify the factory actually works as expected
+        var createdContext = sut.ContextFactory("test-connection");
+        Assert.Same(contextMock.Object, createdContext);
     }
 
     [Fact]
-    public async Task GetMigrationsLastModificationDateAsync_ReturnsParentDirLMD_IfItWasModifiedLatest()
+    public void Constructor_ThrowsArgumentNullException_WhenContextFactoryIsNull()
     {
         // Arrange
-        var dirMock = new Mock<IDirectoryInfo>();
-        dirMock.Setup(d => d.Exists).Returns(true);
-        var expectedLatestLmd = new DateTime(2024, 2, 1);
-        var file1Mock = new Mock<IFileSystemInfo>();
-        file1Mock.Setup(f => f.LastWriteTimeUtc).Returns(new DateTime(2024, 1, 1));
-        var file2Mock = new Mock<IFileSystemInfo>();
-        file2Mock.Setup(f => f.LastWriteTimeUtc).Returns(new DateTime(2024, 1, 1));
-        dirMock.Setup(d => d.GetFileSystemInfos("*", SearchOption.AllDirectories))
-            .Returns([file1Mock.Object, file2Mock.Object]);
-        dirMock.Setup(d => d.LastWriteTimeUtc).Returns(expectedLatestLmd);
+        Func<string, DbContext> nullFactory = null!;
 
-        var fileSystemMock = new Mock<IFileSystem>();
-        fileSystemMock
-            .Setup(fs => fs.DirectoryInfo.New(It.IsAny<string>()))
-            .Returns(dirMock.Object);
-
-        var dbSetupMock = new Mock<EfDbSetup>(
-            (string connStr) => (DbContext)null!,
-            "TestDbName",
+        // Act & Assert
+        var ex = Assert.Throws<ArgumentNullException>(() => new EfDbSetup(
+            nullFactory,
+            "TestDb",
             "conn-str",
-            "./migrations",
-            DbType.Other,
-            false,
-            null!,
-            fileSystemMock.Object
-        ) { CallBase = true };
+            "./migrations"
+        ));
 
-        // Act
-        var result = await dbSetupMock.Object.GetMigrationsLastModificationDateAsync(It.IsAny<CancellationToken>());
-
-        // Assert
-        Assert.Equal(expectedLatestLmd, result);
+        Assert.Equal("contextFactory", ex.ParamName);
     }
 
     [Fact]
-    public async Task GetMigrationsLastModificationDateAsync_ReturnsSubDirLMD_IfItWasModifiedLatest()
+    public void Constructor_AcceptsNullOptionalParameters()
     {
         // Arrange
-        var dirMock = new Mock<IDirectoryInfo>();
-        dirMock.Setup(d => d.Exists).Returns(true);
-        var expectedLatestLmd = new DateTime(2024, 2, 1);
-        var file1Mock = new Mock<IFileSystemInfo>();
-        file1Mock.Setup(f => f.LastWriteTimeUtc).Returns(new DateTime(2024, 1, 1));
-        var file2Mock = new Mock<IFileSystemInfo>();
-        file2Mock.Setup(f => f.LastWriteTimeUtc).Returns(new DateTime(2024, 1, 1));
-        var subDirMock = new Mock<IDirectoryInfo>();
-        subDirMock.Setup(f => f.LastWriteTimeUtc).Returns(expectedLatestLmd);
-        subDirMock.Setup(f => f.Attributes).Returns(FileAttributes.Directory);
-        subDirMock.Setup(f => f.Parent).Returns(dirMock.Object);
-        dirMock.Setup(d => d.GetFileSystemInfos("*", SearchOption.AllDirectories))
-            .Returns([file1Mock.Object, file2Mock.Object, subDirMock.Object]);
-        dirMock.Setup(d => d.LastWriteTimeUtc).Returns(new DateTime(2024, 1, 1));
-
-        var fileSystemMock = new Mock<IFileSystem>();
-        fileSystemMock
-            .Setup(fs => fs.DirectoryInfo.New(It.IsAny<string>()))
-            .Returns(dirMock.Object);
-            
-        var dbSetupMock = new Mock<EfDbSetup>(
-            (string connStr) => (DbContext)null!,
-            "TestDbName",
-            "conn-str",
-            "./migrations",
-            DbType.Other,
-            false,
-            null!,
-            fileSystemMock.Object
-        ) { CallBase = true };
+        var contextMock = new Mock<DbContext>();
+        Func<string, DbContext> factory = (str) => contextMock.Object;
 
         // Act
-        var result = await dbSetupMock.Object.GetMigrationsLastModificationDateAsync(It.IsAny<CancellationToken>());
+        var sut = new EfDbSetup(
+            factory,
+            "TestDb",
+            "conn-str",
+            "./migrations",
+            fileSystem: null // Explicitly testing null IFileSystem
+        );
 
         // Assert
-        Assert.Equal(expectedLatestLmd, result);
+        Assert.NotNull(sut);
     }
 }

@@ -17,9 +17,6 @@ public class DbSetupTests
 
         public override string BuildDbConnectionString() 
             => "containerConnStr";
-
-        public override Task<DateTime> GetMigrationsLastModificationDateAsync(CancellationToken cancellationToken = default) 
-            => Task.FromResult(DateTime.MinValue);
     }
 
     [Fact]

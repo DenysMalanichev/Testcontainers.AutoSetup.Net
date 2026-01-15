@@ -1,3 +1,4 @@
+using System.IO.Abstractions;
 using DotNet.Testcontainers.Containers;
 using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
@@ -55,7 +56,7 @@ public abstract class DbRestorer
     /// </exception>
     protected async Task EnsureRestorationDirectoryExistsAsync()
     {        
-        var result = await _container.ExecAsync(["/bin/bash", "-c", $"mkdir -p {_dbSetup.RestorationStateFilesDirectory}"]);
+        var result = await _container.ExecAsync(["/bin/bash", "-c", $"mkdir -p {_dbSetup.RestorationStateFilesDirectory}"]).ConfigureAwait(false);
         if(result.ExitCode != 0 || !string.IsNullOrEmpty(result.Stderr))
         {
             throw new ExecFailedException(result);
@@ -79,5 +80,5 @@ public abstract class DbRestorer
     /// </summary>
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
-    public abstract Task<bool> IsSnapshotUpToDateAsync(CancellationToken cancellationToken = default);
+    public abstract Task<bool> IsSnapshotUpToDateAsync(IFileSystem fileSystem = null!, CancellationToken cancellationToken = default);
 }

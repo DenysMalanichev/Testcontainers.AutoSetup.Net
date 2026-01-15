@@ -304,7 +304,6 @@ public class GlobalTestSetup : GenericTestBase
     private static RawMongoDbSetup SpecificMongoDbRawDbSetup(string connectionString) => new(
             dbName: "MongoTest",
             dbType: Core.Common.Enums.DbType.MySQL,
-            containerConnectionString: connectionString,
             migrationsPath: "./IntegrationTests/Migrations/MongoDB",
             mongoFiles:
                 new Dictionary<string, string>()

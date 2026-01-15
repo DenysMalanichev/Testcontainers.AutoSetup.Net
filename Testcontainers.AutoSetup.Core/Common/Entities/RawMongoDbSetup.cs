@@ -32,9 +32,8 @@ public record RawMongoDbSetup : DbSetup
     public string AuthenticationDatabase { get; init; } = "admin";
 
     public RawMongoDbSetup(
-         Dictionary<string, string> mongoFiles,
+        Dictionary<string, string> mongoFiles,
         string dbName,
-        string containerConnectionString,
         string migrationsPath,
         DbType dbType = DbType.Other,
         bool restoreFromDump = false,
@@ -42,7 +41,7 @@ public record RawMongoDbSetup : DbSetup
         IFileSystem? fileSystem = null)
             : base(
                 dbName,
-                containerConnectionString,
+                string.Empty, // connection string - not required for MongoDB restoration from raw files 
                 migrationsPath,
                 dbType,
                 restoreFromDump,
@@ -55,39 +54,5 @@ public record RawMongoDbSetup : DbSetup
         }
 
         MongoFiles = mongoFiles;
-    }
-
-    /// <inheritdoc/>
-    public override Task<DateTime> GetMigrationsLastModificationDateAsync(CancellationToken cancellationToken = default)
-    {
-        // TODO consider implement a common helper to identify LMD
-        var dirInfo = FileSystem.DirectoryInfo.New(MigrationsPath);
-        if (!dirInfo.Exists)
-        {
-            throw new DirectoryNotFoundException($"Specified migrations folder does not exist ({MigrationsPath})");
-        }
-
-        // Use GetFileSystemInfos to get Files AND Directories recursively
-        var fileSystemEntries = dirInfo.GetFileSystemInfos("*", SearchOption.AllDirectories)
-            .Where(f => MongoFiles.ContainsValue(f.Name))
-            .ToArray();
-
-        if (fileSystemEntries == null || fileSystemEntries.Length == 0)
-        {
-            throw new FileNotFoundException($"Specified migrations folder is empty ({MigrationsPath})");
-        }
-        if (fileSystemEntries.Length != MongoFiles.Count)
-        {
-            throw new FileNotFoundException($"Some of the specified SQL files were not found in the migrations folder ({MigrationsPath})");
-        }
-
-        var newestChange = fileSystemEntries.Max(x => x.LastWriteTimeUtc);
-
-        if (dirInfo.LastWriteTimeUtc > newestChange)
-        {
-            newestChange = dirInfo.LastWriteTimeUtc;
-        }
-
-        return Task.FromResult(newestChange);
     }
 }

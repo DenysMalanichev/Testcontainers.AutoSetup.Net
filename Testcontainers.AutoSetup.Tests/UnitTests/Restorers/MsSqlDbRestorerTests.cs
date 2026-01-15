@@ -134,6 +134,15 @@ public class MsSqlDbRestorerTests
         var containerMock = new Mock<IContainer>();
         const string restorationPath = "/tmp/missing-mount";
 
+        var fileInfos = new IFileSystemInfo[] { Mock.Of<IFileInfo>(), Mock.Of<IFileInfo>() };
+        var dirInfoMock = new Mock<IDirectoryInfo>();
+        dirInfoMock.Setup(di => di.Exists).Returns(true);
+        dirInfoMock.Setup(di => di.GetFileSystemInfos("*", SearchOption.AllDirectories))
+            .Returns(fileInfos);
+        var fileSystemMock = new Mock<IFileSystem>();
+        fileSystemMock.Setup(fs => fs.DirectoryInfo.New(It.IsAny<string>()))
+            .Returns(dirInfoMock.Object);
+
         containerMock.Setup(c => c.ExecAsync(It.Is<IList<string>>(args => 
             args.Contains($"findmnt {restorationPath}")), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ExecResult(string.Empty, string.Empty, 1));
@@ -161,7 +170,7 @@ public class MsSqlDbRestorerTests
             Mock.Of<ILogger>());
 
         // Act 
-        var result = await msSqlRestorer.IsSnapshotUpToDateAsync();
+        var result = await msSqlRestorer.IsSnapshotUpToDateAsync(fileSystemMock.Object);
 
         // Assert
         Assert.False(result);
@@ -173,6 +182,15 @@ public class MsSqlDbRestorerTests
         // Arrange
         var containerMock = new Mock<IContainer>();
         const string restorationPath = "/tmp/missing-mount";
+
+        var fileInfos = new IFileSystemInfo[] { Mock.Of<IFileInfo>(), Mock.Of<IFileInfo>() };
+        var dirInfoMock = new Mock<IDirectoryInfo>();
+        dirInfoMock.Setup(di => di.Exists).Returns(true);
+        dirInfoMock.Setup(di => di.GetFileSystemInfos("*", SearchOption.AllDirectories))
+            .Returns(fileInfos);
+        var fileSystemMock = new Mock<IFileSystem>();
+        fileSystemMock.Setup(fs => fs.DirectoryInfo.New(It.IsAny<string>()))
+            .Returns(dirInfoMock.Object);
 
         containerMock.Setup(c => c.ExecAsync(It.Is<IList<string>>(args => 
             args.Contains($"findmnt {restorationPath}")), It.IsAny<CancellationToken>()))
@@ -202,7 +220,7 @@ public class MsSqlDbRestorerTests
 
         // Act 
         await Assert.ThrowsAsync<ExecFailedException>(async () => 
-            await msSqlRestorer.IsSnapshotUpToDateAsync());
+            await msSqlRestorer.IsSnapshotUpToDateAsync(fileSystemMock.Object));
     }
 
     [Fact]
@@ -211,6 +229,15 @@ public class MsSqlDbRestorerTests
         // Arrange
         var containerMock = new Mock<IContainer>();
         const string restorationPath = "/tmp/missing-mount";
+
+        var fileInfos = new IFileSystemInfo[] { Mock.Of<IFileInfo>(), Mock.Of<IFileInfo>() };
+        var dirInfoMock = new Mock<IDirectoryInfo>();
+        dirInfoMock.Setup(di => di.Exists).Returns(true);
+        dirInfoMock.Setup(di => di.GetFileSystemInfos("*", SearchOption.AllDirectories))
+            .Returns(fileInfos);
+        var fileSystemMock = new Mock<IFileSystem>();
+        fileSystemMock.Setup(fs => fs.DirectoryInfo.New(It.IsAny<string>()))
+            .Returns(dirInfoMock.Object);
         
         containerMock.Setup(
             c => c.ExecAsync(It.Is<IList<string>>(
@@ -236,7 +263,7 @@ public class MsSqlDbRestorerTests
 
         // Act 
         await Assert.ThrowsAsync<ExecFailedException>(async () => 
-            await msSqlRestorer.IsSnapshotUpToDateAsync());
+            await msSqlRestorer.IsSnapshotUpToDateAsync(fileSystemMock.Object));
     }
 
     [Fact]
@@ -245,6 +272,15 @@ public class MsSqlDbRestorerTests
         // Arrange
         var containerMock = new Mock<IContainer>();
         const string restorationPath = "/tmp/missing-mount";
+
+        var fileInfos = new IFileSystemInfo[] { Mock.Of<IFileInfo>(), Mock.Of<IFileInfo>() };
+        var dirInfoMock = new Mock<IDirectoryInfo>();
+        dirInfoMock.Setup(di => di.Exists).Returns(true);
+        dirInfoMock.Setup(di => di.GetFileSystemInfos("*", SearchOption.AllDirectories))
+            .Returns(fileInfos);
+        var fileSystemMock = new Mock<IFileSystem>();
+        fileSystemMock.Setup(fs => fs.DirectoryInfo.New(It.IsAny<string>()))
+            .Returns(dirInfoMock.Object);
         
         containerMock.Setup(
             c => c.ExecAsync(It.Is<IList<string>>(
@@ -273,13 +309,13 @@ public class MsSqlDbRestorerTests
             Mock.Of<ILogger>());
 
         // Act 
-        Assert.True(await msSqlRestorer.IsSnapshotUpToDateAsync());
+        Assert.True(await msSqlRestorer.IsSnapshotUpToDateAsync(fileSystemMock.Object));
     }
 
     private static SqlException MakeSqlException() {
         SqlException exception = null!;
         try {
-            SqlConnection conn = new SqlConnection(@"Data Source=.;Database=GUARANTEED_TO_FAIL;Connection Timeout=1");
+            SqlConnection conn = new(@"Data Source=.;Database=GUARANTEED_TO_FAIL;Connection Timeout=1");
             conn.Open();
         } catch(SqlException ex) {
             exception = ex;

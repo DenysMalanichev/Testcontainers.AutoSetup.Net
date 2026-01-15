@@ -1,7 +1,7 @@
+using System.IO.Abstractions;
 using DotNet.Testcontainers.Containers;
 using Microsoft.Extensions.Logging;
 using Moq;
-using Moq.Protected;
 using Testcontainers.AutoSetup.Core.Abstractions;
 using Testcontainers.AutoSetup.Core.Abstractions.Entities;
 using Testcontainers.AutoSetup.Core.Common.Enums;
@@ -119,7 +119,7 @@ public class DbRestorerTests
             throw new NotImplementedException();
         }
 
-        public override Task<bool> IsSnapshotUpToDateAsync(CancellationToken cancellationToken = default)
+        public override Task<bool> IsSnapshotUpToDateAsync(IFileSystem fileSystem = null!, CancellationToken cancellationToken = default)
         {
             throw new NotImplementedException();
         }

@@ -2,6 +2,7 @@ using System.Reflection;
 using Docker.DotNet.Models;
 using DotNet.Testcontainers.Configurations;
 using DotNet.Testcontainers.Containers;
+using Testcontainers.AutoSetup.Core.Common;
 using Testcontainers.AutoSetup.Core.Extensions;
 using Testcontainers.AutoSetup.Tests.TestCollections;
 using Testcontainers.MsSql;
@@ -55,7 +56,7 @@ public class AutoSetupExtensionsTests
             configuration.Mounts, 
             m => 
                 m.Source.Equals($"{containerName}-Restoration") && 
-                m.Target.Equals("/var/opt/mssql/Restoration") && 
+                m.Target.Equals(Constants.MsSQL.DefaultRestorationStateFilesPath) && 
                 m.Type.Type == MountType.Volume.Type &&
                 m.AccessMode == AccessMode.ReadWrite);
         Assert.Single(
@@ -63,7 +64,7 @@ public class AutoSetupExtensionsTests
             m =>
                 m.Type.Type == MountType.Tmpfs.Type &&
                 m.AccessMode == AccessMode.ReadWrite &&
-                m.Target.Equals("/var/opt/mssql/data")
+                m.Target.Equals(Constants.MsSQL.DefaultRestorationDataFilesPath)
         );
 
         var parameters = new CreateContainerParameters();

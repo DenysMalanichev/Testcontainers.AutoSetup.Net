@@ -1,5 +1,6 @@
 using System.Data.Common;
 using System.IO.Abstractions;
+using Microsoft.Extensions.Logging;
 using Moq;
 using Moq.Protected;
 using Testcontainers.AutoSetup.Core.Abstractions;
@@ -52,7 +53,7 @@ public class RawSqlDbSeederTests
         var mockFactory = new Mock<IDbConnectionFactory>();
         mockFactory.Setup(f => f.CreateDbConnection(It.IsAny<string>())).Returns(mockConnection.Object);
 
-        var seeder = new RawSqlDbSeeder(mockFactory.Object, fileSystemMock.Object, null);
+        var seeder = new RawSqlDbSeeder(mockFactory.Object, fileSystemMock.Object, Mock.Of<ILogger>());
 
         // Act
         await seeder.SeedAsync(dbSetupMock.Object, container: null!);
@@ -106,7 +107,7 @@ public class RawSqlDbSeederTests
         var mockFactory = new Mock<IDbConnectionFactory>();
         mockFactory.Setup(f => f.CreateDbConnection(It.IsAny<string>())).Returns(mockConnection.Object);
 
-        var seeder = new RawSqlDbSeeder(mockFactory.Object, fileSystemMock.Object, null);
+        var seeder = new RawSqlDbSeeder(mockFactory.Object, fileSystemMock.Object, Mock.Of<ILogger>());
 
         // Act
         await seeder.SeedAsync(dbSetupMock.Object, container: null!);

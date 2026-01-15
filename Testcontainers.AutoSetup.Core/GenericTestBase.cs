@@ -30,9 +30,9 @@ public abstract class GenericTestBase
             throw new InvalidOperationException("The test environment has already been initialized.");
         }
 
-        await ConfigureSetupAsync();
+        await ConfigureSetupAsync().ConfigureAwait(false);
 
-        await TestEnvironment.InitializeAsync();
+        await TestEnvironment.InitializeAsync().ConfigureAwait(false);
 
         _isInitialized = true;
     }
@@ -62,7 +62,7 @@ public abstract class GenericTestBase
 
         if (ShouldReset(testClassType))
         {
-            await TestEnvironment.ResetAsync();
+            await TestEnvironment.ResetAsync().ConfigureAwait(false);
         }
     }
 

@@ -2,9 +2,9 @@ using System.IO.Abstractions;
 using System.Text;
 using DotNet.Testcontainers.Containers;
 using Microsoft.Extensions.Logging;
-using Microsoft.IdentityModel.Tokens;
 using Testcontainers.AutoSetup.Core.Abstractions.Entities;
 using Testcontainers.AutoSetup.Core.Abstractions.Mongo;
+using Testcontainers.AutoSetup.Core.Common;
 using Testcontainers.AutoSetup.Core.Common.Entities;
 
 namespace Testcontainers.AutoSetup.Core.DbSeeding;
@@ -36,10 +36,7 @@ public class RawMongoDbSeeder : MongoDbSeeder
         IContainer container,
         CancellationToken cancellationToken)
     {
-        // TODO enforce a TMPFS mount use
-        // TODO import these files into containers mount
         var commandBuilder = new StringBuilder();
-        // commandBuilder.AppendLine("set -e && "); // fail the whole script if any single import fails
 
         bool isFirstImport = true;
         foreach ((string collectionName, string fileName) in dbSetup.MongoFiles)
@@ -47,7 +44,7 @@ public class RawMongoDbSeeder : MongoDbSeeder
             if(isFirstImport) isFirstImport = false;
             else commandBuilder.Append(" && ");
 
-            var containerFilePath = $"/var/tmp/migrations/data/{fileName}"; // TODO move to const
+            var containerFilePath = $"{Constants.MongoDB.DefaultMigrationsDataPath}/{fileName}";
            
             commandBuilder.Append("mongoimport ");
             commandBuilder.Append("--db ").Append(dbSetup.DbName).Append(' ');
@@ -66,11 +63,9 @@ public class RawMongoDbSeeder : MongoDbSeeder
                 "-c",
                 commandText],
             cancellationToken
-        );
+        ).ConfigureAwait(false);
 
-        // TODO currently status message is returned as Strerr, 
-        // test if it is possible to have errors importing files yet ExitCode = 0
-        if (/*!result.Stderr.IsNullOrEmpty() ||*/ result.ExitCode != 0)
+        if (result.ExitCode != 0)
         {
             _logger.LogError("Failed to migrate MongoDB files to {DbName} database", dbSetup.DbName);
             throw new ExecFailedException(result);

@@ -88,7 +88,7 @@ public partial class TestEnvironment
     /// <returns>A task that completes when all registered strategies have finished executing.</returns>
     public virtual async Task InitializeAsync(CancellationToken ct = default)
     {
-        await Task.WhenAll(_initializeTasks.Select(x => x(ct)));
+        await Task.WhenAll(_initializeTasks.Select(x => x(ct))).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -103,6 +103,6 @@ public partial class TestEnvironment
     /// <returns>A task that completes when all registered strategies have finished executing.</returns>
     public virtual async Task ResetAsync(CancellationToken ct = default)
     {
-        await Task.WhenAll(_resetTasks.Select(x => x(ct)));
+        await Task.WhenAll(_resetTasks.Select(x => x(ct))).ConfigureAwait(false);
     }
 }

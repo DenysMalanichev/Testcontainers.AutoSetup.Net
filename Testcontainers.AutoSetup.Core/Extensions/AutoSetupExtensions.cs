@@ -1,14 +1,13 @@
 using DotNet.Testcontainers.Builders;
 using DotNet.Testcontainers.Configurations;
 using DotNet.Testcontainers.Containers;
+using Testcontainers.AutoSetup.Core.Common;
 using Testcontainers.AutoSetup.Core.Helpers;
 
 namespace Testcontainers.AutoSetup.Core.Extensions;
 
 public static class AutoSetupExtensions
 {
-    private const string RestorationPath = "/var/opt/mssql/Restoration";
-    private const string DataPath = "/var/opt/mssql/data";
 
     /// <summary>
     /// Configures the Testcontainer builder with the essential settings required by the AutoSetup library.
@@ -69,8 +68,8 @@ public static class AutoSetupExtensions
         where TConfiguration : IContainerConfiguration
     {
         return builder
-            .WithVolumeMount($"{containerName}-Restoration", RestorationPath, AccessMode.ReadWrite)
-            .WithTmpfsMount(DataPath, AccessMode.ReadWrite)
+            .WithVolumeMount($"{containerName}-Restoration", Constants.MsSQL.DefaultRestorationStateFilesPath, AccessMode.ReadWrite)
+            .WithTmpfsMount(Constants.MsSQL.DefaultRestorationDataFilesPath, AccessMode.ReadWrite)
             .WithCreateParameterModifier(config =>
             {
                 config.User = "root";
@@ -122,8 +121,18 @@ public static class AutoSetupExtensions
         where TContainer : IContainer
         where TConfiguration : IContainerConfiguration
     {
-        var commonSetup = WithAutoSetupReuseDefaults(builder, containerName);
-        return commonSetup;
+        return builder.WithAutoSetupReuseDefaults(containerName)
+                      .WithMySQLAutoSetupDefaultsInternal();
+    }
+
+    internal static TBuilder WithMySQLAutoSetupDefaultsInternal<TBuilder, TContainer, TConfiguration>(
+        this ContainerBuilder<TBuilder, TContainer, TConfiguration> builder)
+        where TBuilder : ContainerBuilder<TBuilder, TContainer, TConfiguration>
+        where TContainer : IContainer
+        where TConfiguration : IContainerConfiguration
+    {
+        var commonSetup = builder.WithTmpfsMount(Constants.MySQL.DefaultDbDataDirectory, AccessMode.ReadWrite);
+        return (TBuilder)commonSetup;
     }
 
     /// <summary>
@@ -272,8 +281,8 @@ public static class AutoSetupExtensions
         }
         
         return builder
-            .WithTmpfsMount(DataPath, AccessMode.ReadWrite)
-            .WithBindMount(migrationsPath, "/var/tmp/migrations/data", AccessMode.ReadOnly) // TODO move to const
+            .WithTmpfsMount(Constants.MongoDB.DefaultDbDataDirectory, AccessMode.ReadWrite)
+            .WithBindMount(migrationsPath, Constants.MongoDB.DefaultMigrationsDataPath, AccessMode.ReadOnly)
             .WithCreateParameterModifier(config =>
             {
                 config.User = "root";

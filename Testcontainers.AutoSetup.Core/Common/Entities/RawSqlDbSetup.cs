@@ -37,37 +37,4 @@ public record RawSqlDbSetup : DbSetup
 
         SqlFiles = sqlFiles;
     }
-
-    /// <inheridoc />
-    public override Task<DateTime> GetMigrationsLastModificationDateAsync(CancellationToken cancellationToken = default)
-    {
-        var dirInfo = FileSystem.DirectoryInfo.New(MigrationsPath);
-        if (!dirInfo.Exists)
-        {
-            throw new DirectoryNotFoundException($"Specified migrations folder does not exist ({MigrationsPath})");
-        }
-
-        // Use GetFileSystemInfos to get Files AND Directories recursively
-        var fileSystemEntries = dirInfo.GetFileSystemInfos("*", SearchOption.AllDirectories)
-            .Where(f => SqlFiles.Contains(f.Name))
-            .ToArray();
-
-        if (fileSystemEntries == null || fileSystemEntries.Length == 0)
-        {
-            throw new FileNotFoundException($"Specified migrations folder is empty ({MigrationsPath})");
-        }
-        if (fileSystemEntries.Length != SqlFiles.Count)
-        {
-            throw new FileNotFoundException($"Some of the specified SQL files were not found in the migrations folder ({MigrationsPath})");
-        }
-
-        var newestChange = fileSystemEntries.Max(x => x.LastWriteTimeUtc);
-
-        if (dirInfo.LastWriteTimeUtc > newestChange)
-        {
-            newestChange = dirInfo.LastWriteTimeUtc;
-        }
-
-        return Task.FromResult(newestChange);
-    }
 }

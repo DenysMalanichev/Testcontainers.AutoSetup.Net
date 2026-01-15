@@ -1,7 +1,6 @@
 using System.IO.Abstractions;
 using DotNet.Testcontainers.Containers;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
 using Testcontainers.AutoSetup.Core.Abstractions;
 using Testcontainers.AutoSetup.Core.Abstractions.Entities;
 using Testcontainers.AutoSetup.Core.Common.Helpers;
@@ -30,8 +29,9 @@ public class DbSetupStrategy<TSeeder, TRestorer> : IDbStrategy
     {
         var resolver = new DependencyResolver();
 
-        _logger = logger ?? NullLogger.Instance;
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         resolver.Register(_logger);
+
         resolver.Register(fileSystem ?? new FileSystem());
 
         _container = container ?? throw new ArgumentNullException(nameof(container));
@@ -74,9 +74,10 @@ public class DbSetupStrategy<TSeeder, TRestorer> : IDbStrategy
         // TODO do not pass all dependencies as arguments.
         // Create a Register dependency method within a strategy and register only required arguments.
         // Alternatively, make arguments params(?)
+        // Alternatively, make strategy a builder(?)
         var resolver = new DependencyResolver();
 
-        _logger = logger ?? NullLogger.Instance; // TODO shouldn't it be Testcontainers default logger????
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         resolver.Register(_logger);
         resolver.Register(fileSystem ?? new FileSystem());
 
@@ -111,22 +112,22 @@ public class DbSetupStrategy<TSeeder, TRestorer> : IDbStrategy
     public async Task InitializeGlobalAsync(CancellationToken cancellationToken = default)
     {
         if (_tryInitialRestoreFromSnapshot 
-            && await _restorer.IsSnapshotUpToDateAsync(cancellationToken))
+            && await _restorer.IsSnapshotUpToDateAsync(cancellationToken: cancellationToken).ConfigureAwait(false))
         {
-            await _restorer.RestoreAsync(cancellationToken);
+            await _restorer.RestoreAsync(cancellationToken).ConfigureAwait(false);
             return;
         }
         await _seeder.SeedAsync(
             _dbSetup,
             _container,
-            cancellationToken);
+            cancellationToken).ConfigureAwait(false);
 
-        await _restorer.SnapshotAsync(cancellationToken);
+        await _restorer.SnapshotAsync(cancellationToken).ConfigureAwait(false);
     }
 
     /// <inheritdoc/>
     public async Task ResetAsync(CancellationToken cancellationToken = default)
     {
-        await _restorer.RestoreAsync(cancellationToken);
+        await _restorer.RestoreAsync(cancellationToken).ConfigureAwait(false);
     }
 }

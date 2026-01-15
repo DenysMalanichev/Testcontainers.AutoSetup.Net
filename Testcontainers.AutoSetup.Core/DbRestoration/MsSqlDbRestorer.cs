@@ -1,3 +1,4 @@
+using System.IO.Abstractions;
 using DotNet.Testcontainers.Containers;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
@@ -5,6 +6,7 @@ using Microsoft.IdentityModel.Tokens;
 using Testcontainers.AutoSetup.Core.Abstractions;
 using Testcontainers.AutoSetup.Core.Abstractions.Entities;
 using Testcontainers.AutoSetup.Core.Abstractions.Sql;
+using Testcontainers.AutoSetup.Core.Common.Helpers;
 
 namespace Testcontainers.AutoSetup.Core.DbRestoration;
 
@@ -26,7 +28,7 @@ public class MsSqlDbRestorer : SqlDbRestorer
     public override async Task RestoreAsync(CancellationToken cancellationToken = default)
     {
         await using var connection = _dbConnectionFactory.CreateDbConnection(_dbSetup.ContainerConnectionString);
-        await connection.OpenAsync(cancellationToken);
+        await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
 
         var sql = $@"
             USE master;
@@ -85,11 +87,11 @@ public class MsSqlDbRestorer : SqlDbRestorer
             await using var command = connection.CreateCommand();
             command.CommandText = sql;
             command.CommandTimeout = 60;
-            await command.ExecuteNonQueryAsync(cancellationToken);
+            await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
         }
         catch (SqlException ex)
         {
-            await connection.DisposeAsync();
+            await connection.DisposeAsync().ConfigureAwait(false);
             _logger.LogError($"Restore failed: {ex.Message}");
             throw;
         }
@@ -100,12 +102,12 @@ public class MsSqlDbRestorer : SqlDbRestorer
     /// <inheritdoc/>
     public override async Task SnapshotAsync(CancellationToken cancellationToken = default)
     {
-        await EnsureRestorationDirectoryExistsAsync();
+        await EnsureRestorationDirectoryExistsAsync().ConfigureAwait(false);
 
         _restorationSnapshotName = $"{_dbSetup.DbName}_snapshot_{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}";
 
         await using var connection = _dbConnectionFactory.CreateDbConnection(_dbSetup.ContainerConnectionString);
-        await connection.OpenAsync(cancellationToken);
+        await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
 
         var sql = $@"
             USE [{_dbSetup.DbName}];
@@ -124,14 +126,16 @@ public class MsSqlDbRestorer : SqlDbRestorer
         await using var command = connection.CreateCommand();
         command.CommandText = sql;
         command.CommandTimeout = 60;
-        await command.ExecuteNonQueryAsync(cancellationToken);
+        await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
     }
 
     /// <inheritdoc/>
-    public override async Task<bool> IsSnapshotUpToDateAsync(CancellationToken cancellationToken = default)
+    public override async Task<bool> IsSnapshotUpToDateAsync(IFileSystem fileSystem = null!, CancellationToken cancellationToken = default)
     {
-        return await IsSnapshotValidAsync(cancellationToken) && 
-               await IsMountExistsAsync(cancellationToken);
+        fileSystem ??= new FileSystem();
+
+        return await IsSnapshotValidAsync(fileSystem, cancellationToken).ConfigureAwait(false) && 
+               await IsMountExistsAsync(cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -140,7 +144,7 @@ public class MsSqlDbRestorer : SqlDbRestorer
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
     /// <exception cref="ExecFailedException"></exception>
-    private async Task<bool> IsSnapshotValidAsync(CancellationToken cancellationToken)
+    private async Task<bool> IsSnapshotValidAsync(IFileSystem fileSystem, CancellationToken cancellationToken)
     {
         // COMMAND EXPLANATION:
         // Checks if at least one snapshot exists in the directory
@@ -149,7 +153,7 @@ public class MsSqlDbRestorer : SqlDbRestorer
         // -print -quit         -> Stop searching as soon as we find ONE new file
         // test -n "..."        -> Returns Exit Code 0 (Success) if the string is NOT EMPTY (new files found)
         //                      -> Returns Exit Code 1 (Fail) if the string is EMPTY (no new files found)
-        var migrationsLMD = await _dbSetup.GetMigrationsLastModificationDateAsync(cancellationToken);
+        var migrationsLMD = FileLMDHelper.GetDirectoryLastModificationDate(_dbSetup.MigrationsPath, fileSystem);
         var cmd = $"ls {_dbSetup.RestorationStateFilesDirectory}/{_dbSetup.DbName}_snapshot_* > /dev/null 2>&1 && " + 
            $"test -n \"$(find {_dbSetup.RestorationStateFilesDirectory} " +
            $"-maxdepth 1 -name '{_dbSetup.DbName}_snapshot_*' " +
@@ -159,7 +163,7 @@ public class MsSqlDbRestorer : SqlDbRestorer
             "/bin/bash", 
             "-c", 
             cmd
-        ], cancellationToken);
+        ], cancellationToken).ConfigureAwait(false);
 
         if (result.ExitCode == 0 && result.Stderr.IsNullOrEmpty())
         {
@@ -188,7 +192,7 @@ public class MsSqlDbRestorer : SqlDbRestorer
             "/bin/bash", 
             "-c", 
             $"findmnt {_dbSetup.RestorationStateFilesDirectory}",
-        ], cancellationToken);
+        ], cancellationToken).ConfigureAwait(false);
 
         if (result.ExitCode == 0)
         {
