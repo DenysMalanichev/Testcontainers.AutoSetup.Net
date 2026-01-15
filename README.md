@@ -29,10 +29,10 @@ Testcontainers.AutoSetup.Net provides the functionality of automatic migrations 
     </tr>
     <tr>
         <td>MongoDB</td>
-        <td>❌ (Comming soon)</td>
-        <td> - </td>
-        <td>Respawn or dump</td>
-        <td> - </td>
+        <td> ✅ </td>
+        <td>Both with official Testcontainers MongoDbBuilder and generic builds</td>
+        <td>Dump</td>
+        <td> Raw data files </td>
     </tr>
     <tr>
         <td>PostreSQL</td>
