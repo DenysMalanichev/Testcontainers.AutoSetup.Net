@@ -1,7 +1,6 @@
 using System.IO.Abstractions;
 using DotNet.Testcontainers.Containers;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
 using Testcontainers.AutoSetup.Core.Abstractions;
 using Testcontainers.AutoSetup.Core.Abstractions.Entities;
 using Testcontainers.AutoSetup.Core.Common.Helpers;
@@ -30,8 +29,9 @@ public class DbSetupStrategy<TSeeder, TRestorer> : IDbStrategy
     {
         var resolver = new DependencyResolver();
 
-        _logger = logger ?? NullLogger.Instance;
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         resolver.Register(_logger);
+
         resolver.Register(fileSystem ?? new FileSystem());
 
         _container = container ?? throw new ArgumentNullException(nameof(container));
@@ -64,26 +64,70 @@ public class DbSetupStrategy<TSeeder, TRestorer> : IDbStrategy
         _tryInitialRestoreFromSnapshot = tryInitialRestoreFromSnapshot;
     }
 
+    public DbSetupStrategy(
+        DbSetup dbSetup,
+        IContainer container,
+        bool tryInitialRestoreFromSnapshot = true,
+        IFileSystem? fileSystem = null,
+        ILogger? logger = null)
+    {
+        // TODO do not pass all dependencies as arguments.
+        // Create a Register dependency method within a strategy and register only required arguments.
+        // Alternatively, make arguments params(?)
+        // Alternatively, make strategy a builder(?)
+        var resolver = new DependencyResolver();
+
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        resolver.Register(_logger);
+        resolver.Register(fileSystem ?? new FileSystem());
+
+        _container = container ?? throw new ArgumentNullException(nameof(container));
+        resolver.Register(_container);
+
+        _dbSetup = dbSetup ?? throw new ArgumentNullException(nameof(dbSetup));
+        resolver.Register(_dbSetup);
+
+        try
+        {
+            _seeder = resolver.CreateInstance<TSeeder>();
+        }
+        catch(Exception ex)
+        {
+            throw new ArgumentException($"Failed to instantiate a seeder of type {typeof(TSeeder)}", ex);
+        }
+        
+        try
+        {
+            _restorer = resolver.CreateInstance<TRestorer>();
+        }
+        catch(Exception ex)
+        {
+            throw new ArgumentException($"Failed to instantiate a restorer of type {typeof(TRestorer)}", ex);   
+        }
+        
+        _tryInitialRestoreFromSnapshot = tryInitialRestoreFromSnapshot;
+    }
+
     /// <inheritdoc/>
     public async Task InitializeGlobalAsync(CancellationToken cancellationToken = default)
     {
         if (_tryInitialRestoreFromSnapshot 
-            && await _restorer.IsSnapshotUpToDateAsync(cancellationToken))
+            && await _restorer.IsSnapshotUpToDateAsync(cancellationToken: cancellationToken).ConfigureAwait(false))
         {
-            await _restorer.RestoreAsync(cancellationToken);
+            await _restorer.RestoreAsync(cancellationToken).ConfigureAwait(false);
             return;
         }
         await _seeder.SeedAsync(
             _dbSetup,
             _container,
-            cancellationToken);
+            cancellationToken).ConfigureAwait(false);
 
-        await _restorer.SnapshotAsync(cancellationToken);
+        await _restorer.SnapshotAsync(cancellationToken).ConfigureAwait(false);
     }
 
     /// <inheritdoc/>
     public async Task ResetAsync(CancellationToken cancellationToken = default)
     {
-        await _restorer.RestoreAsync(cancellationToken);
+        await _restorer.RestoreAsync(cancellationToken).ConfigureAwait(false);
     }
 }

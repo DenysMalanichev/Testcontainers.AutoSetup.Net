@@ -1,29 +1,29 @@
 using System.Data.Common;
 using System.Diagnostics;
+using System.IO.Abstractions;
 using System.Runtime.CompilerServices;
 using System.Text;
 using DotNet.Testcontainers.Containers;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
 using Testcontainers.AutoSetup.Core.Abstractions;
 using Testcontainers.AutoSetup.Core.Abstractions.Entities;
+using Testcontainers.AutoSetup.Core.Abstractions.Sql;
 using Testcontainers.AutoSetup.Core.Common.Exceptions;
+using Testcontainers.AutoSetup.Core.Common.Helpers;
 
 namespace Testcontainers.AutoSetup.Core.DbRestoration;
 
-public class MySqlDbRestorer : DbRestorer
+public class MySqlDbRestorer : SqlDbRestorer
 {
-    private readonly ILogger _logger;
     private readonly IDbConnectionFactory _dbConnectionFactory;
 
     public MySqlDbRestorer(
         DbSetup dbSetup,
         IContainer container,
         IDbConnectionFactory dbConnectionFactory,
-        ILogger logger = null!)
-        : base(dbSetup, container)
+        ILogger logger)
+        : base(dbSetup, container, logger)
     {
-        _logger = logger ?? NullLogger.Instance;
         _dbConnectionFactory = dbConnectionFactory ?? throw new ArgumentNullException(nameof(dbConnectionFactory));
     }
 
@@ -33,13 +33,13 @@ public class MySqlDbRestorer : DbRestorer
         _logger.LogInformation("Starting restoration of MySQL {DbName} database...", _dbSetup.DbName);
         var stopwatch = Stopwatch.StartNew();
         await using var connection = _dbConnectionFactory.CreateDbConnection(_dbSetup.ContainerConnectionString);
-        await connection.OpenAsync(cancellationToken);
+        await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
 
-        var restoreCommand = await CreateRestorationCommand(connection, cancellationToken);
+        var restoreCommand = await CreateRestorationCommand(connection, cancellationToken).ConfigureAwait(false);
 
         await using var command = connection.CreateCommand();
         command.CommandText = restoreCommand;
-        var result = await command.ExecuteNonQueryAsync(cancellationToken);
+        var result = await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
 
         stopwatch.Stop();
         _logger.LogInformation("Restored MySQL DB in {time}", stopwatch.ElapsedMilliseconds);
@@ -53,10 +53,10 @@ public class MySqlDbRestorer : DbRestorer
         _logger.LogInformation("Starting snapshot of MySQL {DbName} database...", _dbSetup.DbName);
         var stopwatch = Stopwatch.StartNew();
         await using var connection = _dbConnectionFactory.CreateDbConnection(_dbSetup.ContainerConnectionString);
-        await connection.OpenAsync(cancellationToken);
+        await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
 
-        await DisableRedoLogAsync(connection, cancellationToken);
-        await CreateGoldenStateDbAsync(connection, cancellationToken);
+        await DisableRedoLogAsync(connection, cancellationToken).ConfigureAwait(false);
+        await CreateGoldenStateDbAsync(connection, cancellationToken).ConfigureAwait(false);
 
         stopwatch.Stop();
         _logger.LogInformation("Snapshoted MySQL DB in {time}", stopwatch.ElapsedMilliseconds);
@@ -76,17 +76,19 @@ public class MySqlDbRestorer : DbRestorer
         const string disableRedoLogCommand = "ALTER INSTANCE DISABLE INNODB REDO_LOG;";
         await using var command = connection.CreateCommand();
         command.CommandText = disableRedoLogCommand;
-        await command.ExecuteNonQueryAsync(cancellationToken);
+        await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
         _logger.LogInformation("Redo log has been disabled.");
     }
 
     /// <inheritdoc/>
-    public override async Task<bool> IsSnapshotUpToDateAsync(CancellationToken cancellationToken = default)
+    public override async Task<bool> IsSnapshotUpToDateAsync(IFileSystem fileSystem = null!, CancellationToken cancellationToken = default)
     {
-        var migrationsLMD = await _dbSetup.GetMigrationsLastModificationDateAsync(cancellationToken);
+        fileSystem ??= new FileSystem();
+
+        var migrationsLMD = FileLMDHelper.GetDirectoryLastModificationDate(_dbSetup.MigrationsPath, fileSystem);
 
         await using var connection = _dbConnectionFactory.CreateDbConnection(_dbSetup.ContainerConnectionString);
-        await connection.OpenAsync(cancellationToken);
+        await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
         // Gets the LMD of the first table created within golden state DB
         var checkCmd = $@"
             SELECT MIN(create_time) AS Creation_Time
@@ -94,7 +96,7 @@ public class MySqlDbRestorer : DbRestorer
             WHERE table_schema = '{_dbSetup.DbName}_golden_state'";
         await using var command = connection.CreateCommand();
         command.CommandText = checkCmd;
-        var result = await command.ExecuteScalarAsync(cancellationToken);
+        var result = await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false);
         var isSuccess = DateTime.TryParse(result!.ToString(), out var gsDbLMD);
 
         return isSuccess && migrationsLMD < gsDbLMD;
@@ -113,7 +115,7 @@ public class MySqlDbRestorer : DbRestorer
         var goldenStateDbName = $"{_dbSetup.DbName}_golden_state";
         await using var createDbCmd = connection.CreateCommand();
         createDbCmd.CommandText = $"DROP DATABASE IF EXISTS `{goldenStateDbName}`; CREATE DATABASE `{goldenStateDbName}`;";
-        var result = await createDbCmd.ExecuteNonQueryAsync(cancellationToken);
+        var result = await createDbCmd.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
 
         if (result is not 1)
         {
@@ -136,7 +138,7 @@ public class MySqlDbRestorer : DbRestorer
         
         await using var dataRestorationCommand = connection.CreateCommand();
         dataRestorationCommand.CommandText = dataRestorationCommandBuilder.ToString();
-        await dataRestorationCommand.ExecuteNonQueryAsync(cancellationToken);
+        await dataRestorationCommand.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
         
         _logger.LogInformation("Golden state database created successfully.");
     }
@@ -159,13 +161,13 @@ public class MySqlDbRestorer : DbRestorer
                 AND table_type = 'BASE TABLE';";
         await using var command = connection.CreateCommand();
         command.CommandText = getAllTablesCommand;
-        await using var result = await command.ExecuteReaderAsync(cancellationToken);
+        await using var result = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
 
         if(result.HasRows)
         {
             _logger.LogInformation("Successfully identified DB tables.");
             // The result must be a single column with table names. 0 identifies this single column
-            while (await result.ReadAsync(cancellationToken))
+            while (await result.ReadAsync(cancellationToken).ConfigureAwait(false))
                 yield return result.GetString(0);
         }
         else

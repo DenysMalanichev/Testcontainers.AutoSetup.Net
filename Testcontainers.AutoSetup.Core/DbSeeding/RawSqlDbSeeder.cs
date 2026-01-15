@@ -5,11 +5,12 @@ using DotNet.Testcontainers.Containers;
 using Microsoft.Extensions.Logging;
 using Testcontainers.AutoSetup.Core.Abstractions;
 using Testcontainers.AutoSetup.Core.Abstractions.Entities;
+using Testcontainers.AutoSetup.Core.Abstractions.Sql;
 using Testcontainers.AutoSetup.Core.Common.Entities;
 
 namespace Testcontainers.AutoSetup.Core.DbSeeding;
 
-public sealed class RawSqlDbSeeder : DbSeeder
+public sealed class RawSqlDbSeeder : SqlDbSeeder
 {
     private IDbConnectionFactory _dbConnectionFactory;
     private IFileSystem _fileSystem;
@@ -33,15 +34,18 @@ public sealed class RawSqlDbSeeder : DbSeeder
     /// <inheridoc />
     public override async Task SeedAsync(DbSetup dbSetup, IContainer container, CancellationToken cancellationToken = default)
     {
+        if(dbSetup is not RawSqlDbSetup)
+        {
+            throw new ArgumentException($"{typeof(RawSqlDbSetup)} must be provided as an argument for raw SQL seeding.");
+        }
+
         await ExecuteSqlFilesAsync((RawSqlDbSetup)dbSetup, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
     /// Executes the SQL files defined in the RawSqlDbSetup against the target database.
     /// </summary>
-    internal async Task ExecuteSqlFilesAsync(
-        RawSqlDbSetup dbSetup,
-        CancellationToken cancellationToken)
+    internal async Task ExecuteSqlFilesAsync(RawSqlDbSetup dbSetup, CancellationToken cancellationToken)
     {
         var migrationsDirectory = _fileSystem.Path.GetFullPath(dbSetup.MigrationsPath);
         await using var connection = _dbConnectionFactory.CreateDbConnection(dbSetup.ContainerConnectionString);

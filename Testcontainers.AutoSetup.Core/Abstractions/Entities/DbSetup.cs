@@ -56,12 +56,6 @@ public abstract partial record DbSetup
 
         return containerConnStr;
     }
-
-    /// <summary>
-    /// Returns a <see cref="DateTime"/> identifying the last time migrations files changed
-    /// </summary>
-    /// <param name="cancellationToken"></param>
-    public abstract Task<DateTime> GetMigrationsLastModificationDateAsync(CancellationToken cancellationToken = default);
     
     [GeneratedRegex("Database=[^;]*;")]
     private static partial Regex DbNameRegex();

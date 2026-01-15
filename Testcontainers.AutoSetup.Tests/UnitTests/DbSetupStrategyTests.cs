@@ -146,8 +146,6 @@ public class DbSetupStrategyTests
             restorationPath,
             new Mock<IFileSystem>().Object
         );
-        dbSetupMock.Setup(ds => ds.GetMigrationsLastModificationDateAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(DateTime.MinValue);
         bool tryInitialRestoreFromSnapshot = true;
         var containerMock = new Mock<IContainer>();
 
@@ -359,7 +357,7 @@ public class DbSetupStrategyTests
         public bool IsSnapshotUpToDate { get; set; } = true;
 
         public TestDbRestorer(DbSetup dbSetup, IContainer container) 
-            : base(dbSetup, container)
+            : base(dbSetup, container, Mock.Of<ILogger>())
         { }
 
         public override Task RestoreAsync(CancellationToken cancellationToken = default)
@@ -374,7 +372,7 @@ public class DbSetupStrategyTests
             return Task.CompletedTask;
         }
 
-        public override Task<bool> IsSnapshotUpToDateAsync(CancellationToken cancellationToken = default)
+        public override Task<bool> IsSnapshotUpToDateAsync(IFileSystem fileSystem = null!, CancellationToken cancellationToken = default)
         {
             return Task.FromResult(IsSnapshotUpToDate);
         }
@@ -383,12 +381,12 @@ public class DbSetupStrategyTests
     private class TestFailedCtorDbRestorer : DbRestorer
     {
         public TestFailedCtorDbRestorer(DbSetup dbSetup, IContainer container) 
-            : base(dbSetup, container)
+            : base(dbSetup, container, Mock.Of<ILogger>())
         {
             throw new Exception("Test restorer exception");
         }
 
-        public override Task<bool> IsSnapshotUpToDateAsync(CancellationToken cancellationToken = default)
+        public override Task<bool> IsSnapshotUpToDateAsync(IFileSystem fileSystem = null!, CancellationToken cancellationToken = default)
         {
             throw new NotImplementedException();
         }

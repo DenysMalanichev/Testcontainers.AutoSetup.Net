@@ -7,7 +7,7 @@ public class ContainersFixture : IAsyncLifetime
     // CALLED ONCE: Before the first test in the collection runs
     public async Task InitializeAsync()
     {
-        await Setup.InitializeEnvironmentAsync();
+        await Setup.InitializeEnvironmentAsync().ConfigureAwait(false);
     }
 
     // CALLED ONCE: After the last test in the collection finishes

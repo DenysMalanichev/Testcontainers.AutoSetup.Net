@@ -18,6 +18,7 @@ using Testcontainers.AutoSetup.Tests.IntegrationTests.Migrations.MSSQL.EfMigrati
 using Testcontainers.AutoSetup.Tests.IntegrationTests.Migrations.MySQL.EfMigrations;
 using Testcontainers.AutoSetup.Tests.IntegrationTests.TestHelpers;
 using Testcontainers.AutoSetup.Core.DbSeeding;
+using Testcontainers.MongoDb;
 
 namespace Testcontainers.AutoSetup.Tests.IntegrationTests;
 
@@ -33,6 +34,10 @@ public class GlobalTestSetup : GenericTestBase
     public DbSetup? MySqlContainer_SpecificBuilder_EfDbSetup { get; private set; } = null!;
     public IContainer MySqlContainerFromGenericBuilder = null!;
     public DbSetup? MySqlContainer_GenericBuilder_EfDbSetup { get; private set; } = null!;
+    public MongoDbContainer MongoContainerFromSpecificBuilder = null!;
+    public DbSetup? MongoContainer_FromSpecificBuilder_RawMongoDbSetup { get; private set; } = null!;
+    public IContainer MongoContainerFromGenericBuilder = null!;
+    public DbSetup? MongoContainer_FromGenericBuilder_RawMongoDbSetup { get; private set; } = null!;
 
     public readonly string? DockerEndpoint = EnvironmentHelper.GetDockerEndpoint();
 
@@ -49,20 +54,26 @@ public class GlobalTestSetup : GenericTestBase
 
         MySqlContainerFromSpecificBuilder = CreateMySqlContainerFromSpecificBuilder();
         MySqlContainerFromGenericBuilder = CreateMySqlContainerFromGenericBuilder();
+
+        MongoContainerFromSpecificBuilder = CreateMongoDbContainerFromSpecificBuilder();
+        MongoContainerFromGenericBuilder = CreateMongoDbContainerFromGenericBuilder();
         
         await Task.WhenAll(
             MsSqlContainerFromSpecificBuilder.StartAsync(),
             MsSqlContainerFromGenericBuilder.StartAsync(),
 
             MySqlContainerFromSpecificBuilder.StartAsync(),
-            MySqlContainerFromGenericBuilder.StartAsync()
+            MySqlContainerFromGenericBuilder.StartAsync(),
+
+            MongoContainerFromSpecificBuilder.StartAsync(),
+            MongoContainerFromGenericBuilder.StartAsync()
         );
 
         // 2. Register containers within the environment
 
         // Register MsSql with EF Seeder
         MsSqlContainer_SpecificBuilder_EfDbSetup = MsSqlEFDbSetup(MsSqlContainerFromSpecificBuilder.GetConnectionString());        
-        TestEnvironment.Register<EfSeeder, MsSqlDbRestorer>(
+        TestEnvironment.RegisterSqlDb<EfSeeder, MsSqlDbRestorer>(
             MsSqlContainer_SpecificBuilder_EfDbSetup,
             MsSqlContainerFromSpecificBuilder,
             new MsSqlDbConnectionFactory(),
@@ -70,7 +81,7 @@ public class GlobalTestSetup : GenericTestBase
 
         // Register MsSql with Raw SQL Seeder
         MsSqlContainer_SpecificBuilder_RawSqlDbSetup = MsSqlRawSqlDbSetup(MsSqlContainerFromSpecificBuilder.GetConnectionString());        
-        TestEnvironment.Register<RawSqlDbSeeder, MsSqlDbRestorer>(
+        TestEnvironment.RegisterSqlDb<RawSqlDbSeeder, MsSqlDbRestorer>(
             MsSqlContainer_SpecificBuilder_RawSqlDbSetup,
             MsSqlContainerFromSpecificBuilder,
             new MsSqlDbConnectionFactory(),
@@ -79,7 +90,7 @@ public class GlobalTestSetup : GenericTestBase
         // Register Generic MsSql with EF Seeder
         var mappedPort = MsSqlContainerFromGenericBuilder.GetMappedPublicPort(1433);
         MsSqlContainer_GenericBuilder_EfDbSetup = GenericMsSqlEFDbSetup(mappedPort);
-        TestEnvironment.Register<EfSeeder, MsSqlDbRestorer>(
+        TestEnvironment.RegisterSqlDb<EfSeeder, MsSqlDbRestorer>(
             MsSqlContainer_GenericBuilder_EfDbSetup,
             MsSqlContainerFromGenericBuilder,
             new MsSqlDbConnectionFactory(),
@@ -87,7 +98,7 @@ public class GlobalTestSetup : GenericTestBase
 
         // Register Generic MsSql with Raw SQL Seeder
         MsSqlContainer_GenericBuilder_RawSqlDbSetup = GenericMsSqlRawSqlDbSetup(mappedPort);
-        TestEnvironment.Register<RawSqlDbSeeder, MsSqlDbRestorer>(
+        TestEnvironment.RegisterSqlDb<RawSqlDbSeeder, MsSqlDbRestorer>(
             MsSqlContainer_GenericBuilder_RawSqlDbSetup,
             MsSqlContainerFromGenericBuilder,
             new MsSqlDbConnectionFactory(),
@@ -95,7 +106,7 @@ public class GlobalTestSetup : GenericTestBase
 
         // Register MySql container with EF Seeder
         MySqlContainer_SpecificBuilder_EfDbSetup = MySqlEFDbSetup(MySqlContainerFromSpecificBuilder.GetConnectionString());
-        TestEnvironment.Register<EfSeeder, MySqlDbRestorer>(
+        TestEnvironment.RegisterSqlDb<EfSeeder, MySqlDbRestorer>(
             MySqlContainer_SpecificBuilder_EfDbSetup,
             MySqlContainerFromSpecificBuilder,
             new MySqlDbConnectionFactory(),
@@ -103,7 +114,7 @@ public class GlobalTestSetup : GenericTestBase
 
         // Register MySql container with Raw SQL Seeder
         MySqlContainer_SpecificBuilder_EfDbSetup = MySqlRawSqlDbSetup(MySqlContainerFromSpecificBuilder.GetConnectionString());
-        TestEnvironment.Register<RawSqlDbSeeder, MySqlDbRestorer>(
+        TestEnvironment.RegisterSqlDb<RawSqlDbSeeder, MySqlDbRestorer>(
             MySqlContainer_SpecificBuilder_EfDbSetup,
             MySqlContainerFromSpecificBuilder,
             new MySqlDbConnectionFactory(),
@@ -112,7 +123,7 @@ public class GlobalTestSetup : GenericTestBase
         // Register MySql container with EF Seeder
         var mappedPortMySql = MySqlContainerFromGenericBuilder.GetMappedPublicPort(3306);
         MySqlContainer_GenericBuilder_EfDbSetup = GenericMySqlEFDbSetup(mappedPortMySql);
-        TestEnvironment.Register<EfSeeder, MySqlDbRestorer>(
+        TestEnvironment.RegisterSqlDb<EfSeeder, MySqlDbRestorer>(
             MySqlContainer_GenericBuilder_EfDbSetup,
             MySqlContainerFromGenericBuilder,
             new MySqlDbConnectionFactory(),
@@ -120,10 +131,24 @@ public class GlobalTestSetup : GenericTestBase
             
         // Register MySql container with EF Seeder
         MySqlContainer_GenericBuilder_EfDbSetup = GenericMySqlRawSqlDbSetup(mappedPortMySql);
-        TestEnvironment.Register<RawSqlDbSeeder, MySqlDbRestorer>(
+        TestEnvironment.RegisterSqlDb<RawSqlDbSeeder, MySqlDbRestorer>(
             MySqlContainer_GenericBuilder_EfDbSetup,
             MySqlContainerFromGenericBuilder,
             new MySqlDbConnectionFactory(),
+            logger: Logger);
+
+        // Register MongoDB container with raw files Seeder
+        MongoContainer_FromSpecificBuilder_RawMongoDbSetup = SpecificMongoDbRawDbSetup();
+        TestEnvironment.RegisterMongoDb<RawMongoDbSeeder, MongoDbRestorer>(
+            MongoContainer_FromSpecificBuilder_RawMongoDbSetup,
+            MongoContainerFromSpecificBuilder,
+            logger: Logger);
+
+        // Register MongoDB container with raw files Seeder
+        MongoContainer_FromGenericBuilder_RawMongoDbSetup = GenericMongoDbRawDbSetup();
+        TestEnvironment.RegisterMongoDb<RawMongoDbSeeder, MongoDbRestorer>(
+            MongoContainer_FromGenericBuilder_RawMongoDbSetup,
+            MongoContainerFromGenericBuilder,
             logger: Logger);
     }
 
@@ -182,6 +207,31 @@ public class GlobalTestSetup : GenericTestBase
             .Build();
 
         return container;
+    }
+
+    private static MongoDbContainer CreateMongoDbContainerFromSpecificBuilder()
+    {
+        var builder = new MongoDbBuilder("mongo:6.0.27-jammy");
+        builder = builder.WithMongoAutoSetupDefaults(
+            containerName: "Mongo-testcontainer",
+            migrationsPath: "./IntegrationTests/Migrations/MongoDB/RawData");
+        var container = builder.Build();
+
+        return container;
+    }
+
+    private static IContainer CreateMongoDbContainerFromGenericBuilder()
+    {
+        var builder = new ContainerBuilder("mongo:6.0.27-jammy");
+        return builder
+            .WithMongoAutoSetupDefaults(
+                containerName: "GenericMongo-testcontainer",
+                migrationsPath: "./IntegrationTests/Migrations/MongoDB/RawData")
+            .WithPortBinding(27017, assignRandomHostPort: true)
+            .WithEnvironment("MONGO_INITDB_ROOT_USERNAME", "mongo")
+            .WithEnvironment("MONGO_INITDB_ROOT_PASSWORD", "mongo")
+            .WithWaitStrategy(Wait.ForUnixContainer().AddCustomWaitStrategy(new WaitInitiateReplicaSet()))
+            .Build();
     }
 
     private static EfDbSetup MsSqlEFDbSetup(string containerConnectionString) => new(
@@ -276,7 +326,33 @@ public class GlobalTestSetup : GenericTestBase
                 ]
         );
 
+    private static RawMongoDbSetup SpecificMongoDbRawDbSetup() => new(
+            dbName: "MongoTest",
+            dbType: Core.Common.Enums.DbType.MySQL,
+            migrationsPath: "./IntegrationTests/Migrations/MongoDB/RawData",
+            mongoFiles:
+                new Dictionary<string, string>()
+                {
+                    {"orders", "orders.json"},
+                    {"users", "users.json"}
+                }      
+        )
+    {
+        Username = "mongo",
+        Password = "mongo"
+    };
 
+    private static RawMongoDbSetup GenericMongoDbRawDbSetup() => new(
+            dbName: "MongoTest",
+            dbType: Core.Common.Enums.DbType.MySQL,
+            migrationsPath: "./IntegrationTests/Migrations/MongoDB/RawData",
+            mongoFiles:
+                new Dictionary<string, string>()
+                {
+                    {"orders", "orders.json"},
+                    {"users", "users.json"}
+                }      
+        );
 
     /// <inheritdoc cref="IWaitUntil" />
     /// <remarks>
@@ -294,6 +370,17 @@ public class GlobalTestSetup : GenericTestBase
                 .ConfigureAwait(false);
 
             return 0L.Equals(execResult.ExitCode);
+        }
+    }
+
+    /// <inheritdoc cref="IWaitUntil" />
+    private sealed class WaitInitiateReplicaSet : IWaitUntil
+    {
+        /// <inheritdoc />
+        public Task<bool> UntilAsync(IContainer container)
+        {
+            Task.Delay(5_000); // Simple 5 seconds wait for container to initialize. Must be used only for testing
+            return Task.FromResult(true);
         }
     }
 }

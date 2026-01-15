@@ -23,9 +23,16 @@ Testcontainers.AutoSetup.Net provides the functionality of automatic migrations 
     <tr>
         <td>MySQL</td>
         <td> ✅ </td>
-        <td>Both with official Testcontainers MsSqlBuilder and generic builds</td>
+        <td>Both with official Testcontainers MySqlBuilder and generic builds</td>
         <td>From "golden state DB"</td>
         <td>EF Core <br> Raw SQL</td>
+    </tr>
+    <tr>
+        <td>MongoDB</td>
+        <td> ✅ </td>
+        <td>Both with official Testcontainers MongoDbBuilder and generic builds</td>
+        <td>Dump</td>
+        <td> Raw data files </td>
     </tr>
     <tr>
         <td>PostreSQL</td>
@@ -39,13 +46,6 @@ Testcontainers.AutoSetup.Net provides the functionality of automatic migrations 
         <td>❌ (Comming soon)</td>
         <td> - </td>
         <td>Snapshot Standby</td>
-        <td> - </td>
-    </tr>
-    <tr>
-        <td>MongoDB</td>
-        <td>❌ (Comming soon)</td>
-        <td> - </td>
-        <td>Respawn or dump</td>
         <td> - </td>
     </tr>
     <tr>

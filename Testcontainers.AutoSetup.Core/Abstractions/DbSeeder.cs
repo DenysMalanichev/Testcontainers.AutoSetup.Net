@@ -1,7 +1,5 @@
-using System.IO.Abstractions;
 using DotNet.Testcontainers.Containers;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
 using Testcontainers.AutoSetup.Core.Abstractions.Entities;
 
 namespace Testcontainers.AutoSetup.Core.Abstractions;
@@ -12,7 +10,7 @@ public abstract class DbSeeder
 
     public DbSeeder(ILogger? logger = null)
     {
-        _logger = logger ?? NullLogger.Instance;
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
     /// <summary>

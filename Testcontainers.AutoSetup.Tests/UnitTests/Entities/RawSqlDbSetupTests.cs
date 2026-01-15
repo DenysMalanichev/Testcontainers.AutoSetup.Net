@@ -1,8 +1,4 @@
-using System.IO.Abstractions;
-using Moq;
-using Moq.Protected;
 using Testcontainers.AutoSetup.Core.Common.Entities;
-using Testcontainers.AutoSetup.Core.Common.Enums;
 using Testcontainers.AutoSetup.Tests.TestCollections;
 
 namespace Testcontainers.AutoSetup.Tests.UnitTests.Entities;
@@ -30,95 +26,34 @@ public class RawSqlDbSetupTests
     }
 
     [Fact]
-    public async Task GetMigrationsLastModificationDateAsync_ThrowsDirectoryNotFoundException_IfMigrationsPathDoesntExist()
+    public async Task RawSqlDbSetup_ThrowsArgumentException_IfSqlFilesListIsNull()
     {
         // Arrange
-        var dirMock = new Mock<IDirectoryInfo>();
-        dirMock.Setup(d => d.Exists).Returns(false);
+        List<string> sqlFiles = null!;
 
-        var fileSystemMock = new Mock<IFileSystem>();
-        fileSystemMock
-            .Setup(fs => fs.DirectoryInfo.New(It.IsAny<string>()))
-            .Returns(dirMock.Object);
-
-        var sqlFiles = new List<string> { "script1.sql", "script2.sql" };
-        var dbSetupMock = new Mock<RawSqlDbSetup>(
-            sqlFiles,
-            "TestDbName",
-            "conn-str",
-            "./migrations",
-            DbType.Other,
-            true,
-            null!,
-            fileSystemMock.Object
-        ) { CallBase = true };
-
-        // Act & Assert Assert
-        await Assert.ThrowsAsync<DirectoryNotFoundException>(
-            () => dbSetupMock.Object.GetMigrationsLastModificationDateAsync(It.IsAny<CancellationToken>()));
+        // Act && Assert
+        await Assert.ThrowsAsync<ArgumentException>(async () => 
+            new RawSqlDbSetup(
+                dbName: "TestDb",
+                migrationsPath: "./migrations",
+                containerConnectionString: "test-connection-string",
+                sqlFiles: sqlFiles
+            ));
     }
 
     [Fact]
-    public async Task GetMigrationsLastModificationDateAsync_ThrowsFileNotFoundException_IfMigrationsPathIsEmpty()
+    public async Task RawSqlDbSetup_ThrowsArgumentException_IfSqlFilesListIsEmpty()
     {
-        // Arrange        
-        var dirMock = new Mock<IDirectoryInfo>();
-        dirMock.Setup(d => d.Exists).Returns(true);
-        dirMock.Setup(d => d.GetFiles("*", SearchOption.AllDirectories)).Returns([]);
+        // Arrange
+        List<string> sqlFiles = [];
 
-        var fileSystemMock = new Mock<IFileSystem>();
-        fileSystemMock
-            .Setup(fs => fs.DirectoryInfo.New(It.IsAny<string>()))
-            .Returns(dirMock.Object);
-
-        var sqlFiles = new List<string> { "script1.sql", "script2.sql" };
-        var dbSetupMock = new Mock<RawSqlDbSetup>(
-            sqlFiles,
-            "TestDbName",
-            "conn-str",
-            "./migrations",
-            DbType.Other,
-            true,
-            null!,
-            fileSystemMock.Object
-        ) { CallBase = true };
-
-        // Act & Assert
-        await Assert.ThrowsAsync<FileNotFoundException>(
-            () => dbSetupMock.Object.GetMigrationsLastModificationDateAsync(It.IsAny<CancellationToken>()));
-    }
-
-    [Fact]
-    public async Task GetMigrationsLastModificationDateAsync_ThrowsFileNotFoundException_IfNotAllMigrationsFilesFound()
-    {
-        // Arrange        
-        var dirMock = new Mock<IDirectoryInfo>();
-        dirMock.Setup(d => d.Exists).Returns(true);
-
-        var file1Mock = new Mock<IFileInfo>();
-        file1Mock.Setup(f => f.Name).Returns("script1.sql");
-        dirMock.Setup(d => d.GetFiles("*", SearchOption.AllDirectories))
-            .Returns([file1Mock.Object]);
-
-        var fileSystemMock = new Mock<IFileSystem>();
-        fileSystemMock
-            .Setup(fs => fs.DirectoryInfo.New(It.IsAny<string>()))
-            .Returns(dirMock.Object);
-
-        var sqlFiles = new List<string> { "script1.sql", "script2.sql" };
-        var dbSetupMock = new Mock<RawSqlDbSetup>(
-            sqlFiles,
-            "TestDbName",
-            "conn-str",
-            "./migrations",
-            DbType.Other,
-            true,
-            null!,
-            fileSystemMock.Object
-        ) { CallBase = true };
-
-        // Act & Assert
-        await Assert.ThrowsAsync<FileNotFoundException>(
-            () => dbSetupMock.Object.GetMigrationsLastModificationDateAsync(It.IsAny<CancellationToken>()));
+        // Act && Assert
+        await Assert.ThrowsAsync<ArgumentException>(async () => 
+            new RawSqlDbSetup(
+                dbName: "TestDb",
+                migrationsPath: "./migrations",
+                containerConnectionString: "test-connection-string",
+                sqlFiles: sqlFiles
+            ));
     }
 }
