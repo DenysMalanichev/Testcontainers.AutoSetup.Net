@@ -36,6 +36,8 @@ public class GlobalTestSetup : GenericTestBase
     public DbSetup? MySqlContainer_GenericBuilder_EfDbSetup { get; private set; } = null!;
     public MongoDbContainer MongoContainerFromSpecificBuilder = null!;
     public DbSetup? MongoContainer_FromSpecificBuilder_RawMongoDbSetup { get; private set; } = null!;
+    public IContainer MongoContainerFromGenericBuilder = null!;
+    public DbSetup? MongoContainer_FromGenericBuilder_RawMongoDbSetup { get; private set; } = null!;
 
     public readonly string? DockerEndpoint = EnvironmentHelper.GetDockerEndpoint();
 
@@ -54,6 +56,7 @@ public class GlobalTestSetup : GenericTestBase
         MySqlContainerFromGenericBuilder = CreateMySqlContainerFromGenericBuilder();
 
         MongoContainerFromSpecificBuilder = CreateMongoDbContainerFromSpecificBuilder();
+        MongoContainerFromGenericBuilder = CreateMongoDbContainerFromGenericBuilder();
         
         await Task.WhenAll(
             MsSqlContainerFromSpecificBuilder.StartAsync(),
@@ -62,7 +65,8 @@ public class GlobalTestSetup : GenericTestBase
             MySqlContainerFromSpecificBuilder.StartAsync(),
             MySqlContainerFromGenericBuilder.StartAsync(),
 
-            MongoContainerFromSpecificBuilder.StartAsync()
+            MongoContainerFromSpecificBuilder.StartAsync(),
+            MongoContainerFromGenericBuilder.StartAsync()
         );
 
         // 2. Register containers within the environment
@@ -134,10 +138,17 @@ public class GlobalTestSetup : GenericTestBase
             logger: Logger);
 
         // Register MongoDB container with raw files Seeder
-        MongoContainer_FromSpecificBuilder_RawMongoDbSetup = SpecificMongoDbRawDbSetup(MongoContainerFromSpecificBuilder.GetConnectionString());
+        MongoContainer_FromSpecificBuilder_RawMongoDbSetup = SpecificMongoDbRawDbSetup();
         TestEnvironment.RegisterMongoDb<RawMongoDbSeeder, MongoDbRestorer>(
             MongoContainer_FromSpecificBuilder_RawMongoDbSetup,
             MongoContainerFromSpecificBuilder,
+            logger: Logger);
+
+        // Register MongoDB container with raw files Seeder
+        MongoContainer_FromGenericBuilder_RawMongoDbSetup = GenericMongoDbRawDbSetup();
+        TestEnvironment.RegisterMongoDb<RawMongoDbSeeder, MongoDbRestorer>(
+            MongoContainer_FromGenericBuilder_RawMongoDbSetup,
+            MongoContainerFromGenericBuilder,
             logger: Logger);
     }
 
@@ -203,10 +214,24 @@ public class GlobalTestSetup : GenericTestBase
         var builder = new MongoDbBuilder("mongo:6.0.27-jammy");
         builder = builder.WithMongoAutoSetupDefaults(
             containerName: "Mongo-testcontainer",
-            migrationsPath: "./IntegrationTests/Migrations/MongoDB");
+            migrationsPath: "./IntegrationTests/Migrations/MongoDB/RawData");
         var container = builder.Build();
 
         return container;
+    }
+
+    private static IContainer CreateMongoDbContainerFromGenericBuilder()
+    {
+        var builder = new ContainerBuilder("mongo:6.0.27-jammy");
+        return builder
+            .WithMongoAutoSetupDefaults(
+                containerName: "GenericMongo-testcontainer",
+                migrationsPath: "./IntegrationTests/Migrations/MongoDB/RawData")
+            .WithPortBinding(27017, assignRandomHostPort: true)
+            .WithEnvironment("MONGO_INITDB_ROOT_USERNAME", "mongo")
+            .WithEnvironment("MONGO_INITDB_ROOT_PASSWORD", "mongo")
+            .WithWaitStrategy(Wait.ForUnixContainer().AddCustomWaitStrategy(new WaitInitiateReplicaSet()))
+            .Build();
     }
 
     private static EfDbSetup MsSqlEFDbSetup(string containerConnectionString) => new(
@@ -301,10 +326,26 @@ public class GlobalTestSetup : GenericTestBase
                 ]
         );
 
-    private static RawMongoDbSetup SpecificMongoDbRawDbSetup(string connectionString) => new(
+    private static RawMongoDbSetup SpecificMongoDbRawDbSetup() => new(
             dbName: "MongoTest",
             dbType: Core.Common.Enums.DbType.MySQL,
-            migrationsPath: "./IntegrationTests/Migrations/MongoDB",
+            migrationsPath: "./IntegrationTests/Migrations/MongoDB/RawData",
+            mongoFiles:
+                new Dictionary<string, string>()
+                {
+                    {"orders", "orders.json"},
+                    {"users", "users.json"}
+                }      
+        )
+    {
+        Username = "mongo",
+        Password = "mongo"
+    };
+
+    private static RawMongoDbSetup GenericMongoDbRawDbSetup() => new(
+            dbName: "MongoTest",
+            dbType: Core.Common.Enums.DbType.MySQL,
+            migrationsPath: "./IntegrationTests/Migrations/MongoDB/RawData",
             mongoFiles:
                 new Dictionary<string, string>()
                 {
@@ -329,6 +370,17 @@ public class GlobalTestSetup : GenericTestBase
                 .ConfigureAwait(false);
 
             return 0L.Equals(execResult.ExitCode);
+        }
+    }
+
+    /// <inheritdoc cref="IWaitUntil" />
+    private sealed class WaitInitiateReplicaSet : IWaitUntil
+    {
+        /// <inheritdoc />
+        public Task<bool> UntilAsync(IContainer container)
+        {
+            Task.Delay(5_000); // Simple 5 seconds wait for container to initialize. Must be used only for testing
+            return Task.FromResult(true);
         }
     }
 }
