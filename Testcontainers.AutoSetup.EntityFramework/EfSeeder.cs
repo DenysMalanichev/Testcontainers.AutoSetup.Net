@@ -9,7 +9,7 @@ namespace Testcontainers.AutoSetup.EntityFramework;
 
 public class EfSeeder : SqlDbSeeder
 {
-    public EfSeeder(ILogger? logger = null)
+    public EfSeeder(ILogger logger)
         : base(logger)
     { }
 

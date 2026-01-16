@@ -12,8 +12,8 @@ namespace Testcontainers.AutoSetup.Core.DbSeeding;
 
 public sealed class RawSqlDbSeeder : SqlDbSeeder
 {
-    private IDbConnectionFactory _dbConnectionFactory;
-    private IFileSystem _fileSystem;
+    private readonly IDbConnectionFactory _dbConnectionFactory;
+    private readonly IFileSystem _fileSystem;
     // Regex explanation:
     // ^\s* -> Start of a line, allow optional whitespace
     // GO        -> The literal word GO
@@ -24,7 +24,7 @@ public sealed class RawSqlDbSeeder : SqlDbSeeder
     private static readonly Regex GoSplitter = new(@"^\s*GO\s*$", 
         RegexOptions.IgnoreCase | RegexOptions.Multiline | RegexOptions.Compiled);
 
-    public RawSqlDbSeeder(IDbConnectionFactory dbConnectionFactory, IFileSystem fileSystem, ILogger? logger = null)
+    public RawSqlDbSeeder(IDbConnectionFactory dbConnectionFactory, IFileSystem fileSystem, ILogger logger)
         : base(logger)
     {
         _dbConnectionFactory = dbConnectionFactory ?? throw new ArgumentNullException(nameof(dbConnectionFactory));
