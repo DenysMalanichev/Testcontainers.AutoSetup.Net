@@ -90,16 +90,15 @@ await msSqlContainer.StartAsync();
  
 With a running container we can set up the Database(s). To do it we create an `DbSetup` record, in this case an `EfDbSetup`, since we are going to use EF Core migrations. This record defines the DB configuration - a DB type, name, either an absolute or a relative path to migrations folder - `MigrationsPath` and a factory method to instantiate a `DbContext`: 
 ```CSharp
-private static EfDbSetup MsSqlDbSetup => new() 
-    {
-        DbType = DbType.MsSQL,
-        DbName = "CatalogTest", 
-        ContextFactory = connString => new CatalogContext(
-            new DbContextOptionsBuilder<CatalogContext>()
-            .UseSqlServer(connString)
-            .Options),
-        MigrationsPath = "./IntegrationTests/Migrations",
-    };
+private static EfDbSetup MsSqlDbSetup => new(
+    dbType: DbType.MsSQL,
+    dbName: "CatalogTest", 
+    contextFactory: connString => new CatalogContext(
+        new DbContextOptionsBuilder<CatalogContext>()
+        .UseSqlServer(connString)
+        .Options),
+    migrationsPath: "./IntegrationTests/Migrations",
+);
 ```
 **Existing DB setup records:**
 <table>
@@ -117,13 +116,16 @@ private static EfDbSetup MsSqlDbSetup => new()
     </tr>
 </table>
 
-Next we register this DB setup and container within the `TestEnvironment`. You also have to provide an instance of DB connection factory, which implements and `IDbConnectionFactory`. This allows you to configure the connection used to set up DB. Note the generic parameters, identifying a seeder and restorer classes, specific for a EF Core and MS SQL database:
+Next we register this DB setup and container within the `TestEnvironment`. You also have to provide an instance of DB connection factory, which implements an `IDbConnectionFactory`. This allows you to configure the connection used to set up DB. Note the `DbSetupStrategyBuilder` used to configurethe future strategy, identifying a seeder and restorer, specific for a EF Core and MS SQL database:
 ```CSharp
-TestEnvironment.Register<EfSeeder, MsSqlDbRestorer>(
-    msSqlDbSetup,
-    msSqlContainer,
-    new MsSqlDbConnectionFactory(),
-    logger: Logger);
+TestEnvironment.RegisterDbSetupStrategy(
+    new DbSetupStrategyBuilder(
+        MsSqlContainer_SpecificBuilder_EfDbSetup,
+        MsSqlContainerFromSpecificBuilder,
+        Logger!) // optional ILogger instance, can be omitted
+    .WithEfSeeder()
+    .WithMsSqlRestorer(new MsSqlDbConnectionFactory())
+    .Build());
 ```
 Optionally, you can provide an `ILogger` instance. When the logger is not specified, `Testcontainers.AutoSetup` would reuse a default `Testcontainers` logger.
 
