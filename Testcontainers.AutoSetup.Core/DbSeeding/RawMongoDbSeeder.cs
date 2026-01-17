@@ -11,11 +11,8 @@ namespace Testcontainers.AutoSetup.Core.DbSeeding;
 
 public class RawMongoDbSeeder : MongoDbSeeder
 {
-    private readonly IFileSystem _fileSystem;
-    public RawMongoDbSeeder(IFileSystem fileSystem, ILogger? logger) : base(logger)
-    {
-        _fileSystem = fileSystem ?? throw new ArgumentNullException(nameof(fileSystem));
-    }
+    public RawMongoDbSeeder(ILogger logger) : base(logger)
+    { }
 
     /// <inheritdoc/>
     public override async Task SeedAsync(DbSetup dbSetup, IContainer container, CancellationToken cancellationToken)

@@ -5,6 +5,6 @@ namespace Testcontainers.AutoSetup.Core.Abstractions.Sql;
 /// <summary>
 /// Abstraction of a seeder for SQL
 /// </summary>
-public abstract class SqlDbSeeder(ILogger? logger) : DbSeeder(logger)
+public abstract class SqlDbSeeder(ILogger logger) : DbSeeder(logger)
 {
 }

@@ -1,3 +1,4 @@
+using DotNet.Testcontainers;
 using DotNet.Testcontainers.Containers;
 using Microsoft.Extensions.Logging;
 using Testcontainers.AutoSetup.Core.Abstractions.Entities;
@@ -8,7 +9,12 @@ public abstract class DbSeeder
 {
     protected readonly ILogger _logger;
 
-    public DbSeeder(ILogger? logger = null)
+    public DbSeeder()
+    {
+        _logger = ConsoleLogger.Instance;
+    }
+
+    public DbSeeder(ILogger logger)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
