@@ -5,6 +5,12 @@ namespace Testcontainers.AutoSetup.Core.Common.DbStrategy;
 
 public partial class DbSetupStrategyBuilder
 {
+    /// <summary>
+    /// Sets up <see cref="MsSqlDbRestorer"/> to restore a DB.
+    /// </summary>
+    /// <param name="connectionFactory">Connection factory used to access the DB</param>
+    /// <returns></returns>
+    /// <exception cref="ArgumentException"></exception>
     public DbSetupStrategyBuilder WithMsSqlRestorer(IDbConnectionFactory dbConnectionFactory)
     {
         ArgumentNullException.ThrowIfNull(dbConnectionFactory);
