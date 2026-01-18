@@ -35,7 +35,7 @@ public record RawMongoDbSetup : DbSetup
         Dictionary<string, string> mongoFiles,
         string dbName,
         string migrationsPath,
-        DbType dbType = DbType.Other,
+        DbType dbType = DbType.Other, // TODO set db type automatically
         bool restoreFromDump = false,
         string? restorationStateFilesDirectory = null,
         IFileSystem? fileSystem = null)
