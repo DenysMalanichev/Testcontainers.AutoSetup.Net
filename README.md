@@ -1,4 +1,5 @@
-# Testcontainers.AutoSetup.Net ![DotnetVersion](https://img.shields.io/badge/version-10.0-orange?style=flat&logo=.NET) [![CI](https://github.com/DenysMalanichev/TestcontaienrsAutoSetup/actions/workflows/ci.yaml/badge.svg)](https://github.com/DenysMalanichev/TestcontaienrsAutoSetup/actions/workflows/ci.yaml) ![Code Coverage](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/DenysMalanichev/014183e2f85a69201c0d39313d2065eb/raw/coverage.json)
+![Testcontainers.AutoSetup.Net](./LogoWithName.png)
+![DotnetVersion](https://img.shields.io/badge/version-10.0-orange?style=flat&logo=.NET) [![CI](https://github.com/DenysMalanichev/TestcontaienrsAutoSetup/actions/workflows/ci.yaml/badge.svg)](https://github.com/DenysMalanichev/TestcontaienrsAutoSetup/actions/workflows/ci.yaml) ![Code Coverage](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/DenysMalanichev/014183e2f85a69201c0d39313d2065eb/raw/coverage.json)
 
 A lightweight library to automate database setup, seeding and reset workflows for integration tests that use ***Testcontainers.NET***. It provides a pluggable strategy-based model for preparing database state before tests run, restoring snapshots, and seeding data (including Entity Framework-specific helpers). Designed to integrate with .NET test frameworks and container-based test environments.
 
