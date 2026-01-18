@@ -76,6 +76,61 @@ Testcontainers.AutoSetup.Net provides the functionality of automatic migrations 
 
 > *restoration time depends on a DB size
 
+## Benchmark results
+<table>
+    <tr>
+        <th>Database</th>
+        <th>Restore strategy</th>
+        <th colspan="5" style="text-align: center; vertical-align: middle;">Time (ms) to restore N rows</th>
+        <th>Note</th>
+    </tr>
+    <tr>
+        <td></td>
+        <td></td>
+        <td>1</td>
+        <td>10</td>
+        <td>100</td>
+        <td>1.000</td>
+        <td>10.000</td>
+        <td>50.000</td>
+        <td></td>
+    </tr>
+    <tr>
+        <td>MS SQL</td>
+        <td>Snapshot</td>
+        <td>305.8</td>
+        <td>315.9</td>
+        <td>303.9</td>
+        <td>335.1</td>
+        <td>344.0</td>
+        <td>332.3</td>
+        <td>All fluctautions are neglictable and occure only due to the system internal proccesses. The restoration always takes ~300ms </td>
+    </tr>
+    <tr>
+        <td>MySQL</td>
+        <td>Golden State DB</td>
+        <td>5.637</td>
+        <td>5.432</td>
+        <td>7.358</td>
+        <td>27.044</td>
+        <td>118.545</td>
+        <td>548.7</td>
+        <td>O(n) operation</td>
+    </tr>
+    <tr>
+        <td>MongoDB</td>
+        <td>mongorestore + golden state</td>
+        <td>125.3</td>
+        <td>130.0</td>
+        <td>128.3</td>
+        <td>133.7</td>
+        <td>275.6</td>
+        <td>729.1</td>
+    </tr>
+</table>
+
+> See the Testcontainers.AutoSetup.Benchmarks project
+
 ## Usage
 You are free to use the default syntax of Testcontainers.NET to crate and configure a container as you need. In order for AutoSetup to work correctly it utilizes the reusable functionality with some aditional configuration, available in `WithAutoSetupDefaults(containerName)` extension method. It configures the container with required params like `.WithReuse(true)`, adds reuse labels, configures a required user and sets up mounts (Volume for snapshots and Tmpfs for DB internal data). For a user it is enough to simply call the method:
 ```CSharp
@@ -107,12 +162,16 @@ private static EfDbSetup MsSqlDbSetup => new(
         <th>Corresponding DbSetup record</th>
     </tr>
     <tr>
-        <td>Entity Framework</td>
+        <td>From Entity Framework mmigrations</td>
         <td> EfDbSetup </td>
     </tr>
     <tr>
-        <td>Entity Framework</td>
+        <td>From Raw SQL Files</td>
         <td> RawSqlDbSetup </td>
+    </tr>
+    <tr>
+        <td>From Raw MongoDB data Files</td>
+        <td> RawMongoDbSetup </td>
     </tr>
 </table>
 

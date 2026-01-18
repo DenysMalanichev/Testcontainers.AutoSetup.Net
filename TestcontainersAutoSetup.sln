@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Testcontainers.AutoSetup.Te
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Testcontainers.AutoSetup.EntityFramework", "Testcontainers.AutoSetup.EntityFramework\Testcontainers.AutoSetup.EntityFramework.csproj", "{F3C3E5F8-C26C-4E57-9AE0-3A78F1903117}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Testcontainers.AutoSetup.Benchmarks", "Testcontainers.AutoSetup.Benchmarks\Testcontainers.AutoSetup.Benchmarks.csproj", "{338B375F-0C6A-42AA-8279-8D13BCF83AA0}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -55,6 +57,18 @@ Global
 		{F3C3E5F8-C26C-4E57-9AE0-3A78F1903117}.Release|x64.Build.0 = Release|Any CPU
 		{F3C3E5F8-C26C-4E57-9AE0-3A78F1903117}.Release|x86.ActiveCfg = Release|Any CPU
 		{F3C3E5F8-C26C-4E57-9AE0-3A78F1903117}.Release|x86.Build.0 = Release|Any CPU
+		{338B375F-0C6A-42AA-8279-8D13BCF83AA0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{338B375F-0C6A-42AA-8279-8D13BCF83AA0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{338B375F-0C6A-42AA-8279-8D13BCF83AA0}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{338B375F-0C6A-42AA-8279-8D13BCF83AA0}.Debug|x64.Build.0 = Debug|Any CPU
+		{338B375F-0C6A-42AA-8279-8D13BCF83AA0}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{338B375F-0C6A-42AA-8279-8D13BCF83AA0}.Debug|x86.Build.0 = Debug|Any CPU
+		{338B375F-0C6A-42AA-8279-8D13BCF83AA0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{338B375F-0C6A-42AA-8279-8D13BCF83AA0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{338B375F-0C6A-42AA-8279-8D13BCF83AA0}.Release|x64.ActiveCfg = Release|Any CPU
+		{338B375F-0C6A-42AA-8279-8D13BCF83AA0}.Release|x64.Build.0 = Release|Any CPU
+		{338B375F-0C6A-42AA-8279-8D13BCF83AA0}.Release|x86.ActiveCfg = Release|Any CPU
+		{338B375F-0C6A-42AA-8279-8D13BCF83AA0}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
