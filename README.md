@@ -74,14 +74,14 @@ Testcontainers.AutoSetup.Net provides the functionality of automatic migrations 
     </tr>
 </table>
 
-> *restoration time depends on a DB size
+> *restoration time depends on a DB size - see benchmarks
 
 ## Benchmark results
 <table>
     <tr>
         <th>Database</th>
         <th>Restore strategy</th>
-        <th colspan="5" style="text-align: center; vertical-align: middle;">Time (ms) to restore N rows</th>
+        <th colspan="6" style="text-align: center; vertical-align: middle;">Time (ms) to restore N rows</th>
         <th>Note</th>
     </tr>
     <tr>
@@ -125,11 +125,12 @@ Testcontainers.AutoSetup.Net provides the functionality of automatic migrations 
         <td>128.3</td>
         <td>133.7</td>
         <td>275.6</td>
-        <td>729.1</td>
+        <td>1129.1</td>
+        <td>O(n) operation</td>
     </tr>
 </table>
 
-> See the Testcontainers.AutoSetup.Benchmarks project
+> See the Testcontainers.AutoSetup.Benchmarks project for more info
 
 ## Usage
 You are free to use the default syntax of Testcontainers.NET to crate and configure a container as you need. In order for AutoSetup to work correctly it utilizes the reusable functionality with some aditional configuration, available in `WithAutoSetupDefaults(containerName)` extension method. It configures the container with required params like `.WithReuse(true)`, adds reuse labels, configures a required user and sets up mounts (Volume for snapshots and Tmpfs for DB internal data). For a user it is enough to simply call the method:
