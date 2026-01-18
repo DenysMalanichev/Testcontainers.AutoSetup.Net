@@ -35,7 +35,6 @@ public record RawMongoDbSetup : DbSetup
         Dictionary<string, string> mongoFiles,
         string dbName,
         string migrationsPath,
-        DbType dbType = DbType.Other, // TODO set db type automatically
         bool restoreFromDump = false,
         string? restorationStateFilesDirectory = null,
         IFileSystem? fileSystem = null)
@@ -43,7 +42,7 @@ public record RawMongoDbSetup : DbSetup
                 dbName,
                 string.Empty, // connection string - not required for MongoDB restoration from raw files 
                 migrationsPath,
-                dbType,
+                DbType.MongoDB,
                 restoreFromDump,
                 restorationStateFilesDirectory,
                 fileSystem)
