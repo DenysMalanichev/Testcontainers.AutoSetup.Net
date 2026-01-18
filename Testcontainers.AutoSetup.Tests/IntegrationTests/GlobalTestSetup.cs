@@ -379,7 +379,6 @@ public class GlobalTestSetup : GenericTestBase
 
     private static RawMongoDbSetup SpecificMongoDbRawDbSetup() => new(
             dbName: "MongoTest",
-            dbType: Core.Common.Enums.DbType.MySQL,
             migrationsPath: "./IntegrationTests/Migrations/MongoDB/RawData",
             mongoFiles:
                 new Dictionary<string, string>()
@@ -395,7 +394,6 @@ public class GlobalTestSetup : GenericTestBase
 
     private static RawMongoDbSetup GenericMongoDbRawDbSetup() => new(
             dbName: "MongoTest",
-            dbType: Core.Common.Enums.DbType.MySQL,
             migrationsPath: "./IntegrationTests/Migrations/MongoDB/RawData",
             mongoFiles:
                 new Dictionary<string, string>()

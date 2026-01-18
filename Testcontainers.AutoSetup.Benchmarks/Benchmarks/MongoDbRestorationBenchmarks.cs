@@ -56,7 +56,6 @@ public class MongoDbRestorationBenchmarks
 
         _dbSetup = new RawMongoDbSetup(
             dbName: DbName, 
-            dbType: Core.Common.Enums.DbType.MsSQL,
             migrationsPath: MigrationsPath,
             mongoFiles: new Dictionary<string, string> { {CollectionName, DataFileName} }
         )
