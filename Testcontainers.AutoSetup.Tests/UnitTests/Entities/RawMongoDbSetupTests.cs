@@ -61,7 +61,7 @@ public class RawMongoDbSetupTests
         // Arrange
         var mongoFiles = new List<RawMongoDataFile>
         {
-            new(collectionName: "users_col", fileName: "users", MongoDataFileExtension.JSON)
+            RawMongoDataFile.FromJson(collectionName: "users_col", fileName: "users")
         };
         var dbName = "TestDatabase";
         var migrationsPath = "/app/migrations";
@@ -96,7 +96,7 @@ public class RawMongoDbSetupTests
         // Arrange
         var mongoFiles = new List<RawMongoDataFile>
         {
-            new(collectionName: "test", fileName: "test", MongoDataFileExtension.JSON)
+            RawMongoDataFile.FromJson(collectionName: "test", fileName: "test")
         };
 
         // Act
@@ -116,7 +116,7 @@ public class RawMongoDbSetupTests
     public void Constructor_ShouldAllowOverridingDefaultValues_ViaObjectInitializer()
     {
         // Arrange
-        var mongoFiles = new List<RawMongoDataFile> { new(collectionName: "users_col", fileName: "users", MongoDataFileExtension.JSON) };
+        var mongoFiles = new List<RawMongoDataFile> { RawMongoDataFile.FromJson(collectionName: "users_col", fileName: "users") };
 
         // Act
         var setup = new RawMongoDbSetup(mongoFiles, "db", "path")

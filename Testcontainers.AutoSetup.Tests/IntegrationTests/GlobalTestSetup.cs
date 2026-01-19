@@ -18,7 +18,6 @@ using Testcontainers.AutoSetup.Tests.IntegrationTests.Migrations.MySQL.EfMigrati
 using Testcontainers.AutoSetup.Tests.IntegrationTests.TestHelpers;
 using Testcontainers.MongoDb;
 using Testcontainers.AutoSetup.Core.Common.DbStrategy;
-using Testcontainers.AutoSetup.Core.Common.Enums;
 
 namespace Testcontainers.AutoSetup.Tests.IntegrationTests;
 
@@ -383,8 +382,11 @@ public class GlobalTestSetup : GenericTestBase
             migrationsPath: "./IntegrationTests/Migrations/MongoDB/RawData",
             mongoFiles:
                 [
-                    new(collectionName: "orders", fileName: "orders", extension: MongoDataFileExtension.JSON, isJsonArray: true),
-                    new(collectionName: "users", fileName: "users", extension: MongoDataFileExtension.JSON, isJsonArray: true)
+                    RawMongoDataFile.FromJson(collectionName: "orders", fileName: "orders", isJsonArray: true),
+                    RawMongoDataFile.FromJson(collectionName: "users", fileName: "users", isJsonArray: false),
+                    RawMongoDataFile.FromCsvWithHeaderfileFlag(collectionName: "clients", fileName: "clients"),
+                    RawMongoDataFile.FromCsvWithFieldsFlag(collectionName: "clients_no_header", fileName: "clients_no_header", fields: "_id,username,email,age"),
+                    RawMongoDataFile.FromCsvWithFieldFileFlag(collectionName: "products", fileName: "products", fieldFileName: "products_headers.txt")
                 ]
         )
     {
@@ -397,8 +399,11 @@ public class GlobalTestSetup : GenericTestBase
             migrationsPath: "./IntegrationTests/Migrations/MongoDB/RawData",
             mongoFiles:
                 [
-                    new(collectionName: "orders", fileName: "orders", extension: MongoDataFileExtension.JSON, isJsonArray: true),
-                    new(collectionName: "users", fileName: "users", extension: MongoDataFileExtension.JSON, isJsonArray: true)
+                    RawMongoDataFile.FromJson(collectionName: "orders", fileName: "orders", isJsonArray: true),
+                    RawMongoDataFile.FromJson(collectionName: "users", fileName: "users", isJsonArray: false),
+                    RawMongoDataFile.FromCsvWithHeaderfileFlag(collectionName: "clients", fileName: "clients"),
+                    RawMongoDataFile.FromCsvWithFieldsFlag(collectionName: "clients_no_header", fileName: "clients_no_header", fields: "_id,username,email,age"),
+                    RawMongoDataFile.FromCsvWithFieldFileFlag(collectionName: "products", fileName: "products", fieldFileName: "products_headers.txt")
                 ] 
         );
 

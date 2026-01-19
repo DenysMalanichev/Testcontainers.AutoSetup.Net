@@ -1,0 +1,4 @@
+_id,username,email,age,isActive
+101,jdoe,john.doe@example.com,29,true
+102,asmith,alice.smith@example.com,34,false
+103,bwayne,bruce@example.com,40,true

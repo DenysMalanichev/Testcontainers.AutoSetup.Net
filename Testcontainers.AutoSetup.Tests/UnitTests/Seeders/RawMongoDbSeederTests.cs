@@ -45,11 +45,10 @@ public class RawMongoDbSeederTests
     public async Task SeedAsync_ShouldExecuteCorrectCommand_ForSingleJsonFile_WithArrayFlag()
     {
         // Arrange
-        var mongoFile = new RawMongoDataFile 
+        var mongoFile = RawMongoDataFile.FromJson
         (
             fileName: "users", 
-            collectionName: "users_col", 
-            extension: MongoDataFileExtension.JSON, 
+            collectionName: "users_col",
             isJsonArray: true // This should trigger the --jsonArray flag
         );
 
@@ -85,11 +84,10 @@ public class RawMongoDbSeederTests
     public async Task SeedAsync_ShouldExecuteCorrectCommand_ForSingleJsonFile_WithoutArrayFlag()
     {
         // Arrange
-        var mongoFile = new RawMongoDataFile 
+        var mongoFile = RawMongoDataFile.FromJson
         (
             fileName: "users", 
-            collectionName: "users_col", 
-            extension: MongoDataFileExtension.JSON, 
+            collectionName: "users_col",
             isJsonArray: false // This should not pass the --jsonArray flag
         );
 
@@ -125,8 +123,8 @@ public class RawMongoDbSeederTests
     public async Task SeedAsync_ShouldChainCommands_WhenMultipleFilesExist()
     {
         // Arrange
-        var file1 = new RawMongoDataFile(fileName: "f1", collectionName: "c1", extension: MongoDataFileExtension.JSON);
-        var file2 = new RawMongoDataFile(fileName: "f2", collectionName: "c2", extension: MongoDataFileExtension.JSON);
+        var file1 = RawMongoDataFile.FromJson(fileName: "f1", collectionName: "c1");
+        var file2 = RawMongoDataFile.FromJson(fileName: "f2", collectionName: "c2");
 
         var setup = new RawMongoDbSetup([file1, file2], "MyDb", "/path/test");
 
@@ -154,7 +152,7 @@ public class RawMongoDbSeederTests
     public async Task SeedAsync_ShouldThrowExecFailedException_WhenContainerExitCodeIsNonZero()
     {
         // Arrange
-        var mongoFile = new RawMongoDataFile(fileName: "f1", collectionName: "c1", extension: MongoDataFileExtension.JSON);
+        var mongoFile = RawMongoDataFile.FromJson(fileName: "f1", collectionName: "c1");
          var setup = new RawMongoDbSetup([mongoFile], "MyDb", "/path/test");
 
         var result = new ExecResult(string.Empty, "Import Failed", 1);

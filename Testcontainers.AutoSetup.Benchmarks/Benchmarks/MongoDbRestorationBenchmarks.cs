@@ -57,7 +57,7 @@ public class MongoDbRestorationBenchmarks
         _dbSetup = new RawMongoDbSetup(
             dbName: DbName, 
             migrationsPath: MigrationsPath,
-            mongoFiles: [new(collectionName: CollectionName, fileName: DataFileName, extension: Core.Common.Enums.MongoDataFileExtension.JSON, isJsonArray: true)]
+            mongoFiles: [RawMongoDataFile.FromJson(CollectionName, DataFileName, isJsonArray: true)]
         )
         {
             Username = "mongo",
