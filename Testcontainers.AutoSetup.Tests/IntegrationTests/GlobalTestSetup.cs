@@ -18,6 +18,7 @@ using Testcontainers.AutoSetup.Tests.IntegrationTests.Migrations.MySQL.EfMigrati
 using Testcontainers.AutoSetup.Tests.IntegrationTests.TestHelpers;
 using Testcontainers.MongoDb;
 using Testcontainers.AutoSetup.Core.Common.DbStrategy;
+using Testcontainers.AutoSetup.Core.Common.Enums;
 
 namespace Testcontainers.AutoSetup.Tests.IntegrationTests;
 
@@ -381,11 +382,10 @@ public class GlobalTestSetup : GenericTestBase
             dbName: "MongoTest",
             migrationsPath: "./IntegrationTests/Migrations/MongoDB/RawData",
             mongoFiles:
-                new Dictionary<string, string>()
-                {
-                    {"orders", "orders.json"},
-                    {"users", "users.json"}
-                }      
+                [
+                    new(collectionName: "orders", fileName: "orders", extension: MongoDataFileExtension.JSON, isJsonArray: true),
+                    new(collectionName: "users", fileName: "users", extension: MongoDataFileExtension.JSON, isJsonArray: true)
+                ]
         )
     {
         Username = "mongo",
@@ -396,11 +396,10 @@ public class GlobalTestSetup : GenericTestBase
             dbName: "MongoTest",
             migrationsPath: "./IntegrationTests/Migrations/MongoDB/RawData",
             mongoFiles:
-                new Dictionary<string, string>()
-                {
-                    {"orders", "orders.json"},
-                    {"users", "users.json"}
-                }      
+                [
+                    new(collectionName: "orders", fileName: "orders", extension: MongoDataFileExtension.JSON, isJsonArray: true),
+                    new(collectionName: "users", fileName: "users", extension: MongoDataFileExtension.JSON, isJsonArray: true)
+                ] 
         );
 
     /// <inheritdoc cref="IWaitUntil" />

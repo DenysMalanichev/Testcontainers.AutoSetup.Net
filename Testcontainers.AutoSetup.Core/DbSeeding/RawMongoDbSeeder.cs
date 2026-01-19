@@ -1,4 +1,4 @@
-using System.IO.Abstractions;
+using System.Globalization;
 using System.Text;
 using DotNet.Testcontainers.Containers;
 using Microsoft.Extensions.Logging;
@@ -36,22 +36,26 @@ public class RawMongoDbSeeder : MongoDbSeeder
         var commandBuilder = new StringBuilder();
 
         bool isFirstImport = true;
-        foreach ((string collectionName, string fileName) in dbSetup.MongoFiles)
+        foreach (var file in dbSetup.MongoFiles)
         {
             if(isFirstImport) isFirstImport = false;
             else commandBuilder.Append(" && ");
 
-            var containerFilePath = $"{Constants.MongoDB.DefaultMigrationsDataPath}/{fileName}";
+            var containerFilePath = $"{Constants.MongoDB.DefaultMigrationsDataPath}/{file.FileName}.{file.FileExtension.ToString().ToLower(CultureInfo.InvariantCulture)}";
            
             commandBuilder.Append("mongoimport ");
             commandBuilder.Append("--db ").Append(dbSetup.DbName).Append(' ');
-            commandBuilder.Append("--collection ").Append(collectionName).Append(' ');
+            commandBuilder.Append("--collection ").Append(file.CollectionName).Append(' ');
             commandBuilder.Append("--file ").Append(containerFilePath).Append(' ');
             commandBuilder.Append("--numInsertionWorkers 4 ");
             commandBuilder.Append("--username '").Append(dbSetup.Username).Append("' ");
             commandBuilder.Append("--password '").Append(dbSetup.Password).Append("' ");
             commandBuilder.Append("--authenticationDatabase '").Append(dbSetup.AuthenticationDatabase).Append("' ");
-            commandBuilder.Append("--jsonArray");
+            commandBuilder.Append("--type ").Append(file.FileExtension.ToString().ToLower(CultureInfo.InvariantCulture));
+            if(file.IsJsonArray)
+            {
+                commandBuilder.Append(" --jsonArray");
+            }
         }
         var commandText = commandBuilder.ToString();
         _logger.LogInformation("Executing Mongo files against database '{Database}'", dbSetup.DbName);

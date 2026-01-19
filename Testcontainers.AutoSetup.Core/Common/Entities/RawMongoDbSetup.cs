@@ -11,7 +11,7 @@ public record RawMongoDbSetup : DbSetup
     /// Dictionary listing files' names and collections' name 
     /// of format "collection name - file name", used to seed data
     /// </summary>
-    public virtual Dictionary<string, string> MongoFiles { get; init; }
+    public virtual IList<RawMongoDataFile> MongoFiles { get; init; }
 
     /// <summary>
     /// Username used for authentication. 
@@ -32,7 +32,7 @@ public record RawMongoDbSetup : DbSetup
     public string AuthenticationDatabase { get; init; } = "admin";
 
     public RawMongoDbSetup(
-        Dictionary<string, string> mongoFiles,
+        IList<RawMongoDataFile> mongoFiles,
         string dbName,
         string migrationsPath,
         bool restoreFromDump = false,
