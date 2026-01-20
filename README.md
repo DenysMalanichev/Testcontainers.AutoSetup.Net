@@ -177,6 +177,28 @@ private static EfDbSetup MsSqlDbSetup => new(
     </tr>
 </table>
 
+For MongoDB raw data files you can choose between different file types (with `RawMongoDataFile` factory methods) and also set params like user name, password and authentication DB:
+```CSharp
+private static RawMongoDbSetup SpecificMongoDbRawDbSetup() => new(
+            dbName: "MongoTest",
+            migrationsPath: "./IntegrationTests/Migrations/MongoDB/RawData",
+            mongoFiles:
+                [
+                    RawMongoDataFile.FromJson(collectionName: "orders", fileName: "orders", isJsonArray: true),
+                    RawMongoDataFile.FromJson(collectionName: "users", fileName: "users", isJsonArray: false),
+                    RawMongoDataFile.FromCsvWithHeaderfileFlag(collectionName: "clients", fileName: "clients"),
+                    RawMongoDataFile.FromCsvWithFieldsFlag(collectionName: "clients_no_header", fileName: "clients_no_header", fields: "_id,username,email,age"),
+                    RawMongoDataFile.FromCsvWithFieldFileFlag(collectionName: "products", fileName: "products", fieldFileName: "products_headers.txt")
+                ]
+        )
+    {
+        Username = "mongo",
+        Password = "mongo",
+        AuthenticationDatabase = "admin"
+    };
+
+```
+
 Next we register this DB setup and container within the `TestEnvironment`. You also have to provide an instance of DB connection factory, which implements an `IDbConnectionFactory`. This allows you to configure the connection used to set up DB. Note the `DbSetupStrategyBuilder` used to configurethe future strategy, identifying a seeder and restorer, specific for a EF Core and MS SQL database:
 ```CSharp
 TestEnvironment.RegisterDbSetupStrategy(
@@ -347,7 +369,10 @@ Vendor Specific: Checks for existence of variables like TF_BUILD (Azure), JENKIN
 If any of these are true, GetDockerEndpoint() returns null. This is the desired behavior, as CI agents typically mount the Docker socket (/var/run/docker.sock) directly, which Testcontainers handles automatically without needing a TCP address.
 
 ## DB Restore Logic
-### "Golden state"
+### MySQL "Golden state"
 On startup, the initial database is created and migrated. Immediately after, an exact replica named `{DBName}_golden_state` is created to serve as the reference. To reset after each test, the target database is truncated and repopulated using data directly from this golden state copy. If migration file changes are detected, both databases are dropped and recreated from scratch.
+
+### MongoDB Dump
+A dump of a migrated DB is created using `mongodump` tool with timestamp set on a moment of creation. Restoration is performaed with `mongorestore`.
 
 > NOTE: if you experience delays (5-10 seconds) between tests with MS SQL DB - most likely it is an issue with Reverse DNS lookup. While some DBs allow skipping Reverse DNS lookup, like `--skip-name-resolve` flag in MySQL, some, like MS SQL -do not. The easiest workaround here is to register the IP of the WSL machine in Windows hosts file.
