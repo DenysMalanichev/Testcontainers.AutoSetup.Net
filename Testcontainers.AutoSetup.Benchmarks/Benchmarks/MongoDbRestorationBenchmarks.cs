@@ -29,7 +29,7 @@ public class MongoDbRestorationBenchmarks
         const string MigrationsPath = "./BenchmarkData/MongoDB/";
         const string DbName = "HeavyCatalog";
         const string CollectionName = "HeavyCollection";
-        const string DataFileName = "HeavyData.json";
+        const string DataFileName = "HeavyData";
 
         // A. Generate a Heavy json data file dynamically based on the param
         var data = new List<object>();
@@ -46,7 +46,7 @@ public class MongoDbRestorationBenchmarks
         }
 
         var jsonContent = JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = false });
-        await File.WriteAllTextAsync($"{MigrationsPath}/{DataFileName}", jsonContent);
+        await File.WriteAllTextAsync($"{MigrationsPath}/{DataFileName}.json", jsonContent);
 
         _container = new MongoDbBuilder("mongo:6.0.27-jammy")
             .WithMongoAutoSetupDefaults(containerName: "Perfromance-MongoDB-testcontainer", MigrationsPath)
@@ -57,7 +57,7 @@ public class MongoDbRestorationBenchmarks
         _dbSetup = new RawMongoDbSetup(
             dbName: DbName, 
             migrationsPath: MigrationsPath,
-            mongoFiles: new Dictionary<string, string> { {CollectionName, DataFileName} }
+            mongoFiles: [RawMongoDataFile.FromJson(CollectionName, DataFileName, isJsonArray: true)]
         )
         {
             Username = "mongo",

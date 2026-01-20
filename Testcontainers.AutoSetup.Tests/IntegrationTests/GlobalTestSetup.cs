@@ -381,11 +381,13 @@ public class GlobalTestSetup : GenericTestBase
             dbName: "MongoTest",
             migrationsPath: "./IntegrationTests/Migrations/MongoDB/RawData",
             mongoFiles:
-                new Dictionary<string, string>()
-                {
-                    {"orders", "orders.json"},
-                    {"users", "users.json"}
-                }      
+                [
+                    RawMongoDataFile.FromJson(collectionName: "orders", fileName: "orders", isJsonArray: true),
+                    RawMongoDataFile.FromJson(collectionName: "users", fileName: "users", isJsonArray: false),
+                    RawMongoDataFile.FromCsvWithHeaderfileFlag(collectionName: "clients", fileName: "clients"),
+                    RawMongoDataFile.FromCsvWithFieldsFlag(collectionName: "clients_no_header", fileName: "clients_no_header", fields: "_id,username,email,age"),
+                    RawMongoDataFile.FromCsvWithFieldFileFlag(collectionName: "products", fileName: "products", fieldFileName: "products_headers.txt")
+                ]
         )
     {
         Username = "mongo",
@@ -396,11 +398,13 @@ public class GlobalTestSetup : GenericTestBase
             dbName: "MongoTest",
             migrationsPath: "./IntegrationTests/Migrations/MongoDB/RawData",
             mongoFiles:
-                new Dictionary<string, string>()
-                {
-                    {"orders", "orders.json"},
-                    {"users", "users.json"}
-                }      
+                [
+                    RawMongoDataFile.FromJson(collectionName: "orders", fileName: "orders", isJsonArray: true),
+                    RawMongoDataFile.FromJson(collectionName: "users", fileName: "users", isJsonArray: false),
+                    RawMongoDataFile.FromCsvWithHeaderfileFlag(collectionName: "clients", fileName: "clients"),
+                    RawMongoDataFile.FromCsvWithFieldsFlag(collectionName: "clients_no_header", fileName: "clients_no_header", fields: "_id,username,email,age"),
+                    RawMongoDataFile.FromCsvWithFieldFileFlag(collectionName: "products", fileName: "products", fieldFileName: "products_headers.txt")
+                ] 
         );
 
     /// <inheritdoc cref="IWaitUntil" />

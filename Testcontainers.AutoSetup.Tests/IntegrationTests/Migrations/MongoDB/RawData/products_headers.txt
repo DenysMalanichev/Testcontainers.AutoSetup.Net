@@ -1,0 +1,4 @@
+sku
+product_name
+price
+tags

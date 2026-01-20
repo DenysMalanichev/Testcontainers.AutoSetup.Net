@@ -28,7 +28,7 @@ public class MongoRestorationTests : IntegrationTestsBase
         // Arrange
         var client = new MongoClient(Setup.MongoContainerFromSpecificBuilder.GetConnectionString()); 
         var dbSetup = (RawMongoDbSetup)Setup.MongoContainer_FromSpecificBuilder_RawMongoDbSetup!;
-        var collection = client.GetDatabase(dbSetup.DbName).GetCollection<BsonDocument>(dbSetup.MongoFiles.Keys.First());
+        var collection = client.GetDatabase(dbSetup.DbName).GetCollection<BsonDocument>(dbSetup.MongoFiles[0].CollectionName);
         var filter = Builders<BsonDocument>.Filter.Empty;
 
         // Act 
@@ -48,7 +48,7 @@ public class MongoRestorationTests : IntegrationTestsBase
         // Arrange
         var client = new MongoClient(Setup.MongoContainerFromSpecificBuilder.GetConnectionString()); 
         var dbSetup = (RawMongoDbSetup)Setup.MongoContainer_FromSpecificBuilder_RawMongoDbSetup!;
-        var collection = client.GetDatabase(dbSetup.DbName).GetCollection<BsonDocument>(dbSetup.MongoFiles.Keys.First());
+        var collection = client.GetDatabase(dbSetup.DbName).GetCollection<BsonDocument>(dbSetup.MongoFiles[0].CollectionName);
 
         var filter = Builders<BsonDocument>.Filter.Eq("name", "test");
 
@@ -76,7 +76,7 @@ public class MongoRestorationTests : IntegrationTestsBase
         var port = Setup.MongoContainerFromGenericBuilder.GetMappedPublicPort(27017);
         var client = new MongoClient($"mongodb://mongo:mongo@localhost:{port}/?directConnection=true&serverSelectionTimeoutMS=2000"); 
         var dbSetup = (RawMongoDbSetup)Setup.MongoContainer_FromGenericBuilder_RawMongoDbSetup!;
-        var collection = client.GetDatabase(dbSetup.DbName).GetCollection<BsonDocument>(dbSetup.MongoFiles.Keys.First());
+        var collection = client.GetDatabase(dbSetup.DbName).GetCollection<BsonDocument>(dbSetup.MongoFiles[0].CollectionName);
         var filter = Builders<BsonDocument>.Filter.Empty;
 
         // Act 
@@ -97,7 +97,7 @@ public class MongoRestorationTests : IntegrationTestsBase
         var port = Setup.MongoContainerFromGenericBuilder.GetMappedPublicPort(27017);
         var client = new MongoClient($"mongodb://mongo:mongo@localhost:{port}/?directConnection=true&serverSelectionTimeoutMS=2000"); 
         var dbSetup = (RawMongoDbSetup)Setup.MongoContainer_FromGenericBuilder_RawMongoDbSetup!;
-        var collection = client.GetDatabase(dbSetup.DbName).GetCollection<BsonDocument>(dbSetup.MongoFiles.Keys.First());
+        var collection = client.GetDatabase(dbSetup.DbName).GetCollection<BsonDocument>(dbSetup.MongoFiles[0].CollectionName);
 
         var filter = Builders<BsonDocument>.Filter.Eq("name", "test");
 
