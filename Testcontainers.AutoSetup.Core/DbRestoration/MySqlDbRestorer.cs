@@ -115,11 +115,13 @@ public class MySqlDbRestorer : SqlDbRestorer
         var goldenStateDbName = $"{_dbSetup.DbName}_golden_state";
         await using var createDbCmd = connection.CreateCommand();
         createDbCmd.CommandText = $"DROP DATABASE IF EXISTS `{goldenStateDbName}`; CREATE DATABASE `{goldenStateDbName}`;";
-        var result = await createDbCmd.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
-
-        if (result is not 1)
+        try 
         {
-            _logger.LogError("Failed to create golden state database.");
+            await createDbCmd.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to create golden state database.");
             throw new DbSetupException(goldenStateDbName);
         }
 

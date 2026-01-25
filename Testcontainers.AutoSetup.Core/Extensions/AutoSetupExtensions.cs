@@ -51,25 +51,34 @@ public static class AutoSetupExtensions
     /// </remarks>
     public static TBuilder WithMSSQLAutoSetupDefaults<TBuilder, TContainer, TConfiguration>(
         this ContainerBuilder<TBuilder, TContainer, TConfiguration> builder, 
-        string containerName)
+        string containerName, bool? useTmpfs = null)
         where TBuilder : ContainerBuilder<TBuilder, TContainer, TConfiguration>
         where TContainer : IContainer
         where TConfiguration : IContainerConfiguration
     {
         var commonSetup = WithAutoSetupReuseDefaults(builder, containerName);
-        return commonSetup.WithMSSQLAutoSetupDefaultsInternal(containerName);
+        var isCiRun = EnvironmentHelper.IsCiRun();
+        var isWslDocker = EnvironmentHelper.IsWslDocker();
+        return commonSetup.WithMSSQLAutoSetupDefaultsInternal(containerName, isCiRun, isWslDocker, useTmpfs);
     }
 
     internal static TBuilder WithMSSQLAutoSetupDefaultsInternal<TBuilder, TContainer, TConfiguration>(
         this ContainerBuilder<TBuilder, TContainer, TConfiguration> builder, 
-        string containerName)
+        string containerName, bool isCiRun, bool isWslDocker, bool? useTmpfs = null)
         where TBuilder : ContainerBuilder<TBuilder, TContainer, TConfiguration>
         where TContainer : IContainer
         where TConfiguration : IContainerConfiguration
     {
+        // If execution is not in CI and the Docker engine is not running under WSL Tmpfs is created even without explicit TRUE
+        if(!isCiRun && ((useTmpfs is null && !isWslDocker) || (useTmpfs is not null && useTmpfs.Value == true)))
+        {
+            builder = builder
+                .WithTmpfsMount(Constants.MsSQL.DefaultRestorationDataFilesPath, AccessMode.ReadWrite);
+        }
+
         return builder
             .WithVolumeMount($"{containerName}-Restoration", Constants.MsSQL.DefaultRestorationStateFilesPath, AccessMode.ReadWrite)
-            .WithTmpfsMount(Constants.MsSQL.DefaultRestorationDataFilesPath, AccessMode.ReadWrite)
+            .WithVolumeMount($"{containerName}-Secrets", "/var/opt/mssql/secrets", AccessMode.ReadWrite)
             .WithCreateParameterModifier(config =>
             {
                 config.User = "root";
@@ -116,23 +125,38 @@ public static class AutoSetupExtensions
     /// </remarks>
     public static TBuilder WithMySQLAutoSetupDefaults<TBuilder, TContainer, TConfiguration>(
         this ContainerBuilder<TBuilder, TContainer, TConfiguration> builder, 
-        string containerName)
+        string containerName, bool? useTmpfs = null)
         where TBuilder : ContainerBuilder<TBuilder, TContainer, TConfiguration>
         where TContainer : IContainer
         where TConfiguration : IContainerConfiguration
     {
+        var isCiRun = EnvironmentHelper.IsCiRun();
+        var isWslDocker = EnvironmentHelper.IsWslDocker();
         return builder.WithAutoSetupReuseDefaults(containerName)
-                      .WithMySQLAutoSetupDefaultsInternal();
+                      .WithMySQLAutoSetupDefaultsInternal(isCiRun, isWslDocker, useTmpfs);
     }
 
     internal static TBuilder WithMySQLAutoSetupDefaultsInternal<TBuilder, TContainer, TConfiguration>(
-        this ContainerBuilder<TBuilder, TContainer, TConfiguration> builder)
+        this ContainerBuilder<TBuilder, TContainer, TConfiguration> builder,
+            bool isCiRun, bool isWslDocker, bool? useTmpfs = null)
         where TBuilder : ContainerBuilder<TBuilder, TContainer, TConfiguration>
         where TContainer : IContainer
         where TConfiguration : IContainerConfiguration
     {
-        var commonSetup = builder.WithTmpfsMount(Constants.MySQL.DefaultDbDataDirectory, AccessMode.ReadWrite);
-        return (TBuilder)commonSetup;
+        // If execution is not in CI and the Docker engine is not running under WSL Tmpfs is created even without explicit TRUE
+        if(!isCiRun && ((useTmpfs is null && !isWslDocker) || (useTmpfs is not null && useTmpfs.Value == true)))
+        {
+            builder = builder.WithTmpfsMount(Constants.MySQL.DefaultDbDataDirectory, AccessMode.ReadWrite)
+            .WithCreateParameterModifier(modifier =>
+            {
+                modifier.HostConfig ??= new Docker.DotNet.Models.HostConfig();
+                modifier.HostConfig.SecurityOpt ??= new List<string>();
+                
+                // This is the "Master Key" for syscall permissions
+                modifier.HostConfig.SecurityOpt.Add("seccomp=unconfined");
+            });
+        }
+        return (TBuilder)builder;
     }
 
     /// <summary>
@@ -212,7 +236,7 @@ public static class AutoSetupExtensions
         return (TBuilder)builder;
     }
 
-        /// <summary>
+    /// <summary>
     /// Configures the Testcontainer builder with the essential settings required by the AutoSetup library.
     /// <para>
     /// This includes configuring Docker endpoints, volume mounts for database restoration, 
@@ -254,24 +278,15 @@ public static class AutoSetupExtensions
     /// </remarks>
     public static TBuilder WithMongoAutoSetupDefaults<TBuilder, TContainer, TConfiguration>(
         this ContainerBuilder<TBuilder, TContainer, TConfiguration> builder, 
-            string containerName, string migrationsPath)
+            string containerName, string migrationsPath, bool? useTmpfs = null)
         where TBuilder : ContainerBuilder<TBuilder, TContainer, TConfiguration>
         where TContainer : IContainer
         where TConfiguration : IContainerConfiguration
     {
         var commonSetup = WithAutoSetupReuseDefaults(builder, containerName);
-        
-        return commonSetup.WithMongoAutoSetupDefaultsInternal(migrationsPath);
-    }
-
-    internal static TBuilder WithMongoAutoSetupDefaultsInternal<TBuilder, TContainer, TConfiguration>(
-        this ContainerBuilder<TBuilder, TContainer, TConfiguration> builder, 
-            string migrationsPath)
-        where TBuilder : ContainerBuilder<TBuilder, TContainer, TConfiguration>
-        where TContainer : IContainer
-        where TConfiguration : IContainerConfiguration
-    {
-        if(EnvironmentHelper.IsWslDocker())
+        var isCiRun = EnvironmentHelper.IsCiRun();
+        var isWslDocker = EnvironmentHelper.IsWslDocker();
+        if(isWslDocker)
         {
             migrationsPath = EnvironmentHelper.ConvertToWslPath(migrationsPath);   
         }
@@ -280,8 +295,23 @@ public static class AutoSetupExtensions
             migrationsPath = Path.GetFullPath(migrationsPath);
         }
         
+        return commonSetup.WithMongoAutoSetupDefaultsInternal(migrationsPath, isCiRun, isWslDocker, useTmpfs);
+    }
+
+    internal static TBuilder WithMongoAutoSetupDefaultsInternal<TBuilder, TContainer, TConfiguration>(
+        this ContainerBuilder<TBuilder, TContainer, TConfiguration> builder, 
+            string migrationsPath, bool isWslDocker, bool isCiRun, bool? useTmpfs = null)
+        where TBuilder : ContainerBuilder<TBuilder, TContainer, TConfiguration>
+        where TContainer : IContainer
+        where TConfiguration : IContainerConfiguration
+    {
+        // If execution is not in CI and the Docker engine is not running under WSL Tmpfs is created even without explicit TRUE
+        if(!isCiRun && ((useTmpfs is null && !isWslDocker) || (useTmpfs is not null && useTmpfs.Value == true)))
+        {
+            builder = builder.WithTmpfsMount(Constants.MongoDB.DefaultDbDataDirectory, AccessMode.ReadWrite);
+        }
+        
         return builder
-            .WithTmpfsMount(Constants.MongoDB.DefaultDbDataDirectory, AccessMode.ReadWrite)
             .WithBindMount(migrationsPath, Constants.MongoDB.DefaultMigrationsDataPath, AccessMode.ReadOnly)
             .WithCreateParameterModifier(config =>
             {

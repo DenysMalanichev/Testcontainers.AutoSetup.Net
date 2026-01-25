@@ -248,7 +248,33 @@ public static class EnvironmentHelper
 
         try
         {
-            var processInfo = new ProcessStartInfo
+            // 1. First, check if any WSL distro is actually running.
+            var checkRunningInfo = new ProcessStartInfo
+            {
+                FileName = "wsl",
+                Arguments = "--list --running --quiet", // --quiet suppresses header/verbose text
+                RedirectStandardOutput = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+
+            using (var checkProcess = Process.Start(checkRunningInfo))
+            {
+                if (checkProcess == null) return "localhost";
+                
+                // If WSL is not running, output will be empty or null
+                string runningDistros = checkProcess.StandardOutput.ReadToEnd();
+                checkProcess.WaitForExit();
+
+                if (string.IsNullOrWhiteSpace(runningDistros) || runningDistros.Contains("There are no running distributions."))
+                {
+                    // WSL is installed but stopped/not running.
+                    return "localhost";
+                }
+            }
+
+            // 2. WSL is running, safe to get the IP.
+            var ipInfo = new ProcessStartInfo
             {
                 FileName = "wsl",
                 Arguments = "hostname -I",
@@ -257,11 +283,11 @@ public static class EnvironmentHelper
                 CreateNoWindow = true
             };
 
-            using var process = Process.Start(processInfo);
-            if (process == null) return "localhost";
+            using var ipProcess = Process.Start(ipInfo);
+            if (ipProcess == null) return "localhost";
 
-            string output = process.StandardOutput.ReadToEnd();
-            process.WaitForExit();
+            string output = ipProcess.StandardOutput.ReadToEnd();
+            ipProcess.WaitForExit();
 
             var ip = output.Trim().Split(' ').FirstOrDefault();
 
@@ -269,6 +295,7 @@ public static class EnvironmentHelper
         }
         catch
         {
+            // Fallback if 'wsl' command is not found or crashes
             return "localhost";
         }
     }
