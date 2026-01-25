@@ -138,12 +138,25 @@ You are free to use the default syntax of Testcontainers.NET to crate and config
 ```CSharp
 var msSqlContainer = new MsSqlBuilder();
 var container = builder
-    .WithAutoSetupDefaults(containerName: "MsSQL-testcontainer")
+    .WithMSSQLAutoSetupDefaults(containerName: "MsSQL-testcontainer")
     .WithPassword("#AdminPass123")
     .Build();
 await msSqlContainer.StartAsync(); 
 ```
 > NOTE: for DBs that use "golden state DB" restore strategy a default user must have rights to create databases. (e.g. use `.WithUsername("root")` for MySQL,  or similar, for supported builders).
+
+### TMPFS mounts
+For some containers a TMPFS mount is created automatically, which boosts a restoration performance in native local environments. However, if for some reason you do not need this feature, you can easilly disable by providing a `useTmpfs = false` flag:
+```CSharp
+var msSqlContainer = new MsSqlBuilder();
+var container = builder
+    .WithMSSQLAutoSetupDefaults(containerName: "MsSQL-testcontainer", useTmpfs: false)
+    .WithPassword("#AdminPass123")
+    .Build();
+await msSqlContainer.StartAsync(); 
+```
+In other cases, like WSL2 or CI/CD pipelines, Tmpfs mounts are not created. 
+> See Benchmarks for Tmpfs impact data. 
  
 With a running container we can set up the Database(s). To do it we create an `DbSetup` record, in this case an `EfDbSetup`, since we are going to use EF Core migrations. This record defines the DB configuration - a DB type, name, either an absolute or a relative path to migrations folder - `MigrationsPath` and a factory method to instantiate a `DbContext`: 
 ```CSharp

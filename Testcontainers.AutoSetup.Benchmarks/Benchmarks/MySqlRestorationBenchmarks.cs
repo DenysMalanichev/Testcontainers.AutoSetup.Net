@@ -7,6 +7,8 @@ using Testcontainers.MySql;
 using Testcontainers.AutoSetup.Core.Common.Entities;
 using Testcontainers.AutoSetup.Core.Common.DbStrategy;
 using Microsoft.Extensions.Logging.Abstractions;
+using Testcontainers.AutoSetup.Tests.UnitTests.Extensions;
+using Microsoft.IdentityModel.Tokens;
 
 namespace Testcontainers.AutoSetup.Benchmarks;
 
@@ -20,6 +22,9 @@ public class MySqlRestorationBenchmarks
 
     [Params(1, 10, 100, 1000, 10_000, 50_000)] 
     public int SeedRowCount { get; set; }
+
+    [Params(true, false)] 
+    public bool UseTmpfs { get; set; }
 
     [GlobalSetup]
     public async Task GlobalSetup()
@@ -64,8 +69,8 @@ public class MySqlRestorationBenchmarks
 
         await File.WriteAllTextAsync("./BenchmarkData/MySql//ParamsScript.sql", heavyScript);
 
-        _container = new MySqlBuilder("mysql:8.0.44-debian")
-            .WithMySQLAutoSetupDefaults(containerName: "Perfromance-MySQL-testcontainer")
+        _container = new MySqlBuilder("mysql:8.0-debian")
+            .WithMySQLAutoSetupDefaults(containerName: "Perfromance-MySQL-testcontainer", UseTmpfs)
             .WithUsername("root")
             .WithCommand("--skip-name-resolve")
             .Build();
@@ -113,6 +118,20 @@ public class MySqlRestorationBenchmarks
     [GlobalCleanup]
     public async Task Cleanup()
     {
-        await _container.DisposeAsync();
+        var mounts = _container.GetConfiguration().Mounts;
+
+        var containerId = _container.Id;
+        _container.DisposeAsync().GetAwaiter().GetResult();
+
+        // Fully removes the container ensuring that the next benchmark runs clean 
+        if(!containerId.IsNullOrEmpty())
+        {
+            System.Diagnostics.Process.Start("docker", $"rm -f {containerId}").WaitForExit();
+        }
+
+        foreach(var mount in mounts)
+        {
+            mount.DeleteAsync().GetAwaiter().GetResult();
+        }
     }
 }

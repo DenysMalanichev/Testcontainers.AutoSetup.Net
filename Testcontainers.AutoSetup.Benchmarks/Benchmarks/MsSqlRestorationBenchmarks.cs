@@ -7,6 +7,9 @@ using Testcontainers.AutoSetup.Core.Common.DbStrategy;
 using Microsoft.Extensions.Logging.Abstractions;
 using Testcontainers.AutoSetup.Tests.IntegrationTests.TestHelpers;
 using BenchmarkDotNet.Engines;
+using Testcontainers.AutoSetup.Tests.UnitTests.Extensions;
+using Microsoft.IdentityModel.Tokens;
+using Testcontainers.AutoSetup.Core.Helpers;
 
 namespace Testcontainers.AutoSetup.Benchmarks;
 
@@ -20,12 +23,25 @@ public class MsSqlRestorationBenchmarks
 
     [Params(1, 10, 100, 1000, 10_000, 50_000)] 
     public int SeedRowCount { get; set; }
+    
+    [Params(true, false)] 
+    public bool UseTmpfs { get; set; }
 
     [GlobalSetup]
     public async Task GlobalSetup()
     {
         // A. Generate a Heavy SQL Script dynamically based on the param
         var heavyScript = $@"
+            -- CLEANUP: Drop all snapshots linked to HeavyCatalog
+            USE master;
+            DECLARE @KillSnapsSql NVARCHAR(MAX) = '';
+
+            SELECT @KillSnapsSql = @KillSnapsSql + 'DROP DATABASE [' + name + ']; '
+            FROM sys.databases
+            WHERE source_database_id = DB_ID('HeavyCatalog');
+
+            EXEC(@KillSnapsSql);
+
             DROP DATABASE IF EXISTS [HeavyCatalog];
             CREATE DATABASE [HeavyCatalog];
             GO
@@ -54,7 +70,7 @@ public class MsSqlRestorationBenchmarks
         await File.WriteAllTextAsync("./BenchmarkData/MsSql/ParamsScript.sql", heavyScript);
 
         _container = new MsSqlBuilder("mcr.microsoft.com/mssql/server:2019-CU18-ubuntu-20.04")
-            .WithMSSQLAutoSetupDefaults(containerName: "Perfromance-MsSQL-testcontainer")
+            .WithMSSQLAutoSetupDefaults(containerName: "Perfromance-MsSQL-testcontainer", UseTmpfs)
             .WithPassword("#AdminPass123")
             .Build();
 
@@ -99,8 +115,54 @@ public class MsSqlRestorationBenchmarks
     }
 
     [GlobalCleanup]
-    public async Task Cleanup()
+    public void RemoveContainer()
     {
-        await _container.DisposeAsync();
+        var mounts = _container.GetConfiguration().Mounts;
+        var containerId = _container.Id;
+
+        Console.WriteLine($"[Cleanup] Attempting to kill container {containerId}...");
+
+        _container.DisposeAsync()
+            .GetAwaiter()
+            .GetResult();
+
+        // Fully removes the container ensuring that the next benchmark runs clean 
+        if (!string.IsNullOrEmpty(containerId))
+        {
+            Console.WriteLine($"[Cleanup] Attempting to kill container {containerId}...");
+
+            var isWslDocker = EnvironmentHelper.IsWslDocker();
+            var containerRemoveProcstartInfo = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = isWslDocker ? "wsl" : "docker",
+                Arguments = isWslDocker ? "docker " : " " + $"rm -f {containerId}",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+
+            using var process = System.Diagnostics.Process.Start(containerRemoveProcstartInfo);
+            if (process != null)
+            {
+                process.WaitForExitAsync().GetAwaiter().GetResult();
+
+                // Log if something went wrong
+                if (process.ExitCode != 0)
+                {
+                    var error = process.StandardError.ReadToEndAsync().GetAwaiter().GetResult();
+                    Console.WriteLine($"[Cleanup Error] Failed to remove container: {error}");
+                }
+                else
+                {
+                    Console.WriteLine($"[Cleanup] Container {containerId} removed successfully.");
+                }
+            }
+        }
+
+        foreach (var mount in mounts)
+        {
+            mount.DeleteAsync().GetAwaiter().GetResult();
+        }
     }
 }

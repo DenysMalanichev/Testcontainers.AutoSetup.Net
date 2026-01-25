@@ -2,12 +2,15 @@ using System.Text.Json;
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Engines;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.IdentityModel.Tokens;
 using MongoDB.Bson;
 using MongoDB.Driver;
 using Testcontainers.AutoSetup.Core.Abstractions;
 using Testcontainers.AutoSetup.Core.Common.DbStrategy;
 using Testcontainers.AutoSetup.Core.Common.Entities;
 using Testcontainers.AutoSetup.Core.Extensions;
+using Testcontainers.AutoSetup.Core.Helpers;
+using Testcontainers.AutoSetup.Tests.UnitTests.Extensions;
 using Testcontainers.MongoDb;
 
 namespace Testcontainers.AutoSetup.Benchmarks;
@@ -22,6 +25,9 @@ public class MongoDbRestorationBenchmarks
 
     [Params(1, 10, 100, 1000, 10_000, 50_000)] 
     public int SeedRowCount { get; set; }
+
+    [Params(true, false)] 
+    public bool UseTmpfs { get; set; }
 
     [GlobalSetup]
     public async Task GlobalSetup()
@@ -49,7 +55,7 @@ public class MongoDbRestorationBenchmarks
         await File.WriteAllTextAsync($"{MigrationsPath}/{DataFileName}.json", jsonContent);
 
         _container = new MongoDbBuilder("mongo:6.0.27-jammy")
-            .WithMongoAutoSetupDefaults(containerName: "Perfromance-MongoDB-testcontainer", MigrationsPath)
+            .WithMongoAutoSetupDefaults(containerName: "Perfromance-MongoDB-testcontainer", MigrationsPath, UseTmpfs)
             .Build();
 
         await _container.StartAsync();
@@ -95,5 +101,57 @@ public class MongoDbRestorationBenchmarks
     public async Task Restore_HeavyDatabase()
     {
         await _strategy.ResetAsync();
+    }
+
+    [GlobalCleanup]
+    public void RemoveContainer()
+    {
+        var mounts = _container.GetConfiguration().Mounts;
+        var containerId = _container.Id;
+
+        Console.WriteLine($"[Cleanup] Attempting to kill container {containerId}...");
+
+        _container.DisposeAsync()
+            .GetAwaiter()
+            .GetResult();
+
+        // Fully removes the container ensuring that the next benchmark runs clean 
+        if (!string.IsNullOrEmpty(containerId))
+        {
+            Console.WriteLine($"[Cleanup] Attempting to kill container {containerId}...");
+
+            var isWslDocker = EnvironmentHelper.IsWslDocker();
+            var containerRemoveProcstartInfo = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = isWslDocker ? "wsl" : "docker",
+                Arguments = isWslDocker ? "docker " : " " + $"rm -f {containerId}",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+
+            using var process = System.Diagnostics.Process.Start(containerRemoveProcstartInfo);
+            if (process != null)
+            {
+                process.WaitForExitAsync().GetAwaiter().GetResult();
+
+                // Log if something went wrong
+                if (process.ExitCode != 0)
+                {
+                    var error = process.StandardError.ReadToEndAsync().GetAwaiter().GetResult();
+                    Console.WriteLine($"[Cleanup Error] Failed to remove container: {error}");
+                }
+                else
+                {
+                    Console.WriteLine($"[Cleanup] Container {containerId} removed successfully.");
+                }
+            }
+        }
+
+        foreach (var mount in mounts)
+        {
+            mount.DeleteAsync().GetAwaiter().GetResult();
+        }
     }
 }
