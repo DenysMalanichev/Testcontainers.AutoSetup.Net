@@ -62,12 +62,12 @@ public static class AutoSetupExtensions
 
     internal static TBuilder WithMSSQLAutoSetupDefaultsInternal<TBuilder, TContainer, TConfiguration>(
         this ContainerBuilder<TBuilder, TContainer, TConfiguration> builder, 
-        string containerName, bool useTmpfs)
+        string containerName, bool? useTmpfs = null)
         where TBuilder : ContainerBuilder<TBuilder, TContainer, TConfiguration>
         where TContainer : IContainer
         where TConfiguration : IContainerConfiguration
     {
-        if(useTmpfs)
+        if((useTmpfs is null && !EnvironmentHelper.IsWslDocker() && !EnvironmentHelper.IsCiRun()) || (useTmpfs is not null && useTmpfs.Value == true))
         {
             builder = builder
                 .WithTmpfsMount(Constants.MsSQL.DefaultRestorationDataFilesPath, AccessMode.ReadWrite);
@@ -132,12 +132,12 @@ public static class AutoSetupExtensions
     }
 
     internal static TBuilder WithMySQLAutoSetupDefaultsInternal<TBuilder, TContainer, TConfiguration>(
-        this ContainerBuilder<TBuilder, TContainer, TConfiguration> builder, bool useTmpfs)
+        this ContainerBuilder<TBuilder, TContainer, TConfiguration> builder, bool? useTmpfs = null)
         where TBuilder : ContainerBuilder<TBuilder, TContainer, TConfiguration>
         where TContainer : IContainer
         where TConfiguration : IContainerConfiguration
     {
-        if(useTmpfs)
+        if((useTmpfs is null && !EnvironmentHelper.IsWslDocker() && !EnvironmentHelper.IsCiRun()) || (useTmpfs is not null && useTmpfs.Value == true))
         {
             builder = builder.WithTmpfsMount(Constants.MySQL.DefaultDbDataDirectory, AccessMode.ReadWrite)
             .WithCreateParameterModifier(modifier =>
@@ -283,7 +283,7 @@ public static class AutoSetupExtensions
 
     internal static TBuilder WithMongoAutoSetupDefaultsInternal<TBuilder, TContainer, TConfiguration>(
         this ContainerBuilder<TBuilder, TContainer, TConfiguration> builder, 
-            string migrationsPath, bool useTmpfs)
+            string migrationsPath, bool? useTmpfs = null)
         where TBuilder : ContainerBuilder<TBuilder, TContainer, TConfiguration>
         where TContainer : IContainer
         where TConfiguration : IContainerConfiguration
@@ -297,7 +297,7 @@ public static class AutoSetupExtensions
             migrationsPath = Path.GetFullPath(migrationsPath);
         }
 
-        if(useTmpfs)
+        if((useTmpfs is null && !EnvironmentHelper.IsWslDocker() && !EnvironmentHelper.IsCiRun()) || (useTmpfs is not null && useTmpfs.Value == true))
         {
             builder = builder.WithTmpfsMount(Constants.MongoDB.DefaultDbDataDirectory, AccessMode.ReadWrite);
         }
