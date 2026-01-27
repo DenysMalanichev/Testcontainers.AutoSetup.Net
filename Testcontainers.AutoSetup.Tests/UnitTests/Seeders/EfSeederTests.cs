@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Moq.Protected;
+using Testcontainers.AutoSetup.Core.Abstractions.Entities;
 using Testcontainers.AutoSetup.Core.Common.Enums;
 using Testcontainers.AutoSetup.EntityFramework;
 using Testcontainers.AutoSetup.EntityFramework.Entities;
@@ -36,7 +37,7 @@ public class EfSeederTests
         var seederMock = new Mock<EfSeeder>(Mock.Of<ILogger>())
         { CallBase = true };
         seederMock.Protected()
-            .Setup<Task>("ExecuteMigrateAsync", ItExpr.IsAny<DbContext>(), ItExpr.IsAny<CancellationToken>())
+            .Setup<Task>("ExecuteMigrateAsync", ItExpr.IsAny<DbSetup>(), ItExpr.IsAny<DbContext>(), ItExpr.IsAny<CancellationToken>())
             .Returns(Task.CompletedTask)
             .Verifiable();
 
@@ -47,6 +48,7 @@ public class EfSeederTests
         seederMock.Protected().Verify(
             "ExecuteMigrateAsync", 
             Times.Once(), 
+            ItExpr.IsAny<DbSetup>(),
             ItExpr.IsAny<DbContext>(), 
             ItExpr.IsAny<CancellationToken>()
         );

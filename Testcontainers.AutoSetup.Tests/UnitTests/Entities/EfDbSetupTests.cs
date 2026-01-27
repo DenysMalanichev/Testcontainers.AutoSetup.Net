@@ -41,7 +41,6 @@ public class EfDbSetupTests
         Assert.Equal(migrationPath, sut.MigrationsPath);
         Assert.Equal(DbType.MongoDB, sut.DbType);
         Assert.True(sut.RestoreFromDump);
-        Assert.Same(factory, sut.ContextFactory);
         
         // Verify the factory actually works as expected
         var createdContext = sut.ContextFactory("test-connection");

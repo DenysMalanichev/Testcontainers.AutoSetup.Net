@@ -1,4 +1,3 @@
-using Microsoft.IdentityModel.Tokens;
 using Testcontainers.AutoSetup.Core.Common.Enums;
 
 namespace Testcontainers.AutoSetup.Core.Common.Entities;

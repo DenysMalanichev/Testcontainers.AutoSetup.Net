@@ -1,5 +1,6 @@
 using System.IO.Abstractions;
 using Testcontainers.AutoSetup.Core.Abstractions;
+using Testcontainers.AutoSetup.Core.Common.Entities;
 using Testcontainers.AutoSetup.Core.DbSeeding;
 
 namespace Testcontainers.AutoSetup.Core.Common.DbStrategy;
@@ -17,6 +18,8 @@ public partial class DbSetupStrategyBuilder
     {
         ArgumentNullException.ThrowIfNull(connectionFactory);
         
+        if(_dbSetup is not RawSqlDbSetup)
+            throw new ArgumentException($"Cannot use {typeof(RawSqlDbSeeder)} on {_dbSetup.GetType()}. Must be {typeof(RawSqlDbSetup)}.");
         if(_seeder is not null)
             throw new ArgumentException("Seeder is already initialized.");
 

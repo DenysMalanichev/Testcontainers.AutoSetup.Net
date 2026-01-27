@@ -5,31 +5,13 @@ using Testcontainers.AutoSetup.Core.Common.Enums;
 
 namespace Testcontainers.AutoSetup.Core.Common.Entities;
 
-public record RawMongoDbSetup : DbSetup
+public record RawMongoDbSetup : MongoDbSetup
 {
     /// <summary>
     /// Dictionary listing files' names and collections' name 
     /// of format "collection name - file name", used to seed data
     /// </summary>
     public virtual IList<RawMongoDataFile> MongoFiles { get; init; }
-
-    /// <summary>
-    /// Username used for authentication. 
-    /// Default value = 'mongo' - default value for Testcontaienrs
-    /// </summary>
-    public string Username { get; init; } = "mongo";
-
-    /// <summary>
-    /// Password used for authentication.
-    /// Default value = 'mongo' - default value for Testcontaienrs
-    /// </summary>
-    public string Password { get; init; } = "mongo";
-
-    /// <summary>
-    /// Database used for authentication.
-    /// Default value = 'admin'
-    /// </summary>
-    public string AuthenticationDatabase { get; init; } = "admin";
 
     public RawMongoDbSetup(
         IList<RawMongoDataFile> mongoFiles,

@@ -5,7 +5,6 @@ using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
 using Testcontainers.AutoSetup.Core.Abstractions.Entities;
 using Testcontainers.AutoSetup.Core.Common;
-using Testcontainers.AutoSetup.Core.Common.Entities;
 using Testcontainers.AutoSetup.Core.Common.Helpers;
 
 namespace Testcontainers.AutoSetup.Core.DbRestoration;
@@ -32,10 +31,10 @@ public class MongoDbRestorer : Abstractions.Mongo.MongoDbRestorer
     {
         _logger.LogInformation("Restoring {dbName} DB.", _dbSetup.DbName);
 
-            var mongoDbSetup = (RawMongoDbSetup)_dbSetup;
+            var mongoDbSetup = (MongoDbSetup)_dbSetup;
             var result = await _container.ExecAsync([
                 "mongorestore",
-                "--archive=/tmp/golden.gz",
+                $"--archive=/tmp/{_dbSetup.DbName}_golden.gz",
                 "--gzip",
                 "--drop",
                 "--username", mongoDbSetup.Username,
@@ -56,12 +55,12 @@ public class MongoDbRestorer : Abstractions.Mongo.MongoDbRestorer
     public override async Task SnapshotAsync(CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Creating a snapshot for {dbName} DB", _dbSetup.DbName);
-        var mongoDbSetup = (RawMongoDbSetup)_dbSetup;
+        var mongoDbSetup = (MongoDbSetup)_dbSetup;
 
         var sb = new StringBuilder();
         sb.Append("mongodump");
         sb.Append($" --db={_dbSetup.DbName}");
-        sb.Append(" --archive=/tmp/golden.gz");
+        sb.Append($" --archive=/tmp/{_dbSetup.DbName}_golden.gz");
         sb.Append(" --gzip");
         sb.Append($" --username '{mongoDbSetup.Username}'");
         sb.Append($" --password '{mongoDbSetup.Password}'");

@@ -8,7 +8,6 @@ using Testcontainers.AutoSetup.Tests.TestCollections;
 using Testcontainers.MongoDb;
 using Testcontainers.MsSql;
 using Testcontainers.MySql;
-using Xunit.Sdk;
 
 namespace Testcontainers.AutoSetup.Tests.UnitTests.Extensions;
 

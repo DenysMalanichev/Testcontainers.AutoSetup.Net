@@ -90,7 +90,7 @@ public class MongoRestorationTests : IntegrationTestsBase
     }
 
     [Fact]
-    public async Task MongoDbRestorer_WithgenericBuilder_ReseedsDb()
+    public async Task MongoDbRestorer_WithGenericBuilder_ReseedsDb()
     {
         // Containers setup and seeding are done within the GlobalTestSetup
         // Arrange
