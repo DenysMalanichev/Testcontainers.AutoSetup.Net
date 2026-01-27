@@ -6,11 +6,11 @@ using Testcontainers.AutoSetup.EntityFramework.Abstractions;
 
 namespace Testcontainers.AutoSetup.EntityFramework.Entities;
 
-public record EfDbSetup : DbSetup, IEfContextFactory
-{  
+public record MongoEfDbSetup : MongoDbSetup, IEfContextFactory
+{
     public Func<string, DbContext> _contextFactoryDelegate { get; init; }
 
-    public EfDbSetup(
+    public MongoEfDbSetup(
         Func<string, DbContext> contextFactory,
         string dbName,
         string containerConnectionString,
@@ -26,7 +26,7 @@ public record EfDbSetup : DbSetup, IEfContextFactory
                 dbType,
                 restoreFromDump,
                 restorationStateFilesDirectory,
-                 fileSystem)
+                fileSystem)
     {
         _contextFactoryDelegate = contextFactory ?? throw new ArgumentNullException(nameof(contextFactory));
     }

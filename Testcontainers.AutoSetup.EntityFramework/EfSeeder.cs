@@ -3,7 +3,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Testcontainers.AutoSetup.Core.Abstractions.Entities;
 using Testcontainers.AutoSetup.Core.Abstractions.Sql;
-using Testcontainers.AutoSetup.EntityFramework.Entities;
+using Testcontainers.AutoSetup.Core.Common.Enums;
+using Testcontainers.AutoSetup.EntityFramework.Abstractions;
 
 namespace Testcontainers.AutoSetup.EntityFramework;
 
@@ -21,7 +22,7 @@ public class EfSeeder : SqlDbSeeder
     {        
         _logger.LogInformation("Applying EF migrations to database '{Database}'", dbSetup.DbName);
 
-        await ApplyEFMigrationsAsync((EfDbSetup)dbSetup, cancellationToken).ConfigureAwait(false);
+        await ApplyEFMigrationsAsync(dbSetup, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -30,14 +31,14 @@ public class EfSeeder : SqlDbSeeder
     /// <param name="dbSetup"></param>
     /// <param name="cancellationToken"></param>
     private async Task ApplyEFMigrationsAsync(
-        EfDbSetup dbSetup,
+        DbSetup dbSetup,
         CancellationToken cancellationToken = default)
     {
         var finalConnectionString = dbSetup.BuildDbConnectionString();
 
-        await using var dbContext = dbSetup.ContextFactory(finalConnectionString);
+        await using var dbContext = ((IEfContextFactory)dbSetup).ContextFactory(finalConnectionString);
 
-        await ExecuteMigrateAsync(dbContext, cancellationToken).ConfigureAwait(false);
+        await ExecuteMigrateAsync(dbSetup, dbContext, cancellationToken).ConfigureAwait(false);
 
         _logger.LogInformation("Successfully applied EF migrations to database '{Database}'", dbSetup.DbName);
     }
@@ -46,8 +47,14 @@ public class EfSeeder : SqlDbSeeder
     /// Executes the migration using the provided DbContext.
     /// Isolates the migration logic for easier testing.
     /// </summary>
-    protected virtual Task ExecuteMigrateAsync(DbContext dbContext, CancellationToken cancellationToken)
+    protected virtual async Task ExecuteMigrateAsync(DbSetup dbSetup, DbContext dbContext, CancellationToken cancellationToken)
     {
-        return dbContext.Database.MigrateAsync(cancellationToken);
+        if(dbSetup.DbType is DbType.MongoDB)
+        {
+            await dbContext.Database.EnsureCreatedAsync(cancellationToken);
+            return;   
+        }
+           
+        await dbContext.Database.MigrateAsync(cancellationToken);
     }
 }

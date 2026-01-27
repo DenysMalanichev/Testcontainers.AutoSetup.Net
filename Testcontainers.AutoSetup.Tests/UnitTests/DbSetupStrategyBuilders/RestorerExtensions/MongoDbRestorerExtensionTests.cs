@@ -18,7 +18,7 @@ public class MongoDbRestorerExtensionTests
     public async Task WithMongoDbRestorer_SetsTheCorrectRestorer()
     {
         // Arrange
-        var dbSetupMock = new Mock<DbSetup>("t", "c", "p", DbType.Other, false, null!, null!);
+        var dbSetupMock = new Mock<MongoDbSetup>("t", "c", "p", DbType.Other, false, null!, null!);
         var builder = new DbSetupStrategyBuilder(dbSetupMock.Object, Mock.Of<IContainer>());
 
         // Act 
@@ -26,6 +26,17 @@ public class MongoDbRestorerExtensionTests
 
         // Assert
         Assert.IsType<MongoDbRestorer>(builder._restorer);
+    }
+
+    [Fact]
+    public async Task WithMongoDbRestorer_ThrowsArgumentException_OnWrongDbSetup()
+    {
+        // Arrange
+        var dbSetupMock = new Mock<DbSetup>("t", "c", "p", DbType.Other, false, null!, null!);
+        var builder = new DbSetupStrategyBuilder(dbSetupMock.Object, Mock.Of<IContainer>());
+
+        // Act & Assert
+        await Assert.ThrowsAsync<ArgumentException>(async () => builder.WithMongoDbRestorer());
     }
 
     [Fact]

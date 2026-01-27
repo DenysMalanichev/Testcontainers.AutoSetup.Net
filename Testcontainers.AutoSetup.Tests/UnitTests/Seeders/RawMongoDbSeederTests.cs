@@ -3,7 +3,6 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using Testcontainers.AutoSetup.Core.Common;
 using Testcontainers.AutoSetup.Core.Common.Entities;
-using Testcontainers.AutoSetup.Core.Common.Enums;
 using Testcontainers.AutoSetup.Core.DbSeeding;
 
 namespace Testcontainers.AutoSetup.Tests.UnitTests.Seeders;

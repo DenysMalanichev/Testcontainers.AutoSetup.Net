@@ -18,6 +18,7 @@ using Testcontainers.AutoSetup.Tests.IntegrationTests.Migrations.MySQL.EfMigrati
 using Testcontainers.AutoSetup.Tests.IntegrationTests.TestHelpers;
 using Testcontainers.MongoDb;
 using Testcontainers.AutoSetup.Core.Common.DbStrategy;
+using Testcontainers.AutoSetup.Tests.IntegrationTests.Migrations.MongoDB.EfMigrations;
 
 namespace Testcontainers.AutoSetup.Tests.IntegrationTests;
 
@@ -37,6 +38,7 @@ public class GlobalTestSetup : GenericTestBase
     public DbSetup? MongoContainer_FromSpecificBuilder_RawMongoDbSetup { get; private set; } = null!;
     public IContainer MongoContainerFromGenericBuilder = null!;
     public DbSetup? MongoContainer_FromGenericBuilder_RawMongoDbSetup { get; private set; } = null!;
+    public DbSetup? MongoContainer_FromGenericBuilder_EfMongoDbSetup { get; private set; } = null!;
 
     public readonly string? DockerEndpoint = EnvironmentHelper.GetDockerEndpoint();
 
@@ -199,6 +201,17 @@ public class GlobalTestSetup : GenericTestBase
                 MongoContainerFromGenericBuilder,
                 Logger!)
             .WithRawMongoDbSeeder()
+            .WithMongoDbRestorer()
+            .Build());
+
+    // Mongo Specific + EF Seeder
+    MongoContainer_FromGenericBuilder_EfMongoDbSetup = SpecificMongoDbEfDbSetup(MongoContainerFromSpecificBuilder.GetConnectionString());
+    TestEnvironment.RegisterDbSetupStrategy(
+        new DbSetupStrategyBuilder(
+                MongoContainer_FromGenericBuilder_EfMongoDbSetup,
+                MongoContainerFromSpecificBuilder,
+                Logger!)
+            .WithEfSeeder()
             .WithMongoDbRestorer()
             .Build());
         }
@@ -405,6 +418,17 @@ public class GlobalTestSetup : GenericTestBase
                     RawMongoDataFile.FromCsvWithFieldsFlag(collectionName: "clients_no_header", fileName: "clients_no_header", fields: "_id,username,email,age"),
                     RawMongoDataFile.FromCsvWithFieldFileFlag(collectionName: "products", fileName: "products", fieldFileName: "products_headers.txt")
                 ] 
+        );
+
+    private static MongoEfDbSetup SpecificMongoDbEfDbSetup(string containerConnectionString) => new(
+            contextFactory: connString => new MflixDbContext(
+                new DbContextOptionsBuilder<MflixDbContext>()
+                    .UseMongoDB(connString, databaseName: "MFlixMongoTest")
+                    .Options),
+            containerConnectionString: containerConnectionString,
+            dbName: "MFlixMongoTest",
+            dbType: Core.Common.Enums.DbType.MongoDB,
+            migrationsPath: "./IntegrationTests/Migrations/MongoDB/EfMigrations"
         );
 
     /// <inheritdoc cref="IWaitUntil" />

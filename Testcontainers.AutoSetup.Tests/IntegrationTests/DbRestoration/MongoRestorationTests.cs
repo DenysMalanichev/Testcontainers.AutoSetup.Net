@@ -3,6 +3,7 @@ using MongoDB.Bson;
 using MongoDB.Driver;
 using Testcontainers.AutoSetup.Core.Attributes;
 using Testcontainers.AutoSetup.Core.Common.Entities;
+using Testcontainers.AutoSetup.EntityFramework.Entities;
 using Testcontainers.AutoSetup.Tests.IntegrationTests.TestCollections;
 using Xunit.Abstractions;
 
@@ -90,7 +91,7 @@ public class MongoRestorationTests : IntegrationTestsBase
     }
 
     [Fact]
-    public async Task MongoDbRestorer_WithgenericBuilder_ReseedsDb()
+    public async Task MongoDbRestorer_WithGenericBuilder_ReseedsDb()
     {
         // Containers setup and seeding are done within the GlobalTestSetup
         // Arrange
@@ -110,6 +111,65 @@ public class MongoRestorationTests : IntegrationTestsBase
         var totalCount = await collection.CountDocumentsAsync(Builders<BsonDocument>.Filter.Empty);
 
         // Assert
+        Assert.NotNull(Setup.MongoContainerFromGenericBuilder);
+        Assert.Equal(TestcontainersStates.Running, Setup.MongoContainerFromGenericBuilder.State);
+
+        Assert.Equal(0, testDocumentsCount);        
+        Assert.True(totalCount > 0, "Collection's documents must be restored.");        
+    }
+
+    [Fact]
+    public async Task MongoDbEfSeeder_SeedsDB()
+    {
+        // Containers setup and seeding are done within the GlobalTestSetup
+        // Arrange
+        var port = Setup.MongoContainerFromSpecificBuilder.GetMappedPublicPort(27017);
+        var client = new MongoClient($"mongodb://mongo:mongo@localhost:{port}/?directConnection=true&serverSelectionTimeoutMS=2000"); 
+        var dbSetup = (MongoEfDbSetup)Setup.MongoContainer_FromGenericBuilder_EfMongoDbSetup!;
+        var collection = client.GetDatabase(dbSetup.DbName).GetCollection<BsonDocument>("movies");
+
+        // var filter = Builders<BsonDocument>.Filter.Eq("name", "test");
+
+        // // Insert
+        // await collection.InsertOneAsync(new BsonDocument { { "name", "test" } });
+
+        // Act
+        var docCount = await collection.CountDocumentsAsync(Builders<BsonDocument>.Filter.Empty);
+        // await Setup.ResetEnvironmentAsync(this.GetType());
+        // var testDocumentsCount = await collection.CountDocumentsAsync(filter);
+        // var totalCount = await collection.CountDocumentsAsync(Builders<BsonDocument>.Filter.Empty);
+
+        // // Assert
+        Assert.Equal(2, docCount);
+        // Assert.NotNull(Setup.MongoContainerFromGenericBuilder);
+        // Assert.Equal(TestcontainersStates.Running, Setup.MongoContainerFromGenericBuilder.State);
+
+        // Assert.Equal(0, testDocumentsCount);        
+        // Assert.True(totalCount > 0, "Collection's documents must be restored.");        
+    }
+
+    [Fact]
+    public async Task MongoDbRestorer_RestorsEfDB()
+    {
+        // Containers setup and seeding are done within the GlobalTestSetup
+        // Arrange
+        var port = Setup.MongoContainerFromSpecificBuilder.GetMappedPublicPort(27017);
+        var client = new MongoClient($"mongodb://mongo:mongo@localhost:{port}/?directConnection=true&serverSelectionTimeoutMS=2000"); 
+        var dbSetup = (MongoEfDbSetup)Setup.MongoContainer_FromGenericBuilder_EfMongoDbSetup!;
+        var collection = client.GetDatabase(dbSetup.DbName).GetCollection<BsonDocument>("movies");
+
+        var filter = Builders<BsonDocument>.Filter.Eq("name", "test");
+
+        // Insert
+        await collection.InsertOneAsync(new BsonDocument { { "name", "test" } });
+
+        // Act
+        Assert.Equal(1, await collection.CountDocumentsAsync(filter));
+        await Setup.ResetEnvironmentAsync(this.GetType());
+        var testDocumentsCount = await collection.CountDocumentsAsync(filter);
+        var totalCount = await collection.CountDocumentsAsync(Builders<BsonDocument>.Filter.Empty);
+
+        // // Assert
         Assert.NotNull(Setup.MongoContainerFromGenericBuilder);
         Assert.Equal(TestcontainersStates.Running, Setup.MongoContainerFromGenericBuilder.State);
 

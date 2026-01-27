@@ -1,4 +1,5 @@
 using Testcontainers.AutoSetup.Core.Abstractions;
+using Testcontainers.AutoSetup.Core.Abstractions.Entities;
 using Testcontainers.AutoSetup.Core.DbRestoration;
 
 namespace Testcontainers.AutoSetup.Core.Common.DbStrategy;
