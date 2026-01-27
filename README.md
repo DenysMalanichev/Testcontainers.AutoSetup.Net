@@ -179,8 +179,12 @@ private static EfDbSetup MsSqlDbSetup => new(
         <th>Corresponding DbSetup record</th>
     </tr>
     <tr>
-        <td>From Entity Framework mmigrations</td>
+        <td>From Entity Framework migrations</td>
         <td> EfDbSetup </td>
+    </tr>
+    <tr>
+        <td>From Entity Framework migrations (with MongoDB specific params)</td>
+        <td> MongoEfDbSetup </td>
     </tr>
     <tr>
         <td>From Raw SQL Files</td>
