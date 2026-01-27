@@ -33,7 +33,7 @@ Testcontainers.AutoSetup.Net provides the functionality of automatic migrations 
         <td> ✅ </td>
         <td>Both with official Testcontainers MongoDbBuilder and generic builds</td>
         <td>Dump</td>
-        <td> Raw data files (.json with JSON array support, .csv) </td>
+        <td> EF Core <br> Raw data files (.json with JSON array support, .csv) </td>
     </tr>
     <tr>
         <td>PostreSQL</td>
@@ -75,7 +75,9 @@ Testcontainers.AutoSetup.Net provides the functionality of automatic migrations 
     </tr>
 </table>
 
-> *restoration time depends on a DB size - see benchmarks
+> *restoration time depends on a DB size - see Benchmarks
+
+> NOTE: as Entity Framework for MongoDB does not support migrations, the only way to seed a DB with it is by seeding data in `.OnModelCreating()`. 
 
 ## Benchmark results
 <table>
