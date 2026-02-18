@@ -277,7 +277,6 @@ public class MySqlDbRestorer : SqlDbRestorer
     private async Task<string> GetCreateStatementAsync(DbConnection connection, string db, string name, string type, CancellationToken token)
     {
         await using var cmd = connection.CreateCommand();
-        // TODO use a enum here
         // Type is TABLE, VIEW, PROCEDURE, FUNCTION, or TRIGGER
         cmd.CommandText = $"SHOW CREATE {type} `{db}`.`{name}`";
 
@@ -286,10 +285,6 @@ public class MySqlDbRestorer : SqlDbRestorer
             await using var reader = await cmd.ExecuteReaderAsync(token);
             if (await reader.ReadAsync(token))
             {
-                // For Tables/Views, SQL is in column 1.
-                // For Procedures/Functions/Triggers, column index varies slightly by MySQL version, 
-                // but usually the column named 'Create Procedure' etc. is what we want.
-                // Safe bet: The last column usually holds the body.
                 return reader.GetString(reader.FieldCount - 1);
             }
         }
