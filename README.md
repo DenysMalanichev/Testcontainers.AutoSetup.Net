@@ -389,7 +389,7 @@ If any of these are true, GetDockerEndpoint() returns null. This is the desired 
 
 ## DB Restore Logic
 ### MySQL "Golden state"
-On startup, the initial database is created and migrated. Immediately after, an exact replica named `{DBName}_golden_state` is created to serve as the reference. To reset after each test, the target database is truncated and repopulated using data directly from this golden state copy. If migration file changes are detected, both databases are dropped and recreated from scratch.
+On startup, the initial database is created and migrated. Immediately after, an exact replica named `{DBName}_golden_state` is created to serve as the reference. To reset after each test, the target database is recreated and repopulated using data directly from this golden state copy. This includes tables, views, procedures, functions and triggers. If migration file changes are detected, both databases are dropped and recreated from scratch.
 
 ### MongoDB Dump
 A dump of a migrated DB is created using `mongodump` tool with timestamp set on a moment of creation. Restoration is performaed with `mongorestore`.

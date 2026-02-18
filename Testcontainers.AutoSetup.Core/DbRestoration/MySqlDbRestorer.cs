@@ -27,41 +27,64 @@ public class MySqlDbRestorer : SqlDbRestorer
         _dbConnectionFactory = dbConnectionFactory ?? throw new ArgumentNullException(nameof(dbConnectionFactory));
     }
 
-    /// <inheritdoc/>
     public override async Task RestoreAsync(CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Starting restoration of MySQL {DbName} database...", _dbSetup.DbName);
         var stopwatch = Stopwatch.StartNew();
+
         await using var connection = _dbConnectionFactory.CreateDbConnection(_dbSetup.ContainerConnectionString);
         await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
 
-        var restoreCommand = await CreateRestorationCommand(connection, cancellationToken).ConfigureAwait(false);
+        // Direction: Golden State -> Test DB
+        var sourceDb = $"{_dbSetup.DbName}_golden_state";
+        var targetDb = _dbSetup.DbName;
 
-        await using var command = connection.CreateCommand();
-        command.CommandText = restoreCommand;
-        var result = await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+        await CloneDatabaseAsync(connection, sourceDb, targetDb, cancellationToken);
 
         stopwatch.Stop();
-        _logger.LogInformation("Restored MySQL DB in {time}", stopwatch.ElapsedMilliseconds);
-
-        _logger.LogInformation("MySQL {DbName} database restored successfully.", _dbSetup.DbName);
+        _logger.LogInformation("Restored MySQL DB in {time}ms", stopwatch.ElapsedMilliseconds);
     }
 
-    /// <inheritdoc/>
     public override async Task SnapshotAsync(CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Starting snapshot of MySQL {DbName} database...", _dbSetup.DbName);
         var stopwatch = Stopwatch.StartNew();
+
         await using var connection = _dbConnectionFactory.CreateDbConnection(_dbSetup.ContainerConnectionString);
         await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
 
         await DisableRedoLogAsync(connection, cancellationToken).ConfigureAwait(false);
-        await CreateGoldenStateDbAsync(connection, cancellationToken).ConfigureAwait(false);
+
+        // Direction: Test DB -> Golden State
+        var sourceDb = _dbSetup.DbName;
+        var targetDb = $"{_dbSetup.DbName}_golden_state";
+
+        await CloneDatabaseAsync(connection, sourceDb, targetDb, cancellationToken);
 
         stopwatch.Stop();
-        _logger.LogInformation("Snapshoted MySQL DB in {time}", stopwatch.ElapsedMilliseconds);
+        _logger.LogInformation("Snapshotted MySQL DB in {time}ms", stopwatch.ElapsedMilliseconds);
+    }
 
-        _logger.LogInformation("MySQL {DbName} database snapshot created successfully.", _dbSetup.DbName);
+    private async IAsyncEnumerable<string> GetTablesFromDbAsync(
+        DbConnection connection,
+        string dbName,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        var cmdText = $@"
+            SELECT table_name 
+            FROM information_schema.tables 
+            WHERE table_schema = '{dbName}'
+                AND table_type = 'BASE TABLE';";
+
+        await using var command = connection.CreateCommand();
+        command.CommandText = cmdText;
+        await using var result = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
+
+        if (result.HasRows)
+        {
+            while (await result.ReadAsync(cancellationToken).ConfigureAwait(false))
+                yield return result.GetString(0);
+        }
     }
 
     /// <summary>
@@ -71,7 +94,7 @@ public class MySqlDbRestorer : SqlDbRestorer
     /// <param name="connection"></param>
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
-    public async Task DisableRedoLogAsync(DbConnection connection,  CancellationToken cancellationToken = default)
+    public async Task DisableRedoLogAsync(DbConnection connection, CancellationToken cancellationToken = default)
     {
         const string disableRedoLogCommand = "ALTER INSTANCE DISABLE INNODB REDO_LOG;";
         await using var command = connection.CreateCommand();
@@ -103,107 +126,183 @@ public class MySqlDbRestorer : SqlDbRestorer
     }
 
     /// <summary>
-    /// Creates a golden state database as a template for future restorations.
+    /// Performs a full deep clone of a MySQL database including Tables, Data, Views, Triggers, and Routines.
     /// </summary>
-    /// <param name="connection"></param>
-    /// <param name="cancellationToken"></param>
-    /// <returns></returns>
-    /// <exception cref="Exception"></exception>
-    private async Task CreateGoldenStateDbAsync(DbConnection connection, CancellationToken cancellationToken = default)
+    private async Task CloneDatabaseAsync(DbConnection connection, string sourceDb, string targetDb, CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Creating golden state database...");
-        var goldenStateDbName = $"{_dbSetup.DbName}_golden_state";
-        await using var createDbCmd = connection.CreateCommand();
-        createDbCmd.CommandText = $"DROP DATABASE IF EXISTS `{goldenStateDbName}`; CREATE DATABASE `{goldenStateDbName}`;";
-        try 
+        var initCmdText = $@"
+        DROP DATABASE IF EXISTS `{targetDb}`; 
+        CREATE DATABASE `{targetDb}`;
+        SET FOREIGN_KEY_CHECKS=0; 
+        SET UNIQUE_CHECKS=0;";
+
+        await using (var cmd = connection.CreateCommand())
         {
-            await createDbCmd.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+            cmd.CommandText = initCmdText;
+            await cmd.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+        }
+
+        // Clone Tables (Structure + Data + Indexes + Foreign Keys)
+        await CloneTablesAsync(connection, sourceDb, targetDb, cancellationToken);
+
+        // Clone Views
+        await CloneViewsAsync(connection, sourceDb, targetDb, cancellationToken);
+
+        // Clone Stored Procedures & Functions
+        await CloneRoutinesAsync(connection, sourceDb, targetDb, cancellationToken);
+
+        // Clone Triggers
+        await CloneTriggersAsync(connection, sourceDb, targetDb, cancellationToken);
+
+        // Re-enable Integrity Checks
+        await using (var cmd = connection.CreateCommand())
+        {
+            cmd.CommandText = "SET FOREIGN_KEY_CHECKS=1; SET UNIQUE_CHECKS=1;";
+            await cmd.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    private async Task CloneTablesAsync(DbConnection connection, string sourceDb, string targetDb, CancellationToken cancellationToken)
+    {
+        var tableNames = new List<string>();
+        await foreach (var table in GetTablesFromDbAsync(connection, sourceDb, cancellationToken))
+        {
+            tableNames.Add(table);
+        }
+
+        var sb = new StringBuilder();
+        // Re-ensure checks are off for this batch
+        sb.AppendLine($"USE `{targetDb}`; SET FOREIGN_KEY_CHECKS=0;");
+
+        foreach (var tableName in tableNames)
+        {
+            string createSql = await GetCreateStatementAsync(connection, sourceDb, tableName, "TABLE", cancellationToken);
+            if (createSql == null) continue;
+
+            // Point to Target DB
+            var fixedSql = createSql.Replace($"CREATE TABLE `{tableName}`", $"CREATE TABLE `{targetDb}`.`{tableName}`");
+            sb.AppendLine(fixedSql + ";");
+            sb.AppendLine($"INSERT INTO `{targetDb}`.`{tableName}` SELECT * FROM `{sourceDb}`.`{tableName}`;");
+        }
+
+        if (sb.Length > 0)
+        {
+            await ExecuteBatchAsync(connection, sb.ToString(), cancellationToken);
+        }
+    }
+
+    private async Task CloneViewsAsync(DbConnection connection, string sourceDb, string targetDb, CancellationToken cancellationToken)
+    {
+        var views = new List<string>();
+        var cmdText = $"SELECT TABLE_NAME FROM information_schema.VIEWS WHERE TABLE_SCHEMA = '{sourceDb}'";
+
+        await using (var cmd = connection.CreateCommand())
+        {
+            cmd.CommandText = cmdText;
+            await using var reader = await cmd.ExecuteReaderAsync(cancellationToken);
+            while (await reader.ReadAsync(cancellationToken)) views.Add(reader.GetString(0));
+        }
+
+        foreach (var viewName in views)
+        {
+            string createSql = await GetCreateStatementAsync(connection, sourceDb, viewName, "VIEW", cancellationToken);
+            if (createSql == null) continue;
+
+            var fixedSql = createSql.Replace($"`{sourceDb}`.", $"`{targetDb}`.");
+
+            await using var cmd = connection.CreateCommand();
+            cmd.CommandText = $"USE `{targetDb}`; {fixedSql}";
+            await cmd.ExecuteNonQueryAsync(cancellationToken);
+        }
+    }
+
+    private async Task CloneRoutinesAsync(DbConnection connection, string sourceDb, string targetDb, CancellationToken cancellationToken)
+    {
+        // Procedures and Functions
+        var routines = new List<(string Name, string Type)>();
+        var cmdText = $"SELECT ROUTINE_NAME, ROUTINE_TYPE FROM information_schema.ROUTINES WHERE ROUTINE_SCHEMA = '{sourceDb}'";
+
+        await using (var cmd = connection.CreateCommand())
+        {
+            cmd.CommandText = cmdText;
+            await using var reader = await cmd.ExecuteReaderAsync(cancellationToken);
+            while (await reader.ReadAsync(cancellationToken))
+            {
+                routines.Add((reader.GetString(0), reader.GetString(1)));
+            }
+        }
+
+        foreach (var (name, type) in routines)
+        {
+            string createSql = await GetCreateStatementAsync(connection, sourceDb, name, type, cancellationToken);
+            if (createSql == null) continue;
+
+            // Fix definition to not point to old DB schema if it's hardcoded
+            var fixedSql = createSql.Replace($"`{sourceDb}`.", $"`{targetDb}`.");
+
+            await using var cmd = connection.CreateCommand();
+            cmd.CommandText = $"USE `{targetDb}`; {fixedSql}";
+            await cmd.ExecuteNonQueryAsync(cancellationToken);
+        }
+    }
+
+    private async Task CloneTriggersAsync(DbConnection connection, string sourceDb, string targetDb, CancellationToken cancellationToken)
+    {
+        var triggers = new List<string>();
+        var cmdText = $"SELECT TRIGGER_NAME FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = '{sourceDb}'";
+
+        await using (var cmd = connection.CreateCommand())
+        {
+            cmd.CommandText = cmdText;
+            await using var reader = await cmd.ExecuteReaderAsync(cancellationToken);
+            while (await reader.ReadAsync(cancellationToken)) triggers.Add(reader.GetString(0));
+        }
+
+        foreach (var trigger in triggers)
+        {
+            string createSql = await GetCreateStatementAsync(connection, sourceDb, trigger, "TRIGGER", cancellationToken);
+            if (createSql == null) continue;
+
+            var fixedSql = createSql.Replace($"`{sourceDb}`.", $"`{targetDb}`.");
+
+            await using var cmd = connection.CreateCommand();
+            cmd.CommandText = $"USE `{targetDb}`; {fixedSql}";
+            await cmd.ExecuteNonQueryAsync(cancellationToken);
+        }
+    }
+
+    /// <summary>
+    /// Helper to fetch "SHOW CREATE X" cleanly
+    /// </summary>
+    private async Task<string> GetCreateStatementAsync(DbConnection connection, string db, string name, string type, CancellationToken token)
+    {
+        await using var cmd = connection.CreateCommand();
+        // Type is TABLE, VIEW, PROCEDURE, FUNCTION, or TRIGGER
+        cmd.CommandText = $"SHOW CREATE {type} `{db}`.`{name}`";
+
+        try
+        {
+            await using var reader = await cmd.ExecuteReaderAsync(token);
+            if (await reader.ReadAsync(token))
+            {
+                return reader.GetString(reader.FieldCount - 1);
+            }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to create golden state database.");
-            throw new DbSetupException(goldenStateDbName);
+            _logger.LogError(ex, "Failed to get DDL for {type} {name}", type, name);
+            throw;
         }
-
-        var dataRestorationCommandBuilder = new StringBuilder();
-        dataRestorationCommandBuilder.Append(
-            $@"SET FOREIGN_KEY_CHECKS=0;
-            SET UNIQUE_CHECKS = 0;");
-        await foreach (var table in GetAllDbTablesAsync(connection, cancellationToken))
-        {
-            dataRestorationCommandBuilder.AppendLine($"CREATE TABLE IF NOT EXISTS `{goldenStateDbName}`.`{table}` LIKE `{_dbSetup.DbName}`.`{table}`;");
-            dataRestorationCommandBuilder.AppendLine($"INSERT INTO `{goldenStateDbName}`.`{table}` SELECT * FROM `{_dbSetup.DbName}`.`{table}`;");
-        }
-        dataRestorationCommandBuilder.Append($@"   
-            SET FOREIGN_KEY_CHECKS=1;
-            SET UNIQUE_CHECKS = 1;");
-        
-        await using var dataRestorationCommand = connection.CreateCommand();
-        dataRestorationCommand.CommandText = dataRestorationCommandBuilder.ToString();
-        await dataRestorationCommand.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
-        
-        _logger.LogInformation("Golden state database created successfully.");
+        return null!;
     }
 
-    /// <summary>
-    /// Retrieves all tables' names from the specified database.
-    /// </summary>
-    /// <param name="connection"></param>
-    /// <param name="cancellationToken"></param>
-    /// <returns></returns>
-    /// <exception cref="Exception"></exception>
-    private async IAsyncEnumerable<string> GetAllDbTablesAsync(
-        DbConnection connection, 
-        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    private static async Task ExecuteBatchAsync(DbConnection connection, string sql, CancellationToken token)
     {
-        var getAllTablesCommand = @$"
-            SELECT table_name 
-            FROM information_schema.tables 
-            WHERE table_schema = '{_dbSetup.DbName}'
-                AND table_type = 'BASE TABLE';";
-        await using var command = connection.CreateCommand();
-        command.CommandText = getAllTablesCommand;
-        await using var result = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
+        if (string.IsNullOrWhiteSpace(sql)) return;
 
-        if(result.HasRows)
-        {
-            _logger.LogInformation("Successfully identified DB tables.");
-            // The result must be a single column with table names. 0 identifies this single column
-            while (await result.ReadAsync(cancellationToken).ConfigureAwait(false))
-                yield return result.GetString(0);
-        }
-        else
-        {   
-            _logger.LogError("Failed to identify DB tables.");
-            throw new DbSetupException($"Failed to identify {_dbSetup.DbName} DB tables", $"{_dbSetup.DbName}_golden_state");   
-        }
-    }
-
-    /// <summary>
-    /// Creates the SQL command to restore the database from the golden state.
-    /// </summary>
-    /// <param name="connection"></param>
-    /// <param name="cancellationToken"></param>
-    /// <returns></returns>
-    private async Task<string> CreateRestorationCommand(DbConnection connection, CancellationToken cancellationToken = default)
-    {
-        var command = new StringBuilder();
-        // command.AppendLine($@"USE `{_dbSetup.DbName}`;");
-        command.Append($@"
-            SET FOREIGN_KEY_CHECKS=0;
-            SET UNIQUE_CHECKS = 0;
-        ");
-
-        await foreach(var tableName in GetAllDbTablesAsync(connection, cancellationToken))
-        {
-            command.AppendLine($@"TRUNCATE TABLE `{_dbSetup.DbName}`.`{tableName}`;");
-            command.AppendLine($@"INSERT INTO `{_dbSetup.DbName}`.`{tableName}` SELECT * FROM `{_dbSetup.DbName}_golden_state`.`{tableName}`;");
-        }
-
-        command.Append($@"   
-            SET FOREIGN_KEY_CHECKS=1;
-            SET UNIQUE_CHECKS = 1;");
-
-        return command.ToString();
+        await using var cmd = connection.CreateCommand();
+        cmd.CommandText = sql;
+        cmd.CommandTimeout = 300;
+        await cmd.ExecuteNonQueryAsync(token);
     }
 }

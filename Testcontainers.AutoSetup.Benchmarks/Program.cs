@@ -2,5 +2,5 @@
 using Testcontainers.AutoSetup.Benchmarks;
 
 // BenchmarkRunner.Run<MsSqlRestorationBenchmarks>();
-// BenchmarkRunner.Run<MySqlRestorationBenchmarks>();
-BenchmarkRunner.Run<MongoDbRestorationBenchmarks>();
+BenchmarkRunner.Run<MySqlRestorationBenchmarks>();
+// BenchmarkRunner.Run<MongoDbRestorationBenchmarks>();

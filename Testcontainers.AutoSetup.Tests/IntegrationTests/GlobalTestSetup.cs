@@ -363,7 +363,8 @@ public class GlobalTestSetup : GenericTestBase
             sqlFiles: 
                 [
                     "001_MySQL_CreateCatalogTable.sql",
-                    "002_MySQL_InsertInitialData.sql"
+                    "002_MySQL_CreateOrderTable.sql",
+                    "003_MySQL_InsertInitialData.sql"
                 ]
         );
 
@@ -386,7 +387,8 @@ public class GlobalTestSetup : GenericTestBase
             sqlFiles:
                 [
                     "001_MySQL_CreateCatalogTable.sql",
-                    "002_MySQL_InsertInitialData.sql"
+                    "002_MySQL_CreateOrderTable.sql",
+                    "003_MySQL_InsertInitialData.sql"
                 ]
         );
 
