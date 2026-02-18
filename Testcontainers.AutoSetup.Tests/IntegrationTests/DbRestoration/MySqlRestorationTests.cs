@@ -13,7 +13,7 @@ namespace Testcontainers.AutoSetup.Tests.IntegrationTests.DbRestoration;
 [Collection(nameof(ParallelIntegrationTestsCollection))]
 public class MySqlRestorationTests : IntegrationTestsBase
 {
-     private readonly ITestOutputHelper _output;
+    private readonly ITestOutputHelper _output;
 
     public MySqlRestorationTests(ITestOutputHelper output, ContainersFixture fixture)
         : base(fixture)
@@ -121,5 +121,92 @@ public class MySqlRestorationTests : IntegrationTestsBase
 
         Assert.NotNull(result); // Failed executing a query to check for the existence of TestTable after reset
         Assert.Equal(0, result); // TestTable should have been removed during the reset process
+    }
+
+    [Fact]
+    public async Task MySqlRestorer_WithGenericMySQLContainerBuilder_RemovesCreatedViewAfterTest()
+    {
+        // Arrange
+        Assert.NotNull(Setup.MySqlContainerFromGenericBuilder);
+        Assert.Equal(TestcontainersStates.Running, Setup.MySqlContainerFromGenericBuilder.State);
+
+        await using var connection = new MySqlConnection(Setup.MySqlContainer_GenericBuilder_EfDbSetup!.BuildDbConnectionString());
+        await connection.OpenAsync();
+
+        // Act
+        using var viewCmd = new MySqlCommand("CREATE VIEW TestView AS SELECT 1 AS Number", connection);
+        await viewCmd.ExecuteNonQueryAsync();
+
+        await Setup.ResetEnvironmentAsync(this.GetType());
+
+        // Assert
+        using var checkViewCmd = new MySqlCommand(
+            "SELECT COUNT(1) FROM information_schema.views WHERE table_schema = 'GenericCatalogTestMySql' AND table_name = 'TestView'",
+            connection);
+
+        var result = (long?)await checkViewCmd.ExecuteScalarAsync();
+
+        Assert.NotNull(result);
+        Assert.Equal(0, result); // TestView should be removed
+    }
+
+    [Fact]
+    public async Task MySqlRestorer_WithGenericMySQLContainerBuilder_RemovesCreatedStoredProcedureAfterTest()
+    {
+        // Arrange
+        Assert.NotNull(Setup.MySqlContainerFromGenericBuilder);
+
+        await using var connection = new MySqlConnection(Setup.MySqlContainer_GenericBuilder_EfDbSetup!.BuildDbConnectionString());
+        await connection.OpenAsync();
+
+        // Act
+        using var procCmd = new MySqlCommand(
+            "CREATE PROCEDURE TestProcedure() BEGIN SELECT 1; END",
+            connection);
+        await procCmd.ExecuteNonQueryAsync();
+
+        await Setup.ResetEnvironmentAsync(this.GetType());
+
+        // Assert
+        // Note: We check 'ROUTINES', not 'TABLES'
+        using var checkProcCmd = new MySqlCommand(
+            "SELECT COUNT(1) FROM information_schema.routines WHERE routine_schema = 'GenericCatalogTestMySql' AND routine_name = 'TestProcedure' AND routine_type = 'PROCEDURE'",
+            connection);
+
+        var result = (long?)await checkProcCmd.ExecuteScalarAsync();
+
+        Assert.NotNull(result);
+        Assert.Equal(0, result);
+    }
+
+    [Fact]
+    public async Task MySqlRestorer_WithGenericMySQLContainerBuilder_RemovesCreatedTriggerAfterTest()
+    {
+        // Arrange
+        Assert.NotNull(Setup.MySqlContainerFromGenericBuilder);
+
+        await using var connection = new MySqlConnection(Setup.MySqlContainer_GenericBuilder_EfDbSetup!.BuildDbConnectionString());
+        await connection.OpenAsync();
+
+        // Act
+        using var tableCmd = new MySqlCommand("CREATE TABLE TriggerHostTable (Id INT)", connection);
+        await tableCmd.ExecuteNonQueryAsync();
+
+        using var triggerCmd = new MySqlCommand(
+            "CREATE TRIGGER TestTrigger BEFORE INSERT ON TriggerHostTable FOR EACH ROW SET NEW.Id = NEW.Id + 1",
+            connection);
+        await triggerCmd.ExecuteNonQueryAsync();
+
+        await Setup.ResetEnvironmentAsync(this.GetType());
+
+        // Assert
+        using var checkTriggerCmd = new MySqlCommand(
+            "SELECT COUNT(1) FROM information_schema.triggers WHERE trigger_schema = 'GenericCatalogTestMySql' AND trigger_name = 'TestTrigger'",
+            connection);
+
+        var result = (long?)await checkTriggerCmd.ExecuteScalarAsync();
+
+        Assert.NotNull(result);
+        Assert.Equal(0, result);
     }
 }
