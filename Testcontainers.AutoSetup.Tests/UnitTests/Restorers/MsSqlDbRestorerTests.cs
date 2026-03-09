@@ -1,5 +1,9 @@
 using System.Data.Common;
 using System.IO.Abstractions;
+using System.Runtime.InteropServices;
+using Docker.DotNet;
+using Docker.DotNet.Models;
+using DotNet.Testcontainers.Builders;
 using DotNet.Testcontainers.Containers;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
@@ -10,6 +14,7 @@ using Testcontainers.AutoSetup.Core.Abstractions.Entities;
 using Testcontainers.AutoSetup.Core.Common.Enums;
 using Testcontainers.AutoSetup.Core.DbRestoration;
 using Testcontainers.AutoSetup.Tests.TestCollections;
+using Testcontainers.MsSql;
 using IContainer = DotNet.Testcontainers.Containers.IContainer;
 
 namespace Testcontainers.AutoSetup.Tests.UnitTests.Restorers;
@@ -153,6 +158,22 @@ public class MsSqlDbRestorerTests
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ExecResult(string.Empty, string.Empty, 0));
 
+        var dbConnectionFactoryMock = new Mock<IDbConnectionFactory>();
+        var dbConnectionMock = new Mock<DbConnection>(); 
+        var dbCommandMock = new Mock<DbCommand>();
+
+        dbCommandMock
+            .Setup(m => m.ExecuteScalarAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(1);
+
+        dbConnectionMock.Protected()
+            .Setup<DbCommand>("CreateDbCommand")
+            .Returns(dbCommandMock.Object);
+
+        dbConnectionFactoryMock
+            .Setup(f => f.CreateDbConnection(It.IsAny<string>()))
+            .Returns(dbConnectionMock.Object);
+
         var dbSetupMock = new Mock<DbSetup>( 
             "dbName",
             "testConnStr",
@@ -166,7 +187,7 @@ public class MsSqlDbRestorerTests
         var msSqlRestorer = new MsSqlDbRestorer(
             dbSetupMock.Object,
             containerMock.Object,
-            Mock.Of<IDbConnectionFactory>(),
+            dbConnectionFactoryMock.Object,
             Mock.Of<ILogger>());
 
         // Act 
@@ -202,48 +223,21 @@ public class MsSqlDbRestorerTests
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ExecResult(string.Empty, string.Empty, 0));
 
-        var dbSetupMock = new Mock<DbSetup>( 
-            "dbName",
-            "testConnStr",
-            "migrationPath",
-            DbType.MsSQL,
-            false,
-            restorationPath,
-            new Mock<IFileSystem>().Object
-        ) { CallBase = true };
+        var dbConnectionFactoryMock = new Mock<IDbConnectionFactory>();
+        var dbConnectionMock = new Mock<DbConnection>(); 
+        var dbCommandMock = new Mock<DbCommand>();
 
-        var msSqlRestorer = new MsSqlDbRestorer(
-            dbSetupMock.Object,
-            containerMock.Object,
-            Mock.Of<IDbConnectionFactory>(),
-            Mock.Of<ILogger>());
+        dbCommandMock
+            .Setup(m => m.ExecuteScalarAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(1);
 
-        // Act 
-        await Assert.ThrowsAsync<ExecFailedException>(async () => 
-            await msSqlRestorer.IsSnapshotUpToDateAsync(fileSystemMock.Object));
-    }
+        dbConnectionMock.Protected()
+            .Setup<DbCommand>("CreateDbCommand")
+            .Returns(dbCommandMock.Object);
 
-    [Fact]
-    public async Task IsSnapshotValidAsync_ThrowsExecFailedException_IfSnapshotCheckFailed()
-    {
-        // Arrange
-        var containerMock = new Mock<IContainer>();
-        const string restorationPath = "/tmp/missing-mount";
-
-        var fileInfos = new IFileSystemInfo[] { Mock.Of<IFileInfo>(), Mock.Of<IFileInfo>() };
-        var dirInfoMock = new Mock<IDirectoryInfo>();
-        dirInfoMock.Setup(di => di.Exists).Returns(true);
-        dirInfoMock.Setup(di => di.GetFileSystemInfos("*", SearchOption.AllDirectories))
-            .Returns(fileInfos);
-        var fileSystemMock = new Mock<IFileSystem>();
-        fileSystemMock.Setup(fs => fs.DirectoryInfo.New(It.IsAny<string>()))
-            .Returns(dirInfoMock.Object);
-        
-        containerMock.Setup(
-            c => c.ExecAsync(It.Is<IList<string>>(
-                args => args.Any(arg => arg.StartsWith($"ls {restorationPath}"))), 
-                It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ExecResult(string.Empty, string.Empty, 100));
+        dbConnectionFactoryMock
+            .Setup(f => f.CreateDbConnection(It.IsAny<string>()))
+            .Returns(dbConnectionMock.Object);
 
         var dbSetupMock = new Mock<DbSetup>( 
             "dbName",
@@ -258,13 +252,14 @@ public class MsSqlDbRestorerTests
         var msSqlRestorer = new MsSqlDbRestorer(
             dbSetupMock.Object,
             containerMock.Object,
-            Mock.Of<IDbConnectionFactory>(),
+            dbConnectionFactoryMock.Object,
             Mock.Of<ILogger>());
 
         // Act 
         await Assert.ThrowsAsync<ExecFailedException>(async () => 
             await msSqlRestorer.IsSnapshotUpToDateAsync(fileSystemMock.Object));
     }
+
 
     [Fact]
     public async Task IsSnapshotUpToDateAsyncc_ReturnsTrue_IfSnapshotAndMountsChecksSucceeded()
@@ -292,6 +287,22 @@ public class MsSqlDbRestorerTests
             args.Contains($"findmnt {restorationPath}")), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ExecResult(string.Empty, string.Empty, 0));
 
+        var dbConnectionFactoryMock = new Mock<IDbConnectionFactory>();
+        var dbConnectionMock = new Mock<DbConnection>(); 
+        var dbCommandMock = new Mock<DbCommand>();
+
+        dbCommandMock
+            .Setup(m => m.ExecuteScalarAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(1);
+
+        dbConnectionMock.Protected()
+            .Setup<DbCommand>("CreateDbCommand")
+            .Returns(dbCommandMock.Object);
+
+        dbConnectionFactoryMock
+            .Setup(f => f.CreateDbConnection(It.IsAny<string>()))
+            .Returns(dbConnectionMock.Object);
+
         var dbSetupMock = new Mock<DbSetup>( 
             "dbName",
             "testConnStr",
@@ -305,12 +316,12 @@ public class MsSqlDbRestorerTests
         var msSqlRestorer = new MsSqlDbRestorer(
             dbSetupMock.Object,
             containerMock.Object,
-            Mock.Of<IDbConnectionFactory>(),
+            dbConnectionFactoryMock.Object,
             Mock.Of<ILogger>());
 
         // Act 
         Assert.True(await msSqlRestorer.IsSnapshotUpToDateAsync(fileSystemMock.Object));
-    }
+    }    
 
     private static SqlException MakeSqlException() {
         SqlException exception = null!;

@@ -78,7 +78,7 @@ public static class AutoSetupExtensions
 
         return builder
             .WithVolumeMount($"{containerName}-Restoration", Constants.MsSQL.DefaultRestorationStateFilesPath, AccessMode.ReadWrite)
-            .WithVolumeMount($"{containerName}-Secrets", "/var/opt/mssql/secrets", AccessMode.ReadWrite)
+            .WithVolumeMount($"{containerName}-Secrets", Constants.MsSQL.DefaultRestorationSecretsPath, AccessMode.ReadWrite)
             .WithCreateParameterModifier(config =>
             {
                 config.User = "root";
