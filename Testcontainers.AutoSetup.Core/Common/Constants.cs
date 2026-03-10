@@ -13,6 +13,7 @@ public static class Constants
     {
         public const string DefaultRestorationStateFilesPath = "/var/opt/mssql/restoration";
         public const string DefaultRestorationDataFilesPath = "/var/opt/mssql/data";
+        public const string DefaultRestorationSecretsPath = "/var/opt/mssql/secrets";
     }
 
     public static class MySQL

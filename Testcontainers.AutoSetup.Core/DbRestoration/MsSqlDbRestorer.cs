@@ -134,7 +134,7 @@ public class MsSqlDbRestorer : SqlDbRestorer
     {
         fileSystem ??= new FileSystem();
 
-        return await IsSnapshotValidAsync(fileSystem, cancellationToken).ConfigureAwait(false) && 
+        return await IsSnapshotValidAsync(fileSystem, cancellationToken).ConfigureAwait(false) &&
                await IsMountExistsAsync(cancellationToken).ConfigureAwait(false);
     }
 
@@ -146,6 +146,16 @@ public class MsSqlDbRestorer : SqlDbRestorer
     /// <exception cref="ExecFailedException"></exception>
     private async Task<bool> IsSnapshotValidAsync(IFileSystem fileSystem, CancellationToken cancellationToken)
     {
+        if (!await IsSnapshotUpToDateWithMigrationsAsync(fileSystem, cancellationToken).ConfigureAwait(false))
+        {
+            return false;
+        }
+
+        return await IsSnapshotRegisteredInSqlServerAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task<bool> IsSnapshotUpToDateWithMigrationsAsync(IFileSystem fileSystem, CancellationToken cancellationToken)
+    {
         // COMMAND EXPLANATION:
         // Checks if at least one snapshot exists in the directory
         // "ls ... > /dev/null 2>&1" silence the output, returns true (0) if files exist, false (2) if not - masked.
@@ -154,29 +164,50 @@ public class MsSqlDbRestorer : SqlDbRestorer
         // test -n "..."        -> Returns Exit Code 0 (Success) if the string is NOT EMPTY (new files found)
         //                      -> Returns Exit Code 1 (Fail) if the string is EMPTY (no new files found)
         var migrationsLMD = FileLMDHelper.GetDirectoryLastModificationDate(_dbSetup.MigrationsPath, fileSystem);
-        var cmd = $"ls {_dbSetup.RestorationStateFilesDirectory}/{_dbSetup.DbName}_snapshot_* > /dev/null 2>&1 && " + 
+        var cmd = $"ls {_dbSetup.RestorationStateFilesDirectory}/{_dbSetup.DbName}_snapshot_* > /dev/null 2>&1 && " +
            $"test -n \"$(find {_dbSetup.RestorationStateFilesDirectory} " +
            $"-maxdepth 1 -name '{_dbSetup.DbName}_snapshot_*' " +
            $"-newermt '{migrationsLMD:yyyy-MM-dd HH:mm:ss}' -print -quit)\"";
-        var result = await _container.ExecAsync( 
+        
+        var result = await _container.ExecAsync(
         [
-            "/bin/bash", 
-            "-c", 
+            "/bin/bash",
+            "-c",
             cmd
         ], cancellationToken).ConfigureAwait(false);
 
         if (result.ExitCode == 0 && result.Stderr.IsNullOrEmpty())
         {
             _logger.LogInformation("Snapshot is up to date (No newer migrations found).");
-            return true; 
+            return true;
         }
-        else if (result.ExitCode == 1 || result.ExitCode == 2)
+        
+        _logger.LogWarning("No up-to-date snapshot exists, recreation required.");
+        return false;
+    }
+
+    private async Task<bool> IsSnapshotRegisteredInSqlServerAsync(CancellationToken cancellationToken)
+    {
+        await using var connection = _dbConnectionFactory.CreateDbConnection(_dbSetup.ContainerConnectionString);
+        await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
+        
+        var snapshotExistanceCmd = connection.CreateCommand();
+        snapshotExistanceCmd.CommandText = $@"
+            SELECT COUNT(*) 
+            FROM sys.databases 
+            WHERE source_database_id = DB_ID('{_dbSetup.DbName}')
+            AND name LIKE '{_dbSetup.DbName}_snapshot_%'";
+
+        var count = (int?)await snapshotExistanceCmd.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false);
+
+        if (count == 0)
         {
-            _logger.LogWarning("No up-to-date snapshot exists, recreation required.");
+            _logger.LogWarning("Snapshot file exists on disk, but not in SQL Server (Zombie Snapshot). Triggering recreation.");
             return false;
         }
 
-        throw new ExecFailedException(result);
+        _logger.LogInformation("Snapshot is up to date and registered.");
+        return true;
     }
 
     /// <summary>
@@ -186,11 +217,11 @@ public class MsSqlDbRestorer : SqlDbRestorer
     /// Thrown when failed to run a command to validate the mount
     /// </exception>
     private async Task<bool> IsMountExistsAsync(CancellationToken cancellationToken)
-    {        
+    {
         var result = await _container.ExecAsync(
         [
-            "/bin/bash", 
-            "-c", 
+            "/bin/bash",
+            "-c",
             $"findmnt {_dbSetup.RestorationStateFilesDirectory}",
         ], cancellationToken).ConfigureAwait(false);
 
@@ -204,7 +235,7 @@ public class MsSqlDbRestorer : SqlDbRestorer
             _logger.LogWarning($"No mount found at {_dbSetup.RestorationStateFilesDirectory}. Skipping initial restoration.");
             return false;
         }
-        
+
         // Unexpected errors (e.g., findmnt not installed, permission denied)
         throw new ExecFailedException(result);
     }
