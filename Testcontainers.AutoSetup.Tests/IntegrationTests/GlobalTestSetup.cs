@@ -268,6 +268,7 @@ public class GlobalTestSetup : GenericTestBase
         var container = builder
             .WithEnvironment("MYSQL_ROOT_PASSWORD", "mysql")
             .WithCommand("--skip-name-resolve")
+            .WithWaitStrategy(Wait.ForUnixContainer().AddCustomWaitStrategy(new WaitUntilMySql()))
             .Build();
 
         return container;
@@ -453,13 +454,59 @@ public class GlobalTestSetup : GenericTestBase
     }
 
     /// <inheritdoc cref="IWaitUntil" />
+    // private sealed class WaitInitiateReplicaSet : IWaitUntil
+    // {
+    //     /// <inheritdoc />
+    //     public Task<bool> UntilAsync(IContainer container)
+    //     {
+    //         Task.Delay(5_000); // Simple 5 seconds wait for container to initialize. Must be used only for testing
+    //         return Task.FromResult(true);
+    //     }
+    // }
     private sealed class WaitInitiateReplicaSet : IWaitUntil
     {
-        /// <inheritdoc />
-        public Task<bool> UntilAsync(IContainer container)
+        // The command to run inside the container
+        private const string JsCommand = "db.runCommand({hello:1}).isWritablePrimary ? quit(0) : quit(1)";
+
+        public async Task<bool> UntilAsync(IContainer container)
         {
-            Task.Delay(5_000); // Simple 5 seconds wait for container to initialize. Must be used only for testing
-            return Task.FromResult(true);
+            // We use 'mongosh' (standard in Mongo 5.0+) with '--quiet' 
+            // and '--eval' to execute our check.
+            var execResult = await container.ExecAsync(new[] 
+            { 
+                "mongosh", 
+                "--quiet", 
+                "--eval", 
+                JsCommand 
+            }).ConfigureAwait(false);
+
+            // ExitCode 0 means the JS script called quit(0), 
+            // implying the node is the Writable Primary.
+            return execResult.ExitCode == 0;
+        }
+    }
+
+    /// <inheritdoc cref="IWaitUntil" />
+    private sealed class WaitUntilMySql : IWaitUntil
+    {
+        private readonly IList<string> _command;
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="WaitUntil" /> class.
+        /// </summary>
+        /// <param name="configuration">The container configuration.</param>
+        public WaitUntilMySql()
+        {
+            _command = new List<string> { "mysql", "-u", "root", "-pmysql", "-D", "mysql", "--wait", "--silent", "-e", "SELECT 1;" };
+        }
+
+        /// <inheritdoc />
+        public async Task<bool> UntilAsync(IContainer container)
+        {
+            var execResult = await container.ExecAsync(_command)
+                .ConfigureAwait(false);
+
+            return 0L.Equals(execResult.ExitCode);
         }
     }
 }
