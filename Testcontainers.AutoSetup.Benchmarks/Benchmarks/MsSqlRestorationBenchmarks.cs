@@ -18,7 +18,7 @@ namespace Testcontainers.AutoSetup.Benchmarks;
 public class MsSqlRestorationBenchmarks
 {
     private MsSqlContainer _container = null!;
-    private IDbStrategy _strategy = null!;
+    private IInstanceStrategy _strategy = null!;
     private MsSqlDbConnectionFactory _dbConnectionFactory = new(); 
 
     [Params(1, 10, 100, 1000, 10_000, 50_000)] 

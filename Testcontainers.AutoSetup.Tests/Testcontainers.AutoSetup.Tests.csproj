@@ -22,6 +22,7 @@
     <PackageReference Include="MongoDB.EntityFrameworkCore" Version="9.0.4" />
     <PackageReference Include="Moq" Version="4.20.72" />
     <PackageReference Include="MySql.EntityFrameworkCore" Version="9.0.9" />
+    <PackageReference Include="Testcontainers.Kafka" Version="4.10.0" />
     <PackageReference Include="Testcontainers.MongoDb" Version="4.10.0" />
     <PackageReference Include="Testcontainers.MsSql" Version="4.10.0" />
     <PackageReference Include="Testcontainers.MySql" Version="4.10.0" />
@@ -46,6 +47,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Testcontainers.AutoSetup.Core\Testcontainers.AutoSetup.Core.csproj" />
     <ProjectReference Include="..\Testcontainers.AutoSetup.EntityFramework\Testcontainers.AutoSetup.EntityFramework.csproj" />
+    <ProjectReference Include="..\Testcontainers.AutoSetup.Kafka\Testcontainers.AutoSetup.Kafka.csproj" />
   </ItemGroup>
 
 </Project>

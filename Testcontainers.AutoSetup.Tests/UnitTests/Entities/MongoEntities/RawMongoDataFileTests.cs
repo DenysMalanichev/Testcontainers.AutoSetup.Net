@@ -2,7 +2,7 @@ using Testcontainers.AutoSetup.Core.Common;
 using Testcontainers.AutoSetup.Core.Common.Entities;
 using Testcontainers.AutoSetup.Core.Common.Enums;
 
-namespace Testcontainers.AutoSetup.Tests.UnitTests.Entities;
+namespace Testcontainers.AutoSetup.Tests.UnitTests.Entities.MongoEntities;
 
 public class RawMongoDataFileTests
 {
