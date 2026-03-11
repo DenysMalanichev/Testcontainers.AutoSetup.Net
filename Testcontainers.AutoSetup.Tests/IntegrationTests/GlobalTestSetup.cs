@@ -318,9 +318,7 @@ public class GlobalTestSetup : GenericTestBase
     {
         // TODO add autosetupDefaults
         return new KafkaBuilder("confluentinc/cp-kafka:7.6.1")
-            .WithName("Kafka-testcontainer")
-            .WithKRaft()
-            .WithReuse(true)
+            .WithKafkaAutoSetupDefaults(containerName: "Kafka-testcontainer", useTmpfs: true)
             .Build();
     }
 

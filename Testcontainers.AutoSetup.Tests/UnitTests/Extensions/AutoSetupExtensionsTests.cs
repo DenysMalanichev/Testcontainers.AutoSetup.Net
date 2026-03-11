@@ -4,7 +4,9 @@ using DotNet.Testcontainers.Configurations;
 using DotNet.Testcontainers.Containers;
 using Testcontainers.AutoSetup.Core.Common;
 using Testcontainers.AutoSetup.Core.Extensions;
+using Testcontainers.AutoSetup.Kafka;
 using Testcontainers.AutoSetup.Tests.TestCollections;
+using Testcontainers.Kafka;
 using Testcontainers.MongoDb;
 using Testcontainers.MsSql;
 using Testcontainers.MySql;
@@ -342,6 +344,50 @@ public class AutoSetupExtensionsTests
             modifier(parameters);
         }
         Assert.Equal("root", parameters.User);
+    }
+
+    #endregion
+
+    #region Kafka Coverage
+
+    [Theory]
+    [InlineData(false, false, null, true)]  // Local, Native -> Tmpfs
+    [InlineData(false, true, null, false)]  // Local, WSL -> No Tmpfs
+    [InlineData(true, false, null, false)]  // CI -> No Tmpfs
+    [InlineData(false, true, true, true)]   // Local, WSL, Explicit Override -> Tmpfs
+    [InlineData(false, false, false, false)]// Local, Native, Explicit Disable -> No Tmpfs
+    public void WithKafkaAutoSetupDefaultsInternal_FlowLogic(bool isCiRun, bool isWslDocker, bool? useTmpfs, bool expectTmpfs)
+    {
+        // Arrange
+        const string dockerEndpoint = "tcp://127.0.0.1:2375";
+        var builder = new KafkaBuilder("confluentinc/cp-kafka:7.5.0");
+
+        // Act
+        builder = builder
+            .WithDockerEndpoint(dockerEndpoint)
+            .WithKafkaAutoSetupDefaultsInternal("test-kafka-container", isCiRun, isWslDocker, useTmpfs);
+        
+        var config = builder.Build().GetConfiguration();
+
+        // Assert Tmpfs Logic
+        if (expectTmpfs)
+        {
+            Assert.Contains(config.Mounts, m => m.Target == "/var/lib/kafka/data" && m.Type.Type == MountType.Tmpfs.Type);
+            Assert.Contains(config.Mounts, m => m.Target == "/tmp/kraft-combined-logs" && m.Type.Type == MountType.Tmpfs.Type);
+        }
+        else
+        {
+            Assert.DoesNotContain(config.Mounts, m => m.Target == "/var/lib/kafka/data" && m.Type.Type == MountType.Tmpfs.Type);
+            Assert.DoesNotContain(config.Mounts, m => m.Target == "/tmp/kraft-combined-logs" && m.Type.Type == MountType.Tmpfs.Type);
+        }
+
+        // Assert Core Environment Variables (these should always be applied)
+        Assert.Contains(config.Environments, e => e.Key == "KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS" && e.Value == "0");
+        Assert.Contains(config.Environments, e => e.Key == "KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR" && e.Value == "1");
+        Assert.Contains(config.Environments, e => e.Key == "KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR" && e.Value == "1");
+        Assert.Contains(config.Environments, e => e.Key == "KAFKA_TRANSACTION_STATE_LOG_MIN_ISR" && e.Value == "1");
+        Assert.Contains(config.Environments, e => e.Key == "KAFKA_LOG_FLUSH_INTERVAL_MESSAGES" && e.Value == "10000");
+        Assert.Contains(config.Environments, e => e.Key == "KAFKA_LOG_FLUSH_INTERVAL_MS" && e.Value == "1000");
     }
 
     #endregion
