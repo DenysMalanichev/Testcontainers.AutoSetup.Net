@@ -4,6 +4,7 @@
     <ProjectReference Include="..\Testcontainers.AutoSetup.EntityFramework\Testcontainers.AutoSetup.EntityFramework.csproj" />
     <ProjectReference Include="..\Testcontainers.AutoSetup.Core\Testcontainers.AutoSetup.Core.csproj" />
     <ProjectReference Include="..\Testcontainers.AutoSetup.Tests\Testcontainers.AutoSetup.Tests.csproj" />
+    <ProjectReference Include="..\Testcontainers.AutoSetup.Kafka\Testcontainers.AutoSetup.Kafka.csproj" />
   </ItemGroup>
 
   <ItemGroup>

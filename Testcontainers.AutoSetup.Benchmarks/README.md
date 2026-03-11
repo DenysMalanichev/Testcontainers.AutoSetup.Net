@@ -176,6 +176,31 @@ Docker Dektop:
 | 50000        | False    | 756.0 ms | 15.28 ms | 22.86 ms |  69.04 KB |
 | 50000        | True     | 582.7 ms |  8.91 ms | 13.33 ms |  69.17 KB |
 
+#### Kafka
+WSL2:
+| SeedTopicsCount | UseTmpfs | Mean       | Error       | StdDev      | Median     | Allocated |
+|---------------- |--------- |-----------:|------------:|------------:|-----------:|----------:|
+| 1               | False    |   323.9 ms |    13.37 ms |    20.01 ms |   322.4 ms |  22.09 KB |
+| 1               | True     |   325.1 ms |     4.40 ms |     6.59 ms |   322.2 ms |  22.09 KB |
+| 10              | False    |   321.7 ms |     1.92 ms |     2.88 ms |   321.4 ms |  43.25 KB |
+| 10              | True     |   318.4 ms |    13.21 ms |    19.77 ms |   321.7 ms |  43.25 KB |
+| 100             | False    | 1,073.5 ms |    73.79 ms |   110.44 ms | 1,084.5 ms | 494.49 KB |
+| 100             | True     |   691.3 ms |   139.42 ms |   208.68 ms |   757.1 ms | 446.55 KB |
+| 1000            | False    |   786.7 ms | 1,162.49 ms | 1,739.95 ms |   212.6 ms |  747.8 KB |
+| 1000            | True     |   747.9 ms | 1,080.10 ms | 1,616.65 ms |   213.4 ms |  747.8 KB |
+
+Docker Desktop:
+| TopicsCount | UseTmpfs | Mean       | Error       | StdDev      | Median     | Allocated  |
+|------------ |--------- |-----------:|------------:|------------:|-----------:|-----------:|
+| 1           | False    |   331.8 ms |     3.82 ms |     5.72 ms |   333.9 ms |   22.03 KB |
+| 1           | True     |   328.3 ms |     4.63 ms |     6.93 ms |   330.8 ms |   22.03 KB |
+| 10          | False    |   327.2 ms |    13.65 ms |    20.43 ms |   333.2 ms |   43.13 KB |
+| 10          | True     |   328.9 ms |     5.18 ms |     7.76 ms |   333.3 ms |   43.13 KB |
+| 100         | False    | 1,056.3 ms |   129.97 ms |   194.53 ms | 1,097.9 ms |  493.06 KB |
+| 100         | True     |   328.8 ms |     4.95 ms |     7.41 ms |   333.3 ms |  253.46 KB |
+| 1000        | False    |   901.9 ms | 1,399.60 ms | 2,094.86 ms |   223.5 ms |  747.77 KB |
+| 1000        | True     |   711.2 ms |    70.34 ms |   105.28 ms |   662.9 ms | 3921.78 KB |
+
 ## 💡 Key Findings & Analysis
 
 1.  **MySQL is the Speed King for Tests:**
