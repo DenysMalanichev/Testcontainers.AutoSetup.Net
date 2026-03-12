@@ -331,6 +331,7 @@ public class KafkaSeederTests
         {
             _mockClient = mockClient;
             _mockProducer = mockProducer;
+            TopicDeletionTimeout = TimeSpan.FromMilliseconds(300);
         }
 
         protected override IAdminClient BuildAdminClient() => _mockClient;

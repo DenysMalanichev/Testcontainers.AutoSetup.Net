@@ -17,6 +17,8 @@ public class KafkaSeeder : IInstanceStrategy
     private readonly KafkaSetupConfiguration _kafkaConfig;
     private readonly ILogger _logger;
 
+    protected TimeSpan TopicDeletionTimeout { get; set; } = TimeSpan.FromSeconds(5);
+
     public KafkaSeeder(KafkaSetupConfiguration kafkaSetup, ILogger logger)
     {
         _kafkaConfig = kafkaSetup ?? throw new ArgumentNullException(nameof(kafkaSetup));
@@ -192,7 +194,7 @@ public class KafkaSeeder : IInstanceStrategy
         }
         
         userTopicsToDelete = userTopicsToDelete.Where(t => !unknownTopics.Contains(t)).ToList();
-        await WaitForTopicsDeletionAsync(adminClient, userTopicsToDelete, TimeSpan.FromSeconds(5), ct);
+        await WaitForTopicsDeletionAsync(adminClient, userTopicsToDelete, TopicDeletionTimeout, ct);
         _logger.LogInformation("Existing user topics purged successfully.");
     }
 
