@@ -3,6 +3,7 @@ using Confluent.Kafka;
 using Confluent.Kafka.Admin;
 using DotNet.Testcontainers;
 using Microsoft.Extensions.Logging;
+using Microsoft.IdentityModel.Tokens;
 using Testcontainers.AutoSetup.Core.Abstractions;
 
 namespace Testcontainers.AutoSetup.Kafka;
@@ -13,12 +14,12 @@ namespace Testcontainers.AutoSetup.Kafka;
 /// </summary>
 public class KafkaSeeder : IInstanceStrategy
 {
-    private readonly KafkaSetupConfiguration _kafkaSetup;
+    private readonly KafkaSetupConfiguration _kafkaConfig;
     private readonly ILogger _logger;
 
     public KafkaSeeder(KafkaSetupConfiguration kafkaSetup, ILogger logger)
     {
-        _kafkaSetup = kafkaSetup ?? throw new ArgumentNullException(nameof(kafkaSetup));
+        _kafkaConfig = kafkaSetup ?? throw new ArgumentNullException(nameof(kafkaSetup));
         _logger = logger ?? ConsoleLogger.Instance;
     }
 
@@ -50,6 +51,7 @@ public class KafkaSeeder : IInstanceStrategy
         }
 
         await CreateTopicsAsync(adminClient);
+        await SeedMessagesToTopicAsync(cancellationToken);
     }
 
     /// <summary>
@@ -86,9 +88,22 @@ public class KafkaSeeder : IInstanceStrategy
     [ExcludeFromCodeCoverage]
     protected virtual IAdminClient BuildAdminClient()
     {
-        _logger.LogInformation("Building Kafka AdminClient with bootstrap server: {BootstrapServer}", _kafkaSetup.BootstrapServer);
-        var config = new AdminClientConfig { BootstrapServers = _kafkaSetup.BootstrapServer };
+        _logger.LogInformation("Building Kafka AdminClient with bootstrap server: {BootstrapServer}", _kafkaConfig.BootstrapServer);
+        var config = new AdminClientConfig { BootstrapServers = _kafkaConfig.BootstrapServer };
         return new AdminClientBuilder(config).Build();
+    }
+
+    /// <summary>
+    /// Builds a Kafka Producer client. This is a separate method to allow for easy mocking in tests,
+    /// and to centralize any configuration logic for the producer.
+    /// </summary>
+    /// <returns></returns>
+    [ExcludeFromCodeCoverage]
+    protected virtual IProducer<byte[], byte[]> BuildProducer()
+    {
+        _logger.LogInformation("Building Kafka Producer with bootstrap server: {BootstrapServer}", _kafkaConfig.BootstrapServer);
+        var config = new ProducerConfig { BootstrapServers = _kafkaConfig.BootstrapServer };
+        return new ProducerBuilder<byte[], byte[]>(config).Build();
     }
 
     /// <summary>
@@ -100,13 +115,13 @@ public class KafkaSeeder : IInstanceStrategy
     /// <exception cref="Exception"></exception>
     private async Task CreateTopicsAsync(IAdminClient adminClient)
     {
-        _logger.LogInformation("Initializing Kafka topics for bootstrap server: {BootstrapServer}", _kafkaSetup.BootstrapServer);
+        _logger.LogInformation("Initializing Kafka topics for bootstrap server: {BootstrapServer}", _kafkaConfig.BootstrapServer);
         
-        var topicSpecifications = _kafkaSetup.Topics.Select(topic => new TopicSpecification
+        var topicSpecifications = _kafkaConfig.Topics.Select(topic => new TopicSpecification
         {
             Name = topic.Name,
             NumPartitions = topic.Partitions,
-            ReplicationFactor = topic.ReplicationFactor
+            ReplicationFactor = topic.ReplicationFactor,
         }).ToList();
 
         if (topicSpecifications.Count == 0) return;
@@ -120,7 +135,6 @@ public class KafkaSeeder : IInstanceStrategy
         catch (CreateTopicsException ex)
         {
             // We can gracefully handle topics that already exist
-            // TODO recreate existing topics(?)
             var realErrors = ex.Results.Where(r => r.Error.Code != ErrorCode.TopicAlreadyExists).ToList();
             
             if (realErrors.Count > 0)
@@ -131,6 +145,29 @@ public class KafkaSeeder : IInstanceStrategy
         }
 
         _logger.LogInformation("Kafka topics initialization complete.");
+    }
+
+    /// <summary>
+    /// Seeds messages to the specified Kafka topics based on the configuration by sending them to the specified bootstrap server.
+    /// </summary>
+    /// <param name="kafkaConfig"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    private async Task SeedMessagesToTopicAsync(CancellationToken cancellationToken)
+    {
+        var producer = BuildProducer();
+        foreach(var topicConfig in _kafkaConfig.Topics)
+        {
+            if(topicConfig.MessagesToSeed!.IsNullOrEmpty())
+            {
+                continue;
+            }
+
+            foreach (var message in topicConfig.MessagesToSeed!)
+            {
+                await producer.ProduceAsync(topicConfig.Name, message, cancellationToken);
+            }
+        }
     }
 
     private async Task DeleteTopicsAsync(IReadOnlyList<string> userTopicsToDelete, IAdminClient adminClient, CancellationToken ct)
@@ -155,7 +192,7 @@ public class KafkaSeeder : IInstanceStrategy
         }
         
         userTopicsToDelete = userTopicsToDelete.Where(t => !unknownTopics.Contains(t)).ToList();
-        await WaitForTopicsDeletionAsync(adminClient, userTopicsToDelete, TimeSpan.FromSeconds(15), ct);
+        await WaitForTopicsDeletionAsync(adminClient, userTopicsToDelete, TimeSpan.FromSeconds(5), ct);
         _logger.LogInformation("Existing user topics purged successfully.");
     }
 

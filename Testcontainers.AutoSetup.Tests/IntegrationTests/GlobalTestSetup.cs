@@ -21,6 +21,7 @@ using Testcontainers.AutoSetup.Core.Common.DbStrategy;
 using Testcontainers.AutoSetup.Tests.IntegrationTests.Migrations.MongoDB.EfMigrations;
 using Testcontainers.AutoSetup.Kafka;
 using Testcontainers.Kafka;
+using System.Text;
 
 namespace Testcontainers.AutoSetup.Tests.IntegrationTests;
 
@@ -458,19 +459,14 @@ public class GlobalTestSetup : GenericTestBase
         );
 
     private static KafkaSetupConfiguration SpecificKafkaSetupConfig(string bootstrapServer) => 
-    new(
+    new KafkaSetupConfiguration(
         bootstrapServer,
         [
-            new(
-                name: "test-topic-1",
-                partitions: 3,
-                replicationFactor: 1
-            ),
-            new(
-                name: "test-topic-2",
-                partitions: 2,
-                replicationFactor: 1
-            )
+            new KafkaTopicConfiguration(name: "test-topic-1")
+                .WithSeedMessage("key1", "value"),
+            new KafkaTopicConfiguration(name: "test-topic-2", partitions: 2, replicationFactor: 1)
+                .WithSeedMessage(Encoding.UTF8.GetBytes("key2"), Encoding.UTF8.GetBytes("value2"))
+                .WithSeedMessage(Encoding.UTF8.GetBytes("key23"), Encoding.UTF8.GetBytes("value3"))
         ]
     );
 

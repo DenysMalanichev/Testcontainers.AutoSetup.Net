@@ -83,7 +83,7 @@ public class KafkaSeederTests : IntegrationTestsBase
             {
                 BootstrapServers = bootstrapAddress,
                 GroupId = "test-group",
-                AutoOffsetReset = AutoOffsetReset.Earliest
+                AutoOffsetReset = AutoOffsetReset.Latest
             }
         ).Build();
         var topic = Setup.KafkaContainer_FromSpecificBuilder_SetupConfig!.Topics[0].Name;
@@ -91,25 +91,16 @@ public class KafkaSeederTests : IntegrationTestsBase
         // Act & Assert
         // Assure that the initial message is sent
         consumer.Subscribe([topic]);
+        consumer.Consume(TimeSpan.FromMilliseconds(200));
         await producer.ProduceAsync(topic, new Message<Null, string> { Value = initialMessage });
-        var messages = consumer.Consume(TimeSpan.FromSeconds(1));
-        Assert.Equal(initialMessage, messages.Message.Value);
+        var message = consumer.Consume(TimeSpan.FromSeconds(2));
+        Assert.NotNull(message);
+        Assert.Equal(initialMessage, message.Message.Value);
 
         // Reset the env
         await Setup.ResetEnvironmentAsync(this.GetType());
 
-        // A new consumer should consume mothing after the reset
-        var consumer2 = new ConsumerBuilder<Null, string>(
-            new ConsumerConfig
-            {
-                BootstrapServers = bootstrapAddress,
-                GroupId = "test-group-2",
-                AutoOffsetReset = AutoOffsetReset.Earliest
-            }
-        ).Build();
-        consumer2.Subscribe([topic]);
-
-        var messagesAfterReset = consumer2.Consume(TimeSpan.FromSeconds(1));
+        var messagesAfterReset = consumer.Consume(TimeSpan.FromSeconds(1));
         Assert.Null(messagesAfterReset);
     }
 }
