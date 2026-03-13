@@ -72,35 +72,63 @@ public class KafkaSeederTests : IntegrationTestsBase
     [Fact]
     public async Task KafkaSeeder_DeletesMessageFromTopic_AfterRecreation()
     {
-        // Containers setup and seeding are done within the GlobalTestSetup
         // Arrange
         const string initialMessage = "Initial message";
         var bootstrapAddress = Setup.KafkaContainerFromSpecificBuilder.GetBootstrapAddress();
-        var producer = new ProducerBuilder<Null, string>(
+        var topic = Setup.KafkaContainer_FromSpecificBuilder_SetupConfig!.Topics[0].Name;
+
+        using var producer = new ProducerBuilder<Null, string>(
             new ProducerConfig { BootstrapServers = bootstrapAddress }).Build();
-        var consumer = new ConsumerBuilder<Null, string>(
+
+        using var consumer = new ConsumerBuilder<Ignore, string>(
             new ConsumerConfig
             {
                 BootstrapServers = bootstrapAddress,
-                GroupId = "test-group",
-                AutoOffsetReset = AutoOffsetReset.Latest
+                GroupId = Guid.NewGuid().ToString(),
+                EnableAutoCommit = false
             }
         ).Build();
-        var topic = Setup.KafkaContainer_FromSpecificBuilder_SetupConfig!.Topics[0].Name;
 
-        // Act & Assert
-        // Assure that the initial message is sent
-        consumer.Subscribe([topic]);
-        consumer.Consume(TimeSpan.FromMilliseconds(200));
+        var topicPartition = new TopicPartition(topic, new Partition(0));
+
+        // Ask the broker exactly where the end of the topic is right now.
+        var watermarks = consumer.QueryWatermarkOffsets(topicPartition, TimeSpan.FromSeconds(5));
+
+        consumer.Assign(new TopicPartitionOffset(topicPartition, watermarks.High));
+
+        // Act & Assert 1: Send the message
         await producer.ProduceAsync(topic, new Message<Null, string> { Value = initialMessage });
-        var message = consumer.Consume(TimeSpan.FromSeconds(2));
+
+        var message = consumer.Consume(TimeSpan.FromSeconds(3));
         Assert.NotNull(message);
         Assert.Equal(initialMessage, message.Message.Value);
 
-        // Reset the env
+        // Reset the env (Deletes, recreates, and re-seeds the topic)
         await Setup.ResetEnvironmentAsync(this.GetType());
 
-        var messagesAfterReset = consumer.Consume(TimeSpan.FromSeconds(1));
-        Assert.Null(messagesAfterReset);
+        // Act & Assert 2: Verify the topic does NOT contain our test message
+        // We MUST create a new consumer so it fetches fresh metadata for the newly created topic UUID
+        using var consumerAfterReset = new ConsumerBuilder<Ignore, string>(
+            new ConsumerConfig
+            {
+                BootstrapServers = bootstrapAddress,
+                GroupId = Guid.NewGuid().ToString()
+            }
+        ).Build();
+
+        consumerAfterReset.Assign(new TopicPartitionOffset(topicPartition, Offset.Beginning));
+
+        // Loop through all the newly seeded messages
+        while (true)
+        {
+            var msg = consumerAfterReset.Consume(TimeSpan.FromSeconds(1));
+            
+            if (msg is null) 
+            {
+                break;
+            }
+
+            Assert.NotEqual(initialMessage, msg.Message.Value);
+        }
     }
 }
