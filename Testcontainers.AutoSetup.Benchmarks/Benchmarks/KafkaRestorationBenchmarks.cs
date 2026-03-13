@@ -31,7 +31,7 @@ public class KafkaRestorationBenchmarks
 
         for (int i = 0; i < SeedTopicsCount; i++)
         {
-            topics.Add(new KafkaTopicConfiguration($"topic_{i}", 1, 1));
+            topics.Add(new KafkaTopicConfiguration($"topic_{i}", 1));
         }
 
         _container = new KafkaBuilder("confluentinc/cp-kafka:7.5.0")

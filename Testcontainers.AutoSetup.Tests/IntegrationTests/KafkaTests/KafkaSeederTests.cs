@@ -27,7 +27,7 @@ public class KafkaSeederTests : IntegrationTestsBase
         // Arrange
         var adminClient = new AdminClientBuilder(
             new AdminClientConfig
-            { BootstrapServers = Setup.KafkaContainerFromSpecificBuilder.GetBootstrapAddress() }
+            { BootstrapServers = Setup.KafkaTestEnvironment.KafkaContainer.GetBootstrapAddress() }
         ).Build();
         var expectedTopics = Setup.KafkaContainer_FromSpecificBuilder_SetupConfig!.Topics.Select(t => t.Name).ToList();
 
@@ -36,8 +36,8 @@ public class KafkaSeederTests : IntegrationTestsBase
         var existingTopics = metadata.Topics.Select(t => t.Topic).ToList();
 
         // Assert
-        Assert.NotNull(Setup.KafkaContainerFromSpecificBuilder);
-        Assert.Equal(TestcontainersStates.Running, Setup.KafkaContainerFromSpecificBuilder.State);
+        Assert.NotNull(Setup.KafkaTestEnvironment);
+        Assert.Equal(TestcontainersStates.Running, Setup.KafkaTestEnvironment.KafkaContainer.State);
 
         foreach (var expectedTopic in expectedTopics)
         {
@@ -52,7 +52,7 @@ public class KafkaSeederTests : IntegrationTestsBase
         // Arrange
         var adminClient = new AdminClientBuilder(
             new AdminClientConfig
-            { BootstrapServers = Setup.KafkaContainerFromSpecificBuilder.GetBootstrapAddress() }
+            { BootstrapServers = Setup.KafkaTestEnvironment.KafkaContainer.GetBootstrapAddress() }
         ).Build();
         var topicToDelete = "topic-to-delete";
 
@@ -74,7 +74,7 @@ public class KafkaSeederTests : IntegrationTestsBase
     {
         // Arrange
         const string initialMessage = "Initial message";
-        var bootstrapAddress = Setup.KafkaContainerFromSpecificBuilder.GetBootstrapAddress();
+        var bootstrapAddress = Setup.KafkaTestEnvironment.KafkaContainer.GetBootstrapAddress();
         var topic = Setup.KafkaContainer_FromSpecificBuilder_SetupConfig!.Topics[0].Name;
 
         using var producer = new ProducerBuilder<Null, string>(

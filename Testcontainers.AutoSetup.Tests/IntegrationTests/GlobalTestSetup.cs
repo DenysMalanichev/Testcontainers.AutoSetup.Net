@@ -43,7 +43,7 @@ public class GlobalTestSetup : GenericTestBase
     public DbSetup? MongoContainer_FromGenericBuilder_RawMongoDbSetup { get; private set; } = null!;
     public DbSetup? MongoContainer_FromGenericBuilder_EfMongoDbSetup { get; private set; } = null!;
     public KafkaSetupConfiguration? KafkaContainer_FromSpecificBuilder_SetupConfig { get; private set; } = null!;
-    public KafkaContainer KafkaContainerFromSpecificBuilder {get; private set; } = null!;
+    public KafkaTestEnvironment KafkaTestEnvironment {get; private set; } = null!;
 
     public readonly string? DockerEndpoint = EnvironmentHelper.GetDockerEndpoint();
 
@@ -64,7 +64,7 @@ public class GlobalTestSetup : GenericTestBase
         MongoContainerFromSpecificBuilder = CreateMongoDbContainerFromSpecificBuilder();
         MongoContainerFromGenericBuilder = CreateMongoDbContainerFromGenericBuilder();
 
-        KafkaContainerFromSpecificBuilder = CreateKafkaContainerFromSpecificBuilder();
+        KafkaTestEnvironment = CreateKafkaTestEnvironment();
         
         await Task.WhenAll(
             MsSqlContainerFromSpecificBuilder.StartAsync(),
@@ -76,7 +76,7 @@ public class GlobalTestSetup : GenericTestBase
             MongoContainerFromSpecificBuilder.StartAsync(),
             MongoContainerFromGenericBuilder.StartAsync(),
 
-            KafkaContainerFromSpecificBuilder.StartAsync()
+            KafkaTestEnvironment.StartAsync()
         );
 
     // 2. Register containers within the environment
@@ -224,7 +224,7 @@ public class GlobalTestSetup : GenericTestBase
             .WithMongoDbRestorer()
             .Build());
 
-    KafkaContainer_FromSpecificBuilder_SetupConfig = SpecificKafkaSetupConfig(KafkaContainerFromSpecificBuilder.GetBootstrapAddress());
+    KafkaContainer_FromSpecificBuilder_SetupConfig = SpecificKafkaSetupConfig(KafkaTestEnvironment.KafkaContainer.GetBootstrapAddress());
     TestEnvironment.RegisterSetupStrategy(
         new KafkaSeeder(
                 KafkaContainer_FromSpecificBuilder_SetupConfig,
@@ -315,11 +315,14 @@ public class GlobalTestSetup : GenericTestBase
             .Build();
     }
 
-    private static KafkaContainer CreateKafkaContainerFromSpecificBuilder()
+    private static KafkaTestEnvironment CreateKafkaTestEnvironment()
     {
-        // TODO add autosetupDefaults
-        return new KafkaBuilder("confluentinc/cp-kafka:7.6.1")
-            .WithKafkaAutoSetupDefaults(containerName: "Kafka-testcontainer", useTmpfs: true)
+        var kafkaBuilder = new KafkaBuilder("confluentinc/cp-kafka:7.6.1")
+            .WithKafkaAutoSetupDefaults(containerName: "Kafka-testcontainer", useTmpfs: true);
+
+        return new KafkaTestEnvironmentBuilder()
+            .WithKafkaBuilder(kafkaBuilder)
+            .WithKafkaUI()
             .Build();
     }
 
