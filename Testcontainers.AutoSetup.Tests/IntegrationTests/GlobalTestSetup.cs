@@ -464,7 +464,7 @@ public class GlobalTestSetup : GenericTestBase
         [
             new KafkaTopicConfiguration(name: "test-topic-1")
                 .WithSeedMessage("key1", "value"),
-            new KafkaTopicConfiguration(name: "test-topic-2", partitions: 2, replicationFactor: 1)
+            new KafkaTopicConfiguration(name: "test-topic-2", partitions: 2)
                 .WithSeedMessage(Encoding.UTF8.GetBytes("key2"), Encoding.UTF8.GetBytes("value2"))
                 .WithSeedMessage(Encoding.UTF8.GetBytes("key23"), Encoding.UTF8.GetBytes("value3"))
         ]

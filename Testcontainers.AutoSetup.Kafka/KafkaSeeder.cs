@@ -110,6 +110,7 @@ public class KafkaSeeder : IInstanceStrategy
 
     /// <summary>
     /// Creates the desired Kafka topics as specified in the configuration.
+    /// NOTE: replication factor defaults to 1.
     /// </summary>
     /// <param name="adminClient"></param>
     /// <param name="cancellationToken"></param>
@@ -123,7 +124,7 @@ public class KafkaSeeder : IInstanceStrategy
         {
             Name = topic.Name,
             NumPartitions = topic.Partitions,
-            ReplicationFactor = topic.ReplicationFactor,
+            ReplicationFactor = 1,
         }).ToList();
 
         if (topicSpecifications.Count == 0) return;

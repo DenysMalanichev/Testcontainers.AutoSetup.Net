@@ -38,7 +38,7 @@ public class KafkaSeederTests
     public async Task ResetAsync_WhenOnlyInternalTopicsExist_ShouldNotDeleteAnything_AndCreateTopics()
     {
         // Arrange
-        var topicConfig = new KafkaTopicConfiguration("new-topic", 1, 1);
+        var topicConfig = new KafkaTopicConfiguration("new-topic", 1);
         var config = new KafkaSetupConfiguration("localhost:9092", [topicConfig]);
         
         var mockAdminClient = new Mock<IAdminClient>();

@@ -22,21 +22,14 @@ public record KafkaTopicConfiguration
     public int Partitions { get; init; } = 1;
 
     /// <summary>
-    /// The replication factor for the topic. This determines how many copies of the topic's 
-    /// data are maintained across the cluster for fault tolerance.
-    /// </summary>
-    public short ReplicationFactor { get; init; } = 1;
-
-    /// <summary>
     /// The list of messages to seed the topic with.
     /// </summary>
     internal IList<Message<byte[], byte[]>>? MessagesToSeed { get; private set; } = null!;
 
-    public KafkaTopicConfiguration(string name, int partitions = 1, short replicationFactor = 1)
+    public KafkaTopicConfiguration(string name, int partitions = 1)
     {
         Name = name ?? throw new ArgumentNullException(nameof(name));
         Partitions = partitions;
-        ReplicationFactor = replicationFactor;
     }
 
     /// <summary>
