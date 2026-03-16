@@ -4,4 +4,6 @@ using Testcontainers.AutoSetup.Benchmarks;
 BenchmarkRunner.Run<MsSqlRestorationBenchmarks>();
 BenchmarkRunner.Run<MySqlRestorationBenchmarks>();
 BenchmarkRunner.Run<MongoDbRestorationBenchmarks>();
+
 BenchmarkRunner.Run<KafkaRestorationBenchmarks>();
+BenchmarkRunner.Run<KafkaMessageSeedBenchmarks>();

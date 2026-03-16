@@ -38,7 +38,6 @@ public class KafkaSeeder : IInstanceStrategy
         _logger.LogInformation("Synchronizing Kafka topics to match desired state...");
         using var adminClient = BuildAdminClient();
 
-        // Use the testable helper method to get ALL current topic names
         var allTopicNames = await GetAllTopicNamesAsync(adminClient, cancellationToken);
 
         if (allTopicNames.Count > 0)
@@ -110,7 +109,6 @@ public class KafkaSeeder : IInstanceStrategy
 
     /// <summary>
     /// Creates the desired Kafka topics as specified in the configuration.
-    /// NOTE: replication factor defaults to 1.
     /// </summary>
     /// <param name="adminClient"></param>
     /// <param name="cancellationToken"></param>

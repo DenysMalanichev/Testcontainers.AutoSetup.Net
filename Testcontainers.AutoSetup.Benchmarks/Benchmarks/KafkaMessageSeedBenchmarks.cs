@@ -9,14 +9,14 @@ namespace Testcontainers.AutoSetup.Benchmarks;
 
 [SimpleJob(RunStrategy.Monitoring, launchCount: 3, warmupCount: 5, iterationCount: 10)]
 [MemoryDiagnoser]
-public class KafkaRestorationBenchmarks
+public class KafkaMessageSeedBenchmarks
 {
     private KafkaContainer _container = null!;
     private IInstanceStrategy _strategy = null!;
     private KafkaSetupConfiguration _kafkaConfig = null!;
 
     [Params(1, 10, 100, 1000)] 
-    public int SeedTopicsCount { get; set; }
+    public int SeedMessagesCount { get; set; }
 
     [Params(true, false)] 
     public bool UseTmpfs { get; set; }
@@ -24,12 +24,13 @@ public class KafkaRestorationBenchmarks
     [GlobalSetup]
     public async Task GlobalSetup()
     {        
-        // A. Generate a Heavy json data file dynamically based on the param
-        var topics = new List<KafkaTopicConfiguration>();
+        // Generate a Heavy json data file dynamically based on the param
+        var topicConfig = new KafkaTopicConfiguration("message-seed-benchmark");
+        var payload = new string('x', 1024 * 512); // half MB payload
 
-        for (int i = 0; i < SeedTopicsCount; i++)
+        for (int i = 0; i < SeedMessagesCount; i++)
         {
-            topics.Add(new KafkaTopicConfiguration($"topic_{i}", 1));
+            topicConfig.WithSeedMessage($"testKey-{i}", payload);
         }
 
         _container = new KafkaBuilder("confluentinc/cp-kafka:7.5.0")
@@ -40,7 +41,7 @@ public class KafkaRestorationBenchmarks
 
         _kafkaConfig = new KafkaSetupConfiguration(
             _container.GetBootstrapAddress(),
-            topics
+            [topicConfig]
         );
 
         _strategy = new KafkaSeeder(_kafkaConfig, NullLogger.Instance);
@@ -49,7 +50,7 @@ public class KafkaRestorationBenchmarks
     }
 
     [Benchmark]
-    public async Task Restore_KafkaTopicsCreation()
+    public async Task Restore_KafkaMessagesSeeding()
     {
         await _strategy.ResetAsync();
     }
