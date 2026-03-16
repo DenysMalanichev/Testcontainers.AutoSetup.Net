@@ -466,10 +466,12 @@ public class GlobalTestSetup : GenericTestBase
         bootstrapServer,
         [
             new KafkaTopicConfiguration(name: "test-topic-1")
-                .WithSeedMessage("key1", "value"),
+                .WithSeedMessage("key1", "value", new Dictionary<string, string?>() { {"TestHeader", "TestValue" } }),
             new KafkaTopicConfiguration(name: "test-topic-2", partitions: 2)
                 .WithSeedMessage(Encoding.UTF8.GetBytes("key2"), Encoding.UTF8.GetBytes("value2"))
-                .WithSeedMessage(Encoding.UTF8.GetBytes("key23"), Encoding.UTF8.GetBytes("value3"))
+                .WithSeedMessage(Encoding.UTF8.GetBytes("key23"), Encoding.UTF8.GetBytes("value3"),
+                    new Dictionary<string, byte[]?>() { { "TestHeader2", Encoding.UTF8.GetBytes("TestValue") },
+                                                        { "TestHeader3", null! } })
         ]
     );
 

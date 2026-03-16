@@ -35,31 +35,61 @@ public record KafkaTopicConfiguration
     /// <summary>
     /// Adds a message to the list of messages to seed the topic with. The key and value are provided as strings and will be encoded as UTF-8 bytes.
     /// </summary>
-    /// <param name="key"></param>
-    /// <param name="value"></param>
-    /// <returns>Same <see cref="KafkaTopicConfiguration"/> with added message</returns>
-    public KafkaTopicConfiguration WithSeedMessage(string key, string value)
+    public KafkaTopicConfiguration WithSeedMessage(string? key, string? value,
+        IDictionary<string, string?>? headers = null)
     {
         var keyBytes = key != null ? Encoding.UTF8.GetBytes(key) : null;
         var valueBytes = value != null ? Encoding.UTF8.GetBytes(value) : null;
 
-        return WithSeedMessage(keyBytes, valueBytes);
+        Dictionary<string, byte[]?>? headersByteArrays = null;
+
+        if (headers != null && headers.Count > 0)
+        {
+            headersByteArrays = new Dictionary<string, byte[]?>(headers.Count);
+            foreach (var header in headers)
+            {
+                if (string.IsNullOrWhiteSpace(header.Key))
+                {
+                    throw new ArgumentException("Header keys cannot be null, empty, or whitespace.", nameof(headers));
+                }
+
+                var headerValueBytes = header.Value != null ? Encoding.UTF8.GetBytes(header.Value) : null;
+                headersByteArrays.Add(header.Key, headerValueBytes);
+            }
+        }
+
+        return WithSeedMessage(keyBytes, valueBytes, headersByteArrays);
     }
 
     /// <summary>
     /// Adds a message to the list of messages to seed the topic with. The key and value are provided as byte arrays.
     /// </summary>
-    /// <param name="key"></param>
-    /// <param name="value"></param>
-    /// <returns>Same <see cref="KafkaTopicConfiguration"/> with added message</returns>
-    public KafkaTopicConfiguration WithSeedMessage(byte[]? key, byte[]? value)
+    public KafkaTopicConfiguration WithSeedMessage(byte[]? key, byte[]? value,
+        IDictionary<string, byte[]?>? headers = null)
     {
         MessagesToSeed ??= [];
-        MessagesToSeed.Add(new Message<byte[], byte[]>
+
+        var msg = new Message<byte[], byte[]>
         {
             Key = key!,
             Value = value!
-        });
+        };
+
+        if (headers != null && headers.Count > 0)
+        {
+            msg.Headers = new Headers();
+            foreach (var header in headers)
+            {
+                if (string.IsNullOrWhiteSpace(header.Key))
+                {
+                    throw new ArgumentException("Header keys cannot be null, empty, or whitespace.", nameof(headers));
+                }
+
+                msg.Headers.Add(header.Key, header.Value);
+            }
+        }
+
+        MessagesToSeed.Add(msg);
         return this;
     }
 }
