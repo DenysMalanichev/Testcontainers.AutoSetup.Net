@@ -4,10 +4,10 @@ using Testcontainers.AutoSetup.Core.Abstractions.Entities;
 
 namespace Testcontainers.AutoSetup.Core.Abstractions;
 
-public interface IDbSetupStrategy
+public interface ISetupStrategy
 {
     /// <summary>
-    /// Initializes a database <see cref="IContainer"/> with migrating and seeding data,
+    /// Initializes a container <see cref="IContainer"/> by migrating and seeding data,
     /// or using an existing snapshot if it is up to date and mount exists.
     /// </summary>
     /// <param name="cancellationToken"></param>

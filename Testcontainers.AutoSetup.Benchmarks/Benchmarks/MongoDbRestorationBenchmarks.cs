@@ -2,7 +2,6 @@ using System.Text.Json;
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Engines;
 using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.IdentityModel.Tokens;
 using MongoDB.Bson;
 using MongoDB.Driver;
 using Testcontainers.AutoSetup.Core.Abstractions;
@@ -20,7 +19,7 @@ namespace Testcontainers.AutoSetup.Benchmarks;
 public class MongoDbRestorationBenchmarks
 {
     private MongoDbContainer _container = null!;
-    private IDbStrategy _strategy = null!;
+    private IInstanceStrategy _strategy = null!;
     private RawMongoDbSetup _dbSetup = null!;
 
     [Params(1, 10, 100, 1000, 10_000, 50_000)] 

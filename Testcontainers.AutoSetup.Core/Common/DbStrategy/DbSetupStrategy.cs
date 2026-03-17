@@ -4,7 +4,7 @@ using Testcontainers.AutoSetup.Core.Abstractions.Entities;
 
 namespace Testcontainers.AutoSetup.Core.Common;
 
-public class DbSetupStrategy : IDbStrategy
+public class DbSetupStrategy : IInstanceStrategy
 {
     private readonly DbSeeder _seeder;
     private readonly DbRestorer _restorer;

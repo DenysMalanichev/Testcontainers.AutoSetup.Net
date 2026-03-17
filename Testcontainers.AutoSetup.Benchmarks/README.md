@@ -160,7 +160,7 @@ WSL2:
 | 50000        | False    | 835.9 ms | 38.24 ms | 57.23 ms |  65.89 KB |
 | 50000        | True     | 660.7 ms | 17.86 ms | 26.73 ms | 235.03 KB |
 
-Docker Dektop:
+Docker Desktop:
 | SeedRowCount | UseTmpfs | Mean     | Error    | StdDev   | Allocated |
 |------------- |--------- |---------:|---------:|---------:|----------:|
 | 1            | False    | 127.3 ms |  5.73 ms |  8.58 ms |   68.6 KB |
@@ -175,6 +175,56 @@ Docker Dektop:
 | 10000        | True     | 206.1 ms |  6.99 ms | 10.46 ms |  69.21 KB |
 | 50000        | False    | 756.0 ms | 15.28 ms | 22.86 ms |  69.04 KB |
 | 50000        | True     | 582.7 ms |  8.91 ms | 13.33 ms |  69.17 KB |
+
+#### Kafka (topics creation)
+WSL2:
+| SeedTopicsCount | UseTmpfs | Mean       | Error       | StdDev      | Median     | Allocated |
+|---------------- |--------- |-----------:|------------:|------------:|-----------:|----------:|
+| 1               | False    |   323.9 ms |    13.37 ms |    20.01 ms |   322.4 ms |  22.09 KB |
+| 1               | True     |   325.1 ms |     4.40 ms |     6.59 ms |   322.2 ms |  22.09 KB |
+| 10              | False    |   321.7 ms |     1.92 ms |     2.88 ms |   321.4 ms |  43.25 KB |
+| 10              | True     |   318.4 ms |    13.21 ms |    19.77 ms |   321.7 ms |  43.25 KB |
+| 100             | False    | 1,073.5 ms |    73.79 ms |   110.44 ms | 1,084.5 ms | 494.49 KB |
+| 100             | True     |   691.3 ms |   139.42 ms |   208.68 ms |   757.1 ms | 446.55 KB |
+| 1000            | False    |   786.7 ms | 1,162.49 ms | 1,739.95 ms |   212.6 ms |  747.8 KB |
+| 1000            | True     |   747.9 ms | 1,080.10 ms | 1,616.65 ms |   213.4 ms |  747.8 KB |
+
+Docker Desktop:
+| TopicsCount | UseTmpfs | Mean       | Error       | StdDev      | Median     | Allocated  |
+|------------ |--------- |-----------:|------------:|------------:|-----------:|-----------:|
+| 1           | False    |   331.8 ms |     3.82 ms |     5.72 ms |   333.9 ms |   22.03 KB |
+| 1           | True     |   328.3 ms |     4.63 ms |     6.93 ms |   330.8 ms |   22.03 KB |
+| 10          | False    |   327.2 ms |    13.65 ms |    20.43 ms |   333.2 ms |   43.13 KB |
+| 10          | True     |   328.9 ms |     5.18 ms |     7.76 ms |   333.3 ms |   43.13 KB |
+| 100         | False    | 1,056.3 ms |   129.97 ms |   194.53 ms | 1,097.9 ms |  493.06 KB |
+| 100         | True     |   328.8 ms |     4.95 ms |     7.41 ms |   333.3 ms |  253.46 KB |
+| 1000        | False    |   901.9 ms | 1,399.60 ms | 2,094.86 ms |   223.5 ms |  747.77 KB |
+| 1000        | True     |   711.2 ms |    70.34 ms |   105.28 ms |   662.9 ms | 3921.78 KB |
+
+#### Kafka (message seeding)
+WSL2:
+| MessagesCount | UseTmpfs | Mean        | Error       | StdDev      | Median      | Allocated |
+|-------------- |--------- |------------:|------------:|------------:|------------:|----------:|
+| 1             | False    |    323.0 ms |    13.04 ms |    19.52 ms |    322.7 ms |  31.23 KB |
+| 1             | True     |    323.8 ms |     3.84 ms |     5.75 ms |    321.4 ms |  31.23 KB |
+| 10            | False    |    586.8 ms |    36.26 ms |    54.27 ms |    553.4 ms |  38.42 KB |
+| 10            | True     |    595.7 ms |    47.03 ms |    70.39 ms |    593.5 ms |  38.38 KB |
+| 100           | False    |  3,152.0 ms |   243.46 ms |   364.40 ms |  3,271.4 ms | 110.59 KB |
+| 100           | True     |  3,228.7 ms |   191.32 ms |   286.36 ms |  3,380.0 ms | 110.61 KB |
+| 1000          | False    | 29,800.5 ms | 1,931.20 ms | 2,890.54 ms | 31,076.3 ms | 833.73 KB |
+| 1000          | True     | 30,065.8 ms | 1,800.56 ms | 2,694.99 ms | 31,165.5 ms |  833.8 KB |
+
+Docker Desktop:
+| SeedMessagesCount | UseTmpfs | Mean        | Error     | StdDev    | Allocated |      
+|------------------ |--------- |------------:|----------:|----------:|----------:|      
+| 1                 | False    |    328.4 ms |  13.14 ms |  19.66 ms |  31.17 KB |      
+| 1                 | True     |    332.7 ms |   1.89 ms |   2.84 ms |  31.17 KB |      
+| 10                | False    |    651.4 ms |  13.64 ms |  20.42 ms |  38.37 KB |      
+| 10                | True     |    638.8 ms |  33.34 ms |  49.91 ms |  38.37 KB |
+| 100               | False    |  3,723.9 ms |  65.44 ms |  97.94 ms | 110.74 KB |      
+| 100               | True     |  3,704.0 ms |  48.79 ms |  73.02 ms |  110.7 KB |      
+| 1000              | False    | 35,315.6 ms | 494.09 ms | 739.53 ms | 836.07 KB |      
+| 1000              | True     | 35,753.7 ms | 209.42 ms | 313.45 ms | 835.99 KB |
 
 ## 💡 Key Findings & Analysis
 

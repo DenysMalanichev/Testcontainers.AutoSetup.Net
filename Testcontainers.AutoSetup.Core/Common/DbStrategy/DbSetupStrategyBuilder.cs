@@ -29,11 +29,11 @@ public partial class DbSetupStrategyBuilder
     }
 
     /// <summary>
-    /// Builds an instance of <see cref="IDbStrategy"/> using configured params
+    /// Builds an instance of <see cref="IInstanceStrategy"/> using configured params
     /// </summary>
     /// <returns></returns>
     /// <exception cref="ArgumentException"></exception>
-    public IDbStrategy Build()
+    public IInstanceStrategy Build()
     {
         if(_seeder is null)
             throw new ArgumentException("Seeder is not configured.");

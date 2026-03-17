@@ -2,10 +2,10 @@ using DotNet.Testcontainers.Containers;
 
 namespace Testcontainers.AutoSetup.Core.Abstractions;
 
-public interface IDbResetStrategy
+public interface IResetStrategy
 {
     /// <summary>
-    /// Resets a DB to the initial state by applying an exisiting snapshot.
+    /// Resets an instance to the initial state.
     /// </summary>
     /// <param name="cancellationToken"></param>
     /// <returns></returns>

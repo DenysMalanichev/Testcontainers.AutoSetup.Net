@@ -15,14 +15,14 @@ public partial class TestEnvironment
     /// This method does not execute the strategy immediately. It stores a factory delegate 
     /// that will be invoked when <see cref="InitializeAsync"/> is called.
     /// </remarks>
-    public void RegisterDbSetupStrategy(IDbStrategy setupStrategy)
+    public void RegisterSetupStrategy(IInstanceStrategy setupStrategy)
     {
         _initializeTasks.Add(setupStrategy.InitializeGlobalAsync);
         _resetTasks.Add(setupStrategy.ResetAsync);
     }
 
     /// <summary>
-    /// Executes all registered database initialization strategies concurrently.
+    /// Executes all registered initialization strategies concurrently.
     /// </summary>
     /// <remarks>
     /// This iterates through all registered strategies, invokes their factory delegates, 
@@ -37,7 +37,7 @@ public partial class TestEnvironment
     }
 
     /// <summary>
-    /// Executes all registered database reset strategies concurrently.
+    /// Executes all registered reset strategies concurrently.
     /// </summary>
     /// <remarks>
     /// This iterates through all registered strategies, invokes their factory delegates, 

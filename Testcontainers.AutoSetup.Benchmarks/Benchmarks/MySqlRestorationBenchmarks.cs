@@ -17,7 +17,7 @@ namespace Testcontainers.AutoSetup.Benchmarks;
 public class MySqlRestorationBenchmarks
 {
     private MySqlContainer _container = null!;
-    private IDbStrategy _strategy = null!;
+    private IInstanceStrategy _strategy = null!;
     private MySqlDbConnectionFactory _dbConnectionFactory = new(); 
 
     [Params(1, 10, 100, 1000, 10_000, 50_000)] 

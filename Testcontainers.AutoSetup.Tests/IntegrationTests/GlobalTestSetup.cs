@@ -19,6 +19,9 @@ using Testcontainers.AutoSetup.Tests.IntegrationTests.TestHelpers;
 using Testcontainers.MongoDb;
 using Testcontainers.AutoSetup.Core.Common.DbStrategy;
 using Testcontainers.AutoSetup.Tests.IntegrationTests.Migrations.MongoDB.EfMigrations;
+using Testcontainers.AutoSetup.Kafka;
+using Testcontainers.Kafka;
+using System.Text;
 
 namespace Testcontainers.AutoSetup.Tests.IntegrationTests;
 
@@ -39,6 +42,8 @@ public class GlobalTestSetup : GenericTestBase
     public IContainer MongoContainerFromGenericBuilder = null!;
     public DbSetup? MongoContainer_FromGenericBuilder_RawMongoDbSetup { get; private set; } = null!;
     public DbSetup? MongoContainer_FromGenericBuilder_EfMongoDbSetup { get; private set; } = null!;
+    public KafkaSetupConfiguration? KafkaContainer_FromSpecificBuilder_SetupConfig { get; private set; } = null!;
+    public KafkaTestEnvironment KafkaTestEnvironment {get; private set; } = null!;
 
     public readonly string? DockerEndpoint = EnvironmentHelper.GetDockerEndpoint();
 
@@ -58,6 +63,8 @@ public class GlobalTestSetup : GenericTestBase
 
         MongoContainerFromSpecificBuilder = CreateMongoDbContainerFromSpecificBuilder();
         MongoContainerFromGenericBuilder = CreateMongoDbContainerFromGenericBuilder();
+
+        KafkaTestEnvironment = CreateKafkaTestEnvironment();
         
         await Task.WhenAll(
             MsSqlContainerFromSpecificBuilder.StartAsync(),
@@ -67,7 +74,9 @@ public class GlobalTestSetup : GenericTestBase
             MySqlContainerFromGenericBuilder.StartAsync(),
 
             MongoContainerFromSpecificBuilder.StartAsync(),
-            MongoContainerFromGenericBuilder.StartAsync()
+            MongoContainerFromGenericBuilder.StartAsync(),
+
+            KafkaTestEnvironment.StartAsync()
         );
 
     // 2. Register containers within the environment
@@ -78,7 +87,7 @@ public class GlobalTestSetup : GenericTestBase
 
     // MsSql + EF Core
     MsSqlContainer_SpecificBuilder_EfDbSetup = MsSqlEFDbSetup(MsSqlContainerFromSpecificBuilder.GetConnectionString());        
-    TestEnvironment.RegisterDbSetupStrategy(
+    TestEnvironment.RegisterSetupStrategy(
         new DbSetupStrategyBuilder(
                 MsSqlContainer_SpecificBuilder_EfDbSetup,
                 MsSqlContainerFromSpecificBuilder,
@@ -89,7 +98,7 @@ public class GlobalTestSetup : GenericTestBase
 
     // MsSql + Raw SQL Scripts
     MsSqlContainer_SpecificBuilder_RawSqlDbSetup = MsSqlRawSqlDbSetup(MsSqlContainerFromSpecificBuilder.GetConnectionString());        
-    TestEnvironment.RegisterDbSetupStrategy(
+    TestEnvironment.RegisterSetupStrategy(
         new DbSetupStrategyBuilder(
                 MsSqlContainer_SpecificBuilder_RawSqlDbSetup,
                 MsSqlContainerFromSpecificBuilder,
@@ -105,7 +114,7 @@ public class GlobalTestSetup : GenericTestBase
     // Generic MsSql + EF Core
     var mappedPort = MsSqlContainerFromGenericBuilder.GetMappedPublicPort(1433);
     MsSqlContainer_GenericBuilder_EfDbSetup = GenericMsSqlEFDbSetup(mappedPort);
-    TestEnvironment.RegisterDbSetupStrategy(
+    TestEnvironment.RegisterSetupStrategy(
         new DbSetupStrategyBuilder(
                 MsSqlContainer_GenericBuilder_EfDbSetup,
                 MsSqlContainerFromGenericBuilder,
@@ -116,7 +125,7 @@ public class GlobalTestSetup : GenericTestBase
 
     // Generic MsSql + Raw SQL Scripts
     MsSqlContainer_GenericBuilder_RawSqlDbSetup = GenericMsSqlRawSqlDbSetup(mappedPort);
-    TestEnvironment.RegisterDbSetupStrategy(
+    TestEnvironment.RegisterSetupStrategy(
         new DbSetupStrategyBuilder(
                 MsSqlContainer_GenericBuilder_RawSqlDbSetup,
                 MsSqlContainerFromGenericBuilder,
@@ -131,7 +140,7 @@ public class GlobalTestSetup : GenericTestBase
 
     // MySql + EF Core
     MySqlContainer_SpecificBuilder_EfDbSetup = MySqlEFDbSetup(MySqlContainerFromSpecificBuilder.GetConnectionString());
-    TestEnvironment.RegisterDbSetupStrategy(
+    TestEnvironment.RegisterSetupStrategy(
         new DbSetupStrategyBuilder(
                 MySqlContainer_SpecificBuilder_EfDbSetup,
                 MySqlContainerFromSpecificBuilder,
@@ -142,7 +151,7 @@ public class GlobalTestSetup : GenericTestBase
 
     // MySql + Raw SQL Scripts
     var MySqlContainer_SpecificBuilder_RawSqlDbSetup = MySqlRawSqlDbSetup(MySqlContainerFromSpecificBuilder.GetConnectionString());
-    TestEnvironment.RegisterDbSetupStrategy(
+    TestEnvironment.RegisterSetupStrategy(
         new DbSetupStrategyBuilder(
                 MySqlContainer_SpecificBuilder_RawSqlDbSetup,
                 MySqlContainerFromSpecificBuilder,
@@ -158,7 +167,7 @@ public class GlobalTestSetup : GenericTestBase
     // Generic MySql + EF Core
     var mappedPortMySql = MySqlContainerFromGenericBuilder.GetMappedPublicPort(3306);
     MySqlContainer_GenericBuilder_EfDbSetup = GenericMySqlEFDbSetup(mappedPortMySql);
-    TestEnvironment.RegisterDbSetupStrategy(
+    TestEnvironment.RegisterSetupStrategy(
         new DbSetupStrategyBuilder(
                 MySqlContainer_GenericBuilder_EfDbSetup,
                 MySqlContainerFromGenericBuilder,
@@ -169,7 +178,7 @@ public class GlobalTestSetup : GenericTestBase
         
     // Generic MySql + Raw SQL Scripts
     var MySqlContainer_GenericBuilder_RawSqlDbSetup = GenericMySqlRawSqlDbSetup(mappedPortMySql);
-    TestEnvironment.RegisterDbSetupStrategy(
+    TestEnvironment.RegisterSetupStrategy(
         new DbSetupStrategyBuilder(
                 MySqlContainer_GenericBuilder_RawSqlDbSetup,
                 MySqlContainerFromGenericBuilder,
@@ -184,7 +193,7 @@ public class GlobalTestSetup : GenericTestBase
 
     // Mongo Specific + Raw Files Seeder
     MongoContainer_FromSpecificBuilder_RawMongoDbSetup = SpecificMongoDbRawDbSetup();
-    TestEnvironment.RegisterDbSetupStrategy(
+    TestEnvironment.RegisterSetupStrategy(
         new DbSetupStrategyBuilder(
                 MongoContainer_FromSpecificBuilder_RawMongoDbSetup,
                 MongoContainerFromSpecificBuilder,
@@ -195,7 +204,7 @@ public class GlobalTestSetup : GenericTestBase
 
     // Mongo Generic + Raw Files Seeder
     MongoContainer_FromGenericBuilder_RawMongoDbSetup = GenericMongoDbRawDbSetup();
-    TestEnvironment.RegisterDbSetupStrategy(
+    TestEnvironment.RegisterSetupStrategy(
         new DbSetupStrategyBuilder(
                 MongoContainer_FromGenericBuilder_RawMongoDbSetup,
                 MongoContainerFromGenericBuilder,
@@ -206,7 +215,7 @@ public class GlobalTestSetup : GenericTestBase
 
     // Mongo Specific + EF Seeder
     MongoContainer_FromGenericBuilder_EfMongoDbSetup = SpecificMongoDbEfDbSetup(MongoContainerFromSpecificBuilder.GetConnectionString());
-    TestEnvironment.RegisterDbSetupStrategy(
+    TestEnvironment.RegisterSetupStrategy(
         new DbSetupStrategyBuilder(
                 MongoContainer_FromGenericBuilder_EfMongoDbSetup,
                 MongoContainerFromSpecificBuilder,
@@ -214,7 +223,14 @@ public class GlobalTestSetup : GenericTestBase
             .WithEfSeeder()
             .WithMongoDbRestorer()
             .Build());
-        }
+
+    KafkaContainer_FromSpecificBuilder_SetupConfig = SpecificKafkaSetupConfig(KafkaTestEnvironment.KafkaContainer.GetBootstrapAddress());
+    TestEnvironment.RegisterSetupStrategy(
+        new KafkaSeeder(
+                KafkaContainer_FromSpecificBuilder_SetupConfig,
+                Logger!)
+        );
+    }
 
     /// <inheritdoc/>
     public override async Task ResetEnvironmentAsync(Type testClassType)
@@ -296,6 +312,17 @@ public class GlobalTestSetup : GenericTestBase
             .WithEnvironment("MONGO_INITDB_ROOT_USERNAME", "mongo")
             .WithEnvironment("MONGO_INITDB_ROOT_PASSWORD", "mongo")
             .WithWaitStrategy(Wait.ForUnixContainer().AddCustomWaitStrategy(new WaitInitiateReplicaSet()))
+            .Build();
+    }
+
+    private static KafkaTestEnvironment CreateKafkaTestEnvironment()
+    {
+        var kafkaBuilder = new KafkaBuilder("confluentinc/cp-kafka:7.6.1")
+            .WithKafkaAutoSetupDefaults(containerName: "Kafka-testcontainer", useTmpfs: true);
+
+        return new KafkaTestEnvironmentBuilder()
+            .WithKafkaBuilder(kafkaBuilder)
+            .WithKafkaUI()
             .Build();
     }
 
@@ -434,6 +461,20 @@ public class GlobalTestSetup : GenericTestBase
             migrationsPath: "./IntegrationTests/Migrations/MongoDB/EfMigrations"
         );
 
+    private static KafkaSetupConfiguration SpecificKafkaSetupConfig(string bootstrapServer) => 
+    new KafkaSetupConfiguration(
+        bootstrapServer,
+        [
+            new KafkaTopicConfiguration(name: "test-topic-1")
+                .WithSeedMessage("key1", "value", new Dictionary<string, string?>() { {"TestHeader", "TestValue" } }),
+            new KafkaTopicConfiguration(name: "test-topic-2", partitions: 2)
+                .WithSeedMessage(Encoding.UTF8.GetBytes("key2"), Encoding.UTF8.GetBytes("value2"))
+                .WithSeedMessage(Encoding.UTF8.GetBytes("key23"), Encoding.UTF8.GetBytes("value3"),
+                    new Dictionary<string, byte[]?>() { { "TestHeader2", Encoding.UTF8.GetBytes("TestValue") },
+                                                        { "TestHeader3", null! } })
+        ]
+    );
+
     /// <inheritdoc cref="IWaitUntil" />
     /// <remarks>
     /// Uses the sqlcmd utility scripting variables to detect readiness of the MsSql container:
@@ -454,15 +495,6 @@ public class GlobalTestSetup : GenericTestBase
     }
 
     /// <inheritdoc cref="IWaitUntil" />
-    // private sealed class WaitInitiateReplicaSet : IWaitUntil
-    // {
-    //     /// <inheritdoc />
-    //     public Task<bool> UntilAsync(IContainer container)
-    //     {
-    //         Task.Delay(5_000); // Simple 5 seconds wait for container to initialize. Must be used only for testing
-    //         return Task.FromResult(true);
-    //     }
-    // }
     private sealed class WaitInitiateReplicaSet : IWaitUntil
     {
         // The command to run inside the container
