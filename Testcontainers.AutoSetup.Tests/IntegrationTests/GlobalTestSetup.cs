@@ -22,6 +22,10 @@ using Testcontainers.AutoSetup.Tests.IntegrationTests.Migrations.MongoDB.EfMigra
 using Testcontainers.AutoSetup.Kafka;
 using Testcontainers.Kafka;
 using System.Text;
+using Confluent.Kafka;
+using Confluent.SchemaRegistry;
+using Confluent.SchemaRegistry.Serdes;
+using Testcontainers.AutoSetup.Tests.IntegrationTests.TestEntities.Entities;
 
 namespace Testcontainers.AutoSetup.Tests.IntegrationTests;
 
@@ -223,8 +227,8 @@ public class GlobalTestSetup : GenericTestBase
             .WithEfSeeder()
             .WithMongoDbRestorer()
             .Build());
-
-    KafkaContainer_FromSpecificBuilder_SetupConfig = SpecificKafkaSetupConfig(KafkaTestEnvironment.KafkaContainer.GetBootstrapAddress());
+// TODO consider passing this arguments automatically - by providing the KafkTstEnv instance instead
+    KafkaContainer_FromSpecificBuilder_SetupConfig = SpecificKafkaSetupConfig(KafkaTestEnvironment.KafkaContainer.GetBootstrapAddress(), KafkaTestEnvironment.GetRegistryServer());
     TestEnvironment.RegisterSetupStrategy(
         new KafkaSeeder(
                 KafkaContainer_FromSpecificBuilder_SetupConfig,
@@ -322,7 +326,8 @@ public class GlobalTestSetup : GenericTestBase
 
         return new KafkaTestEnvironmentBuilder()
             .WithKafkaBuilder(kafkaBuilder)
-            .WithKafkaUI()
+            .WithSchemaRegistry(hostPort: 8081)
+            .WithKafkaUI(hostPort: 8080)
             .Build();
     }
 
@@ -461,9 +466,10 @@ public class GlobalTestSetup : GenericTestBase
             migrationsPath: "./IntegrationTests/Migrations/MongoDB/EfMigrations"
         );
 
-    private static KafkaSetupConfiguration SpecificKafkaSetupConfig(string bootstrapServer) => 
+    private static KafkaSetupConfiguration SpecificKafkaSetupConfig(string bootstrapServer, string? registryServer) => 
     new KafkaSetupConfiguration(
         bootstrapServer,
+        registryServer,
         [
             new KafkaTopicConfiguration(name: "test-topic-1")
                 .WithSeedMessage("key1", "value", new Dictionary<string, string?>() { {"TestHeader", "TestValue" } }),
@@ -471,7 +477,26 @@ public class GlobalTestSetup : GenericTestBase
                 .WithSeedMessage(Encoding.UTF8.GetBytes("key2"), Encoding.UTF8.GetBytes("value2"))
                 .WithSeedMessage(Encoding.UTF8.GetBytes("key23"), Encoding.UTF8.GetBytes("value3"),
                     new Dictionary<string, byte[]?>() { { "TestHeader2", Encoding.UTF8.GetBytes("TestValue") },
-                                                        { "TestHeader3", null! } })
+                                                        { "TestHeader3", null! } }),
+            new KafkaTopicConfiguration(name: "test-topic-3")
+                .WithCustomSeeder(async (brokerUrl, registryUrl) =>
+                {
+                    var schemaConfig = new SchemaRegistryConfig { Url = registryUrl };
+                    using var registry = new CachedSchemaRegistryClient(schemaConfig);
+                    
+                    var producerConfig = new ProducerConfig { BootstrapServers = brokerUrl };
+                    using var producer = new ProducerBuilder<string, User>(producerConfig)
+                        .SetValueSerializer(new AvroSerializer<User>(registry))
+                        .Build();
+
+                    var msg = new Message<string, User> 
+                    { 
+                        Key = "user-1", 
+                        Value = new User { Id = "1", Name = "Alice", Age = 30 } 
+                    };
+
+                    await producer.ProduceAsync("users-topic", msg);
+                })
         ]
     );
 

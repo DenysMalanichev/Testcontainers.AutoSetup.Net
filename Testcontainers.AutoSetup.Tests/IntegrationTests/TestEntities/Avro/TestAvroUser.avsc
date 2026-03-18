@@ -1,0 +1,10 @@
+{
+  "namespace": "Testcontainers.AutoSetup.Demo",
+  "type": "record",
+  "name": "User",
+  "fields": [
+    { "name": "Id", "type": "string" },
+    { "name": "Name", "type": "string" },
+    { "name": "Age", "type": "int" }
+  ]
+}

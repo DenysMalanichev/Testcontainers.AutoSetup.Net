@@ -24,7 +24,13 @@ public record KafkaTopicConfiguration
     /// <summary>
     /// The list of messages to seed the topic with.
     /// </summary>
-    internal IList<Message<byte[], byte[]>>? MessagesToSeed { get; private set; } = null!;
+    internal IList<Message<byte[], byte[]>>? MessagesToSeed { get; private set; } = null;
+
+    /// <summary>
+    /// A list of custom seed actions. 
+    /// Param 1: Broker URL. Param 2: Schema Registry URL (can be null)
+    /// </summary>
+    internal List<Func<string, string?, Task>>? CustomAsyncSeedActions { get; private set; } = null;
 
     public KafkaTopicConfiguration(string name, int partitions = 1)
     {
@@ -90,6 +96,20 @@ public record KafkaTopicConfiguration
         }
 
         MessagesToSeed.Add(msg);
+        return this;
+    }
+
+    /// <summary>
+    /// Allows the consumer to provide a custom asynchronous action to seed strongly typed 
+    /// messages (Avro, Protobuf, JSON Schema) using their own serializers.
+    /// </summary>
+    /// <param name="seedAction">A func that provides the Bootstrap Servers URL and Schema Registry URL</param>
+    public KafkaTopicConfiguration WithCustomSeeder(Func<string, string?, Task> seedAction)
+    {
+        ArgumentNullException.ThrowIfNull(seedAction);
+        CustomAsyncSeedActions ??= [];
+
+        CustomAsyncSeedActions.Add(seedAction);
         return this;
     }
 }

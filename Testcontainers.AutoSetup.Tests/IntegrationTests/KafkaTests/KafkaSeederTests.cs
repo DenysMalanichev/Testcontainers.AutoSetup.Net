@@ -4,6 +4,7 @@ using Testcontainers.AutoSetup.Core.Attributes;
 using Testcontainers.AutoSetup.Tests.IntegrationTests.TestCollections;
 using Xunit.Abstractions;
 using Confluent.Kafka;
+using Testcontainers.AutoSetup.Tests.UnitTests.Extensions;
 
 namespace Testcontainers.AutoSetup.Tests.IntegrationTests.KafkaTests;
 
@@ -130,5 +131,44 @@ public class KafkaSeederTests : IntegrationTestsBase
 
             Assert.NotEqual(initialMessage, msg.Message.Value);
         }
+    }
+
+    [Fact]
+    public async Task KafkaTestEnvironment_CreatesKafkaUIContainer_IfConfigured()
+    {
+        // Containers setup and seeding are done within the GlobalTestSetup
+        // Arrange
+        var kafkaUiContainer = Setup.KafkaTestEnvironment.KafkaUiContainer;
+        var kafkaNetwork = Setup.KafkaTestEnvironment.KafkaNetwork;
+
+        // Assert
+        Assert.NotNull(kafkaUiContainer);
+        Assert.Equal(TestcontainersStates.Running, kafkaUiContainer.State);  
+        Assert.NotNull(kafkaNetwork);  
+        var networks = kafkaUiContainer.GetConfiguration().Networks.Select(n => n.Name);
+        Assert.Contains(kafkaNetwork.Name, networks);
+    }
+
+    [Fact]
+    public async Task KafkaTestEnvironment_CreatesKafkaNetwork_IfConfigured()
+    {
+        // Containers setup and seeding are done within the GlobalTestSetup
+        Assert.NotNull(Setup.KafkaTestEnvironment.KafkaNetwork);
+    }
+
+    [Fact]
+    public async Task KafkaTestEnvironment_CreatesKafkaSchemaRegistryContainer_IfConfigured()
+    {
+        // Containers setup and seeding are done within the GlobalTestSetup 
+        // Arrange
+        var schemaRegistryContainer = Setup.KafkaTestEnvironment.SchemaRegistryContainer;
+        var kafkaNetwork = Setup.KafkaTestEnvironment.KafkaNetwork;
+
+        // Assert
+        Assert.NotNull(schemaRegistryContainer);
+        Assert.Equal(TestcontainersStates.Running, schemaRegistryContainer.State);  
+        Assert.NotNull(kafkaNetwork);  
+        var networks = schemaRegistryContainer.GetConfiguration().Networks.Select(n => n.Name);
+        Assert.Contains(kafkaNetwork.Name, networks);
     }
 }

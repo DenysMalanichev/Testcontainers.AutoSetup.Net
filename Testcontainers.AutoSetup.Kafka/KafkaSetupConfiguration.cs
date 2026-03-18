@@ -13,13 +13,20 @@ public record KafkaSetupConfiguration
     public string BootstrapServer { get; init; }
 
     /// <summary>
+    /// Registry server URL. May be null, if no registry used.
+    /// </summary>
+    public string? RegistryServer { get; init; }
+
+    /// <summary>
     /// The list of topics to be created in the Kafka cluster.
     /// </summary>
     public IReadOnlyList<KafkaTopicConfiguration> Topics { get; init; }
 
-    public KafkaSetupConfiguration(string bootstrapServers, IReadOnlyList<KafkaTopicConfiguration> topics)
+    public KafkaSetupConfiguration(string bootstrapServers, string? registryServers,
+        IReadOnlyList<KafkaTopicConfiguration> topics)
     {
         BootstrapServer = bootstrapServers ?? throw new ArgumentNullException(nameof(bootstrapServers));
         Topics = topics ?? throw new ArgumentNullException(nameof(topics));
+        RegistryServer = registryServers; 
     }
 }

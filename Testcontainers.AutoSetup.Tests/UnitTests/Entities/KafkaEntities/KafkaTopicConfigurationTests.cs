@@ -216,5 +216,55 @@ public class KafkaTopicConfigurationTests
         Assert.Contains("Header keys cannot be null, empty, or whitespace", exception.Message);
         Assert.Equal("headers", exception.ParamName);
     }
+
+    [Fact]
+    public void WithCustomSeeder_NullAction_ThrowsArgumentNullException()
+    {
+        // Arrange
+        var config = new KafkaTopicConfiguration("test-topic");
+
+        // Act & Assert
+        var exception = Assert.Throws<ArgumentNullException>(() => config.WithCustomSeeder(null!));
+        Assert.Equal("seedAction", exception.ParamName);
+    }
+
+    [Fact]
+    public void WithCustomSeeder_ValidAction_AddsActionAndReturnsSelf()
+    {
+        // Arrange
+        var config = new KafkaTopicConfiguration("test-topic");
+        Func<string, string?, Task> myCustomSeeder = (brokerUrl, registryUrl) => Task.CompletedTask;
+
+        // Act
+        var result = config.WithCustomSeeder(myCustomSeeder);
+
+        // Assert
+        Assert.Same(config, result);
+        Assert.NotNull(config.CustomAsyncSeedActions);
+        Assert.Single(config.CustomAsyncSeedActions);
+        Assert.Equal(myCustomSeeder, config.CustomAsyncSeedActions[0]);
+    }
+
+    [Fact]
+    public void WithCustomSeeder_ChainedCalls_AppendsAllActions()
+    {
+        // Arrange
+        var config = new KafkaTopicConfiguration("test-topic");
+        
+        Func<string, string?, Task> firstSeeder = (b, r) => Task.CompletedTask;
+        Func<string, string?, Task> secondSeeder = (b, r) => Task.CompletedTask;
+
+        // Act
+        config.WithCustomSeeder(firstSeeder)
+              .WithCustomSeeder(secondSeeder);
+
+        // Assert
+        Assert.NotNull(config.CustomAsyncSeedActions);
+        Assert.Equal(2, config.CustomAsyncSeedActions.Count);
+        
+        // Verifies order is preserved
+        Assert.Equal(firstSeeder, config.CustomAsyncSeedActions[0]); 
+        Assert.Equal(secondSeeder, config.CustomAsyncSeedActions[1]);
+    }
 }
 

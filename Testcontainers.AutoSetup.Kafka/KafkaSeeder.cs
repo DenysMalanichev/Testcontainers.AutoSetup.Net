@@ -76,6 +76,9 @@ public class KafkaSeeder : IInstanceStrategy
         var describeResults = await adminClient.DescribeTopicsAsync(TopicCollection.OfTopicNames(allTopicNames));
         return describeResults.TopicDescriptions
             .Where(t => !t.IsInternal)
+            // We assume that is RegistryServer is configured - registry is configured and we need to 
+            // filter the _schema topic out
+            .Where(t => _kafkaConfig.RegistryServer == null || t.Name != "_schemas")
             .Select(t => t.Name)
             .ToList();
     }
@@ -159,15 +162,21 @@ public class KafkaSeeder : IInstanceStrategy
         var producer = BuildProducer();
         foreach(var topicConfig in _kafkaConfig.Topics)
         {
-            if(topicConfig.MessagesToSeed!.IsNullOrEmpty())
+            if(!topicConfig.MessagesToSeed!.IsNullOrEmpty())
             {
-                continue;
+                foreach (var message in topicConfig.MessagesToSeed!)
+                {
+                    await producer.ProduceAsync(topicConfig.Name, message, cancellationToken);
+                }
             }
 
-            foreach (var message in topicConfig.MessagesToSeed!)
+            if(!topicConfig.CustomAsyncSeedActions.IsNullOrEmpty())
             {
-                await producer.ProduceAsync(topicConfig.Name, message, cancellationToken);
-            }
+                foreach (var customSeedActionAsync in topicConfig.CustomAsyncSeedActions!)
+                {
+                    await customSeedActionAsync(_kafkaConfig.BootstrapServer, _kafkaConfig.RegistryServer);
+                }
+            }            
         }
     }
 
