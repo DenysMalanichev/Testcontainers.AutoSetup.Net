@@ -70,7 +70,7 @@ public class KafkaTestEnvironmentBuilder
         KafkaUiPort = hostPort;
 
         var kafkaUiBuilder = new ContainerBuilder(image)
-            .WithNetwork(_kafkaNetworkAlias)
+            .WithNetwork(_kafkaNetwork)
             .WithDockerEndpoint(dockerEndpoint)
             .WithPortBinding(hostPort, 8080)
             .WithEnvironment("KAFKA_CLUSTERS_0_NAME", "AutoSetup-Local")
@@ -119,7 +119,7 @@ public class KafkaTestEnvironmentBuilder
         SchemaRegistryPort = hostPort;
 
         var registryBuilder = new ContainerBuilder(image)
-            .WithNetwork(_kafkaNetworkAlias)
+            .WithNetwork(_kafkaNetwork)
             .WithReuse(!EnvironmentHelper.IsCiRun())
             .WithName("Testcontainers-Kafka-schema-registry")
             .WithEnvironment("SCHEMA_REGISTRY_HOST_NAME", "schema-registry")
@@ -145,7 +145,7 @@ public class KafkaTestEnvironmentBuilder
     {
         if(_kafkaUiContainer is not null || _schemaRegistryContainer is not null)
         {
-            _kafkaBuilder = _kafkaBuilder.WithNetwork(_kafkaNetworkAlias);
+            _kafkaBuilder = _kafkaBuilder.WithNetwork(_kafkaNetwork);
         }
 
         var kafkaContainer = _kafkaBuilder.Build();
