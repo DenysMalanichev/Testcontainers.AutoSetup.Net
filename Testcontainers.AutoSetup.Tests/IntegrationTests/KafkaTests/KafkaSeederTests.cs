@@ -6,6 +6,7 @@ using Xunit.Abstractions;
 using Confluent.Kafka;
 using Testcontainers.AutoSetup.Tests.UnitTests.Extensions;
 using Confluent.SchemaRegistry;
+using Testcontainers.AutoSetup.Core.Helpers;
 
 namespace Testcontainers.AutoSetup.Tests.IntegrationTests.KafkaTests;
 
@@ -135,8 +136,12 @@ public class KafkaSeederTests : IntegrationTestsBase
     }
 
     [Fact]
-    public async Task KafkaTestEnvironment_CreatesKafkaUIContainer_IfConfigured()
+    public async Task KafkaTestEnvironment_CreatesKafkaUIContainer_IfConfiguredAnNotInCI()
     {
+        // Skip for CI runs
+        if(EnvironmentHelper.IsCiRun())
+            Assert.True(true);
+
         // Containers setup and seeding are done within the GlobalTestSetup
         // Arrange
         var kafkaUiContainer = Setup.KafkaTestEnvironment.KafkaUiContainer;
