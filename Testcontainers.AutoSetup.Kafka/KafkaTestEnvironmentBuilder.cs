@@ -79,10 +79,11 @@ public class KafkaTestEnvironmentBuilder
             .WithReuse(true); // Since we drop Kafka UI fo CI runs, it is safe to set true here
             
         if(_schemaRegistryContainer is not null)
-        {
             kafkaUiBuilder = kafkaUiBuilder
                 .WithEnvironment("KAFKA_CLUSTERS_0_SCHEMAREGISTRY", $"http://{SchemaRegistryAlias}:{SchemaRegistryPort}");
-        } 
+
+        if(dockerEndpoint is not null)
+            kafkaUiBuilder = kafkaUiBuilder.WithDockerEndpoint(dockerEndpoint);
 
         _kafkaUiContainer = kafkaUiBuilder.Build();
 
@@ -117,9 +118,8 @@ public class KafkaTestEnvironmentBuilder
 
         SchemaRegistryPort = hostPort;
 
-        _schemaRegistryContainer = new ContainerBuilder(image)
+        var registryBuilder = new ContainerBuilder(image)
             .WithNetwork(_kafkaNetworkAlias)
-            .WithDockerEndpoint(dockerEndpoint)
             .WithReuse(!EnvironmentHelper.IsCiRun())
             .WithName("Testcontainers-Kafka-schema-registry")
             .WithEnvironment("SCHEMA_REGISTRY_HOST_NAME", "schema-registry")
@@ -128,8 +128,12 @@ public class KafkaTestEnvironmentBuilder
             .WithNetworkAliases(SchemaRegistryAlias)
             .WithPortBinding(hostPort, 8081)
             .WithWaitStrategy(Wait.ForUnixContainer()
-                .UntilHttpRequestIsSucceeded(request => request.ForPath("/subjects").ForPort(hostPort)))
-            .Build();
+                .UntilHttpRequestIsSucceeded(request => request.ForPath("/subjects").ForPort(hostPort)));
+        
+        if(dockerEndpoint is not null)
+            registryBuilder = registryBuilder.WithDockerEndpoint(dockerEndpoint);
+        
+        _schemaRegistryContainer = registryBuilder.Build();
 
         return this;
     }
@@ -156,11 +160,14 @@ public class KafkaTestEnvironmentBuilder
 
         var dockerEndpoint = EnvironmentHelper.GetDockerEndpoint();
 
-        _kafkaNetwork = new NetworkBuilder()
+        var networkBuilder = new NetworkBuilder()
             .WithLabel("reuse-id", $"{_kafkaNetworkAlias}-reuse-hash")
-            .WithDockerEndpoint(dockerEndpoint)
             .WithName(_kafkaNetworkAlias)
-            .WithReuse(!EnvironmentHelper.IsCiRun())
-            .Build();
+            .WithReuse(!EnvironmentHelper.IsCiRun());
+
+        if(dockerEndpoint is not null)
+            networkBuilder = networkBuilder.WithDockerEndpoint(dockerEndpoint);
+
+        _kafkaNetwork = networkBuilder.Build();
     }
 }
