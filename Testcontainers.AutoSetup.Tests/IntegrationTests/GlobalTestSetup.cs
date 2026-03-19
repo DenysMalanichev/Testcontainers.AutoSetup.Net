@@ -467,38 +467,35 @@ public class GlobalTestSetup : GenericTestBase
         );
 
     private static KafkaSetupConfiguration SpecificKafkaSetupConfig(string bootstrapServer, string? registryServer) => 
-    new KafkaSetupConfiguration(
-        bootstrapServer,
-        registryServer,
-        [
-            new KafkaTopicConfiguration(name: "test-topic-1")
-                .WithSeedMessage("key1", "value", new Dictionary<string, string?>() { {"TestHeader", "TestValue" } }),
-            new KafkaTopicConfiguration(name: "test-topic-2", partitions: 2)
-                .WithSeedMessage(Encoding.UTF8.GetBytes("key2"), Encoding.UTF8.GetBytes("value2"))
-                .WithSeedMessage(Encoding.UTF8.GetBytes("key23"), Encoding.UTF8.GetBytes("value3"),
-                    new Dictionary<string, byte[]?>() { { "TestHeader2", Encoding.UTF8.GetBytes("TestValue") },
-                                                        { "TestHeader3", null! } }),
-            new KafkaTopicConfiguration(name: "test-topic-3")
-                .WithCustomSeeder(async (brokerUrl, registryUrl) =>
-                {
-                    var schemaConfig = new SchemaRegistryConfig { Url = registryUrl };
-                    using var registry = new CachedSchemaRegistryClient(schemaConfig);
-                    
-                    var producerConfig = new ProducerConfig { BootstrapServers = brokerUrl };
-                    using var producer = new ProducerBuilder<string, User>(producerConfig)
-                        .SetValueSerializer(new AvroSerializer<User>(registry))
-                        .Build();
+        new KafkaSetupBuilder(bootstrapServer, registryServer)
+            .WithTopic(new KafkaTopicConfiguration(name: "test-topic-1")
+                        .WithSeedMessage("key1", "value", new Dictionary<string, string?>() { {"TestHeader", "TestValue" } }))
+            .WithTopic(new KafkaTopicConfiguration(name: "test-topic-2", partitions: 2)
+                        .WithSeedMessage(Encoding.UTF8.GetBytes("key2"), Encoding.UTF8.GetBytes("value2"))
+                        .WithSeedMessage(Encoding.UTF8.GetBytes("key23"), Encoding.UTF8.GetBytes("value3"),
+                            new Dictionary<string, byte[]?>() { { "TestHeader2", Encoding.UTF8.GetBytes("TestValue") },
+                                                                { "TestHeader3", null } }))
+            .WithTopic( new KafkaTopicConfiguration(name: "test-topic-3")
+                        .WithCustomSeeder(async (brokerUrl, registryUrl) =>
+                        {
+                            var schemaConfig = new SchemaRegistryConfig { Url = registryUrl };
+                            using var registry = new CachedSchemaRegistryClient(schemaConfig);
+                            
+                            var producerConfig = new ProducerConfig { BootstrapServers = brokerUrl };
+                            using var producer = new ProducerBuilder<string, User>(producerConfig)
+                                .SetValueSerializer(new AvroSerializer<User>(registry))
+                                .Build();
 
-                    var msg = new Message<string, User> 
-                    { 
-                        Key = "user-1", 
-                        Value = new User { Id = "1", Name = "Alice", Age = 30 } 
-                    };
+                            var msg = new Message<string, User> 
+                            { 
+                                Key = "user-1", 
+                                Value = new User { Id = "1", Name = "Alice", Age = 30 } 
+                            };
 
-                    await producer.ProduceAsync("users-topic", msg);
-                })
-        ]
-    );
+                            await producer.ProduceAsync("users-topic", msg);
+                        }))
+            .WithSchemaFromFile("test-user-schema", "./IntegrationTests/TestEntities/Avro/TestAvroUser.avsc", SchemaType.Avro)
+            .Build();
 
     /// <inheritdoc cref="IWaitUntil" />
     /// <remarks>

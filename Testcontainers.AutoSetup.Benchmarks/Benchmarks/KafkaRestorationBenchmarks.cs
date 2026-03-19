@@ -25,11 +25,11 @@ public class KafkaRestorationBenchmarks
     public async Task GlobalSetup()
     {        
         // A. Generate a Heavy json data file dynamically based on the param
-        var topics = new List<KafkaTopicConfiguration>();
+        _kafkaConfig = new KafkaSetupConfiguration(_container.GetBootstrapAddress(), registryServers: null);
 
         for (int i = 0; i < SeedTopicsCount; i++)
         {
-            topics.Add(new KafkaTopicConfiguration($"topic_{i}", 1));
+            _kafkaConfig.WithTopic(new KafkaTopicConfiguration($"topic_{i}", 1));
         }
 
         _container = new KafkaBuilder("confluentinc/cp-kafka:7.5.0")
@@ -38,10 +38,6 @@ public class KafkaRestorationBenchmarks
 
         await _container.StartAsync();
 
-        _kafkaConfig = new KafkaSetupConfiguration(
-            _container.GetBootstrapAddress(),
-            topics
-        );
 
         _strategy = new KafkaSeeder(_kafkaConfig, NullLogger.Instance);
 

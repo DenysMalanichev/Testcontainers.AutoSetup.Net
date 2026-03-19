@@ -41,6 +41,7 @@ public class KafkaMessageSeedBenchmarks
 
         _kafkaConfig = new KafkaSetupConfiguration(
             _container.GetBootstrapAddress(),
+            registryServers: null,
             [topicConfig]
         );
 

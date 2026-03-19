@@ -1,6 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using Confluent.Kafka;
 using Confluent.Kafka.Admin;
+using Confluent.SchemaRegistry;
 using DotNet.Testcontainers;
 using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
@@ -51,7 +52,10 @@ public class KafkaSeeder : IInstanceStrategy
             }
         }
 
+        await PurgeSchemaRegistryAsync(cancellationToken);
+
         await CreateTopicsAsync(adminClient);
+        await SeedSchemasAsync(cancellationToken);
         await SeedMessagesToTopicAsync(cancellationToken);
     }
 
@@ -138,7 +142,7 @@ public class KafkaSeeder : IInstanceStrategy
         }
         catch (CreateTopicsException ex)
         {
-            // We can gracefully handle topics that already exist
+            // We gracefully handle topics that already exist
             var realErrors = ex.Results.Where(r => r.Error.Code != ErrorCode.TopicAlreadyExists).ToList();
             
             if (realErrors.Count > 0)
@@ -180,7 +184,7 @@ public class KafkaSeeder : IInstanceStrategy
         }
     }
 
-    private async Task DeleteTopicsAsync(IReadOnlyList<string> userTopicsToDelete, IAdminClient adminClient, CancellationToken ct)
+    private async Task DeleteTopicsAsync(List<string> userTopicsToDelete, IAdminClient adminClient, CancellationToken ct)
     {
         List<string> unknownTopics = [];
         try
@@ -217,7 +221,6 @@ public class KafkaSeeder : IInstanceStrategy
         {
             ct.ThrowIfCancellationRequested();
 
-            // Use the testable helper method here as well
             var existingTopics = await GetAllTopicNamesAsync(adminClient, ct); 
             var anyTopicStillExists = topicsToDelete.Any(existingTopics.Contains);
 
@@ -230,5 +233,72 @@ public class KafkaSeeder : IInstanceStrategy
         }
 
         throw new TimeoutException($"Kafka topics were not fully deleted within the {timeout.TotalSeconds}s timeout period.");
+    }
+
+    /// <summary>
+    /// Seeds configured schemas into the Kafka Schema Registry
+    /// </summary>
+    private async Task SeedSchemasAsync(CancellationToken cancellationToken)
+    {
+        if (_kafkaConfig.RegistryServer is null || _kafkaConfig.SchemasToSeed is null || _kafkaConfig.SchemasToSeed.Count == 0)
+            return;
+
+        _logger.LogInformation("Seeding {Count} schemas to the Schema Registry...", _kafkaConfig.SchemasToSeed.Count);
+
+        var registryConfig = new SchemaRegistryConfig { Url = _kafkaConfig.RegistryServer };
+        using var registryClient = new CachedSchemaRegistryClient(registryConfig);
+
+        foreach (var schemaConfig in _kafkaConfig.SchemasToSeed)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            
+            var schema = new Schema(schemaConfig.Schema, schemaConfig.SchemaType);
+            
+            // This registers the schema and returns its ID, without producing any Kafka messages
+            var schemaId = await registryClient.RegisterSchemaAsync(schemaConfig.SubjectName, schema);
+            
+            _logger.LogInformation("Successfully seeded schema for subject '{Subject}' with ID {Id}.", schemaConfig.SubjectName, schemaId);
+        }
+    }
+
+    private async Task PurgeSchemaRegistryAsync(CancellationToken cancellationToken)
+    {
+        if (_kafkaConfig.RegistryServer is null)
+            return;
+
+        _logger.LogInformation("Purging Schema Registry state via REST API...");
+
+        var registryConfig = new SchemaRegistryConfig { Url = _kafkaConfig.RegistryServer };
+        
+        using var registryClient = new CachedSchemaRegistryClient(registryConfig);
+        
+        using var httpClient = new HttpClient { BaseAddress = new Uri(_kafkaConfig.RegistryServer) };
+
+        try
+        {
+            // 1. Get all registered subjects
+            var subjects = await registryClient.GetAllSubjectsAsync();
+
+            foreach (var subject in subjects)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                
+                // 2. Perform a "Soft Delete" via the REST API
+                var escapeSubject = Uri.EscapeDataString(subject);
+                var softDeleteResponse = await httpClient.DeleteAsync($"/subjects/{escapeSubject}", cancellationToken);
+                
+                // 3. Perform a "Hard Delete" to completely wipe it from the registry
+                if (softDeleteResponse.IsSuccessStatusCode)
+                {
+                    await httpClient.DeleteAsync($"/subjects/{escapeSubject}?permanent=true", cancellationToken);
+                }
+            }
+            
+            _logger.LogInformation("Schema Registry purged successfully.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to purge schema registry. It might already be empty.");
+        }
     }
 }

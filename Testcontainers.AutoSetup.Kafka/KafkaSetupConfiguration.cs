@@ -22,11 +22,20 @@ public record KafkaSetupConfiguration
     /// </summary>
     public IReadOnlyList<KafkaTopicConfiguration> Topics { get; init; }
 
-    public KafkaSetupConfiguration(string bootstrapServers, string? registryServers,
-        IReadOnlyList<KafkaTopicConfiguration> topics)
+    /// <summary>
+    /// Predefined schemas that would be seeded into the Schema Registry
+    /// </summary>
+    public IReadOnlyList<SchemaSeedConfiguration>? SchemasToSeed { get; init; }
+
+    public KafkaSetupConfiguration(
+        string bootstrapServer, 
+        string? registryServer, 
+        IReadOnlyList<KafkaTopicConfiguration> topics, 
+        IReadOnlyList<SchemaSeedConfiguration>? schemasToSeed = null)
     {
-        BootstrapServer = bootstrapServers ?? throw new ArgumentNullException(nameof(bootstrapServers));
-        Topics = topics ?? throw new ArgumentNullException(nameof(topics));
-        RegistryServer = registryServers; 
+        BootstrapServer = bootstrapServer ?? throw new ArgumentNullException(nameof(bootstrapServer));
+        RegistryServer = registryServer;
+        Topics = topics ?? [];
+        SchemasToSeed = schemasToSeed;
     }
 }

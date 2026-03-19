@@ -5,6 +5,7 @@ using Testcontainers.AutoSetup.Tests.IntegrationTests.TestCollections;
 using Xunit.Abstractions;
 using Confluent.Kafka;
 using Testcontainers.AutoSetup.Tests.UnitTests.Extensions;
+using Confluent.SchemaRegistry;
 
 namespace Testcontainers.AutoSetup.Tests.IntegrationTests.KafkaTests;
 
@@ -170,5 +171,53 @@ public class KafkaSeederTests : IntegrationTestsBase
         Assert.NotNull(kafkaNetwork);  
         var networks = schemaRegistryContainer.GetConfiguration().Networks.Select(n => n.Name);
         Assert.Contains(kafkaNetwork.Name, networks);
+    }
+
+    [Fact]
+    public async Task KafkaSeeder_SeedsSchemasIntoRegistry_FromConfiguration()
+    {
+        // Arrange
+        var registryUrl = Setup.KafkaTestEnvironment.GetRegistryServer();
+        Assert.NotNull(registryUrl);
+
+        using var registryClient = new CachedSchemaRegistryClient(new SchemaRegistryConfig { Url = registryUrl });
+        
+        // This is the subject we explicitly seeded via .WithSchemaFromFile
+        const string expectedSubject = "test-user-schema";
+
+        // Act
+        var subjects = await registryClient.GetAllSubjectsAsync();
+
+        // Assert
+        Assert.Contains(expectedSubject, subjects);
+
+        // Verify the schema is healthy and can be retrieved
+        var schemaMetadata = await registryClient.GetLatestSchemaAsync(expectedSubject);
+        Assert.NotNull(schemaMetadata);
+        Assert.Equal(SchemaType.Avro, schemaMetadata.SchemaType);
+        Assert.False(string.IsNullOrWhiteSpace(schemaMetadata.SchemaString));
+    }
+
+    [Fact]
+    public async Task KafkaSeeder_CustomSeeder_RegistersSchemaDynamically()
+    {
+        // Arrange
+        var registryUrl = Setup.KafkaTestEnvironment.GetRegistryServer();
+        Assert.NotNull(registryUrl);
+
+        using var registryClient = new CachedSchemaRegistryClient(new SchemaRegistryConfig { Url = registryUrl });
+        
+        // When the custom seeder produces an Avro message to "users-topic", 
+        // Confluent's AvroSerializer automatically registers the schema under the 
+        // default TopicNameStrategy, which is "<topicName>-value".
+        const string autoRegisteredSubject = "users-topic-value";
+
+        // Act
+        var subjects = await registryClient.GetAllSubjectsAsync();
+
+        // Assert
+        // This passing means the custom seeder successfully connected to BOTH 
+        // the Kafka broker and the Schema Registry container!
+        Assert.Contains(autoRegisteredSubject, subjects);
     }
 }

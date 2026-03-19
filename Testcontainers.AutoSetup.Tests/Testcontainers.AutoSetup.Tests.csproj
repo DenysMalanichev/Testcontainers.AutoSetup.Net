@@ -43,6 +43,7 @@
     <Content Include="appsettings.local.json" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="./IntegrationTests/Migrations/**" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="./IntegrationTests/TestEntities/**" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

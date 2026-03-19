@@ -31,16 +31,16 @@ public class KafkaSetupConfigurationTests
     public void Constructor_WithNullBootstrapServer_ThrowsArgumentNullException()
     {
         // Act & Assert
-        var ex = Assert.Throws<ArgumentNullException>("bootstrapServers", () => new KafkaSetupConfiguration(null!, "localhost:8081", []));
-        Assert.Contains("bootstrapServers", ex.Message);
+        var ex = Assert.Throws<ArgumentNullException>("bootstrapServer", () => new KafkaSetupConfiguration(null!, "localhost:8081", []));
+        Assert.Contains("bootstrapServer", ex.Message);
     }
 
     [Fact]
-    public void Constructor_WithNullTopics_ThrowsArgumentNullException()
+    public void Constructor_WithNullTopics_SetsAnEmptyArray()
     {
-        // Act & Assert
-        var ex = Assert.Throws<ArgumentNullException>("topics", () => new KafkaSetupConfiguration("localhost:9092", "localhost:8081", null!));
-        Assert.Contains("topics", ex.Message);
+        var config = new KafkaSetupConfiguration("localhost:9092", "localhost:8081", null!);
+        Assert.NotNull(config.Topics);
+        Assert.Empty(config.Topics);
     }
 
     [Fact]
@@ -49,7 +49,7 @@ public class KafkaSetupConfigurationTests
         // Arrange
         var topics = new List<KafkaTopicConfiguration>();
         var config1 = new KafkaSetupConfiguration("localhost:9092", "localhost:8081", topics);
-        var config2 = new KafkaSetupConfiguration("localhost:9092", "localhost:8081", topics);
+        var config2 = new KafkaSetupConfiguration("localhost:9092", "localhost:8081",topics);
 
         // Act & Assert
         Assert.Equal(config1, config2);
