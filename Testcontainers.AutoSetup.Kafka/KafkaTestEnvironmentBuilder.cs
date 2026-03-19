@@ -74,7 +74,7 @@ public class KafkaTestEnvironmentBuilder
             .WithDockerEndpoint(dockerEndpoint)
             .WithPortBinding(hostPort, 8080)
             .WithEnvironment("KAFKA_CLUSTERS_0_NAME", "AutoSetup-Local")
-            .WithEnvironment("KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS", $"{KafkaAlias}:9092")
+            .WithEnvironment("KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS", $"{KafkaAlias}:9093")
             .WithName("Testcontainers-Kafka-UI")
             .WithReuse(true); // Since we drop Kafka UI fo CI runs, it is safe to set true here
             
@@ -123,7 +123,7 @@ public class KafkaTestEnvironmentBuilder
             .WithReuse(!EnvironmentHelper.IsCiRun())
             .WithName("Testcontainers-Kafka-schema-registry")
             .WithEnvironment("SCHEMA_REGISTRY_HOST_NAME", "schema-registry")
-            .WithEnvironment("SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS", $"PLAINTEXT://{KafkaAlias}:9092") // TODO fix hardcoded port
+            .WithEnvironment("SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS", $"PLAINTEXT://{KafkaAlias}:9093") // TODO fix hardcoded port
             .WithEnvironment("SCHEMA_REGISTRY_LISTENERS", $"http://0.0.0.0:{hostPort}")
             .WithNetworkAliases(SchemaRegistryAlias)
             .WithPortBinding(hostPort, 8081)
