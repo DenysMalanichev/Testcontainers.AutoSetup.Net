@@ -39,10 +39,9 @@ public class KafkaMessageSeedBenchmarks
 
         await _container.StartAsync();
 
-        _kafkaConfig = new KafkaSetupConfiguration(
-            _container.GetBootstrapAddress(),
-            [topicConfig]
-        );
+        _kafkaConfig = new KafkaSetupBuilder(_container.GetBootstrapAddress())
+            .WithTopic(topicConfig)
+            .Build();
 
         _strategy = new KafkaSeeder(_kafkaConfig, NullLogger.Instance);
 

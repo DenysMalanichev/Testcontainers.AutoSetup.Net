@@ -19,12 +19,12 @@ public class KafkaSeederTests
     }
 
     [Fact]
-    public async Task InitializeGlobalAsync_ShouldDoNothing_AndCompleteSuccessfully()
+    public async Task ResetAsync_ShouldDoNothing_AndCompleteSuccessfully()
     {
         // Arrange
         var mockAdminClient = new Mock<IAdminClient>();
         var mockProducer = new Mock<IProducer<byte[], byte[]>>();
-        var config = new KafkaSetupConfiguration("localhost:9092", []);
+        var config = new KafkaSetupConfiguration("localhost:9092", "localhost:8081", []);
         var seeder = new TestableKafkaSeeder(config, _logger, mockAdminClient.Object, mockProducer.Object);
 
         // Act
@@ -39,7 +39,7 @@ public class KafkaSeederTests
     {
         // Arrange
         var topicConfig = new KafkaTopicConfiguration("new-topic", 1);
-        var config = new KafkaSetupConfiguration("localhost:9092", [topicConfig]);
+        var config = new KafkaSetupConfiguration("localhost:9092", "localhost:8081", [topicConfig]);
         
         var mockAdminClient = new Mock<IAdminClient>();
         mockAdminClient.Setup(x => x.GetMetadata(It.IsAny<TimeSpan>())).Returns(new Metadata
@@ -76,7 +76,7 @@ public class KafkaSeederTests
         // Moq can't mock the extension methods, and our Testable subclass 
         // bypasses them anyway using the delegates below!
 
-        var config = new KafkaSetupConfiguration("localhost:9092", [new KafkaTopicConfiguration("desired-topic")]);
+        var config = new KafkaSetupConfiguration("localhost:9092", "localhost:8081", [new KafkaTopicConfiguration("desired-topic")]);
         
         var pollingQueue = new Queue<List<string>>();
         pollingQueue.Enqueue(new List<string> { "old-user-topic" }); // 1st check (pre-deletion)
@@ -114,7 +114,7 @@ public class KafkaSeederTests
     [Fact]
     public void Constructor_WithNullLogger_DefaultsToConsoleLogger_DoesNotThrow()
     {
-        var config = new KafkaSetupConfiguration("localhost:9092", []);
+        var config = new KafkaSetupConfiguration("localhost:9092", "localhost:8081", []);
         var seeder = new KafkaSeeder(config, null!);
         Assert.NotNull(seeder);
     }
@@ -125,7 +125,7 @@ public class KafkaSeederTests
         // Arrange
         var mockAdminClient = new Mock<IAdminClient>();
         var mockProducer = new Mock<IProducer<byte[], byte[]>>();
-        var config = new KafkaSetupConfiguration("localhost:9092", []);
+        var config = new KafkaSetupConfiguration("localhost:9092", "localhost:8081", []);
         var seeder = new TestableKafkaSeeder(config, _logger, mockAdminClient.Object, mockProducer.Object);
         
         // Act
@@ -141,7 +141,7 @@ public class KafkaSeederTests
         // Arrange
         var mockAdminClient = new Mock<IAdminClient>();
         var mockProducer = new Mock<IProducer<byte[], byte[]>>();
-        var config = new KafkaSetupConfiguration("localhost:9092", []); // Empty topics
+        var config = new KafkaSetupConfiguration("localhost:9092", "localhost:8081", []); // Empty topics
         var seeder = new TestableKafkaSeeder(config, _logger, mockAdminClient.Object, mockProducer.Object);
 
         // Act
@@ -157,7 +157,7 @@ public class KafkaSeederTests
         // Arrange
         var mockAdminClient = new Mock<IAdminClient>();
         var mockProducer = new Mock<IProducer<byte[], byte[]>>();
-        var config = new KafkaSetupConfiguration("localhost:9092", [new KafkaTopicConfiguration("new-topic")]);
+        var config = new KafkaSetupConfiguration("localhost:9092", "localhost:8081", [new KafkaTopicConfiguration("new-topic")]);
         var seeder = new TestableKafkaSeeder(config, _logger, mockAdminClient.Object, mockProducer.Object)
         {
             MockGetAllTopicNames = () => ["__consumer_offsets"],
@@ -178,7 +178,7 @@ public class KafkaSeederTests
         // Arrange
         var mockAdminClient = new Mock<IAdminClient>();
         var mockProducer = new Mock<IProducer<byte[], byte[]>>();
-        var config = new KafkaSetupConfiguration("localhost:9092", [new KafkaTopicConfiguration("desired-topic")]);
+        var config = new KafkaSetupConfiguration("localhost:9092", "localhost:8081", [new KafkaTopicConfiguration("desired-topic")]);
         var pollingQueue = new Queue<List<string>>(new[] { ["old-topic"], new List<string>() });
         
         var seeder = new TestableKafkaSeeder(config, _logger, mockAdminClient.Object, mockProducer.Object)
@@ -201,7 +201,7 @@ public class KafkaSeederTests
         // Arrange
         var mockAdminClient = new Mock<IAdminClient>();
         var mockProducer = new Mock<IProducer<byte[], byte[]>>();
-        var config = new KafkaSetupConfiguration("localhost:9092", [new KafkaTopicConfiguration("existing-topic")]);
+        var config = new KafkaSetupConfiguration("localhost:9092", "localhost:8081", [new KafkaTopicConfiguration("existing-topic")]);
         var seeder = new TestableKafkaSeeder(config, _logger, mockAdminClient.Object, mockProducer.Object);
 
         var createException = new CreateTopicsException(
@@ -225,7 +225,7 @@ public class KafkaSeederTests
         // Arrange
         var mockAdminClient = new Mock<IAdminClient>();
         var mockProducer = new Mock<IProducer<byte[], byte[]>>();
-        var config = new KafkaSetupConfiguration("localhost:9092", [new KafkaTopicConfiguration("bad-topic")]);
+        var config = new KafkaSetupConfiguration("localhost:9092", "localhost:8081", [new KafkaTopicConfiguration("bad-topic")]);
         var seeder = new TestableKafkaSeeder(config, _logger, mockAdminClient.Object, mockProducer.Object);
 
         var createException = new CreateTopicsException(
@@ -246,7 +246,7 @@ public class KafkaSeederTests
         // Arrange
         var mockAdminClient = new Mock<IAdminClient>();        
         var mockProducer = new Mock<IProducer<byte[], byte[]>>();
-        var config = new KafkaSetupConfiguration("localhost:9092", []);
+        var config = new KafkaSetupConfiguration("localhost:9092", "localhost:8081", []);
         var seeder = new TestableKafkaSeeder(config, _logger, mockAdminClient.Object, mockProducer.Object)
         {
             MockGetAllTopicNames = () => ["ghost-topic"],
@@ -274,7 +274,7 @@ public class KafkaSeederTests
         // Arrange
         var mockAdminClient = new Mock<IAdminClient>();
         var mockProducer = new Mock<IProducer<byte[], byte[]>>();
-        var config = new KafkaSetupConfiguration("localhost:9092", []);
+        var config = new KafkaSetupConfiguration("localhost:9092", "localhost:8081", []);
         var seeder = new TestableKafkaSeeder(config, _logger, mockAdminClient.Object, mockProducer.Object)
         {
             MockGetAllTopicNames = () => ["locked-topic"],
@@ -301,7 +301,7 @@ public class KafkaSeederTests
         var mockAdminClient = new Mock<IAdminClient>();
         var mockProducer = new Mock<IProducer<byte[], byte[]>>();
 
-        var config = new KafkaSetupConfiguration("localhost:9092", []);
+        var config = new KafkaSetupConfiguration("localhost:9092", "localhost:8081", []);
         var seeder = new TestableKafkaSeeder(config, _logger, mockAdminClient.Object, mockProducer.Object)
         {
             // Always return the topic, simulating a broker that never deletes it
@@ -313,6 +313,52 @@ public class KafkaSeederTests
         // NOTE: This test will physically take 5 seconds to run because of the hardcoded TimeSpan.FromSeconds(5)
         var ex = await Assert.ThrowsAsync<TimeoutException>(() => seeder.ResetAsync());
         Assert.Contains("Kafka topics were not fully deleted", ex.Message);
+    }
+
+    [Fact]
+    public async Task ResetAsync_Executes_CustomAsyncSeedActions()
+    {
+        // Arrange
+        var executionCount = 0;
+        string? passedBootstrapServer = null;
+        string? passedRegistryServer = null;
+
+        var expectedBootstrap = "localhost:9092";
+        var expectedRegistry = "http://localhost:8081";
+
+        // This is our spy delegate. It records that it was called and what it was given.
+        Func<string, string?, Task> spyAction = (bootstrap, registry) =>
+        {
+            executionCount++;
+            passedBootstrapServer = bootstrap;
+            passedRegistryServer = registry;
+            return Task.CompletedTask;
+        };
+
+        var config = new KafkaSetupConfiguration(expectedBootstrap, expectedRegistry,
+            topics: new List<KafkaTopicConfiguration>
+            {
+                new KafkaTopicConfiguration(name: "test-topic", partitions: 1)
+                    .WithCustomSeeder(spyAction)
+                
+            }
+        );
+        var mockAdminClient = new Mock<IAdminClient>();
+        var mockProducer = new Mock<IProducer<byte[], byte[]>>();
+        var seeder = new TestableKafkaSeeder(config, _logger, mockAdminClient.Object, mockProducer.Object)
+        {
+            // Always return the topic, simulating a broker that never deletes it
+            MockGetAllTopicNames = () => [], 
+            MockGetUserTopicsToDelete = all => all
+        };
+
+        // Act
+        await seeder.ResetAsync();
+
+        // Assert
+        Assert.Equal(1, executionCount);
+        Assert.Equal(expectedBootstrap, passedBootstrapServer);
+        Assert.Equal(expectedRegistry, passedRegistryServer);
     }
 
     // --- Testable Subclass ---

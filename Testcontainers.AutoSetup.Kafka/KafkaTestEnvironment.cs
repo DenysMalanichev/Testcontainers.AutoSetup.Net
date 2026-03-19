@@ -10,18 +10,22 @@ namespace Testcontainers.AutoSetup.Kafka;
 public class KafkaTestEnvironment
 {
     public readonly KafkaContainer KafkaContainer = null!;
-    public readonly IContainer? KafkaUiContainer = null!;
-    public readonly INetwork? KafkaNetwork = null!;
+    public readonly IContainer? KafkaUiContainer = null;
+    public readonly IContainer? SchemaRegistryContainer = null;
+    public readonly INetwork? KafkaNetwork = null;
 
-    public KafkaTestEnvironment(
-        INetwork? network, KafkaContainer kafkaContainer, IContainer? kafkaUiContainer)
+    internal KafkaTestEnvironment(
+        INetwork? network, KafkaContainer kafkaContainer,
+        IContainer? kafkaUiContainer, IContainer? schemaRegistryContainer)
     {
-        if(kafkaUiContainer is not null && network is null)
-            throw new InvalidOperationException("KafkaUI cannot be started with with null network");
+        if((kafkaUiContainer is not null || schemaRegistryContainer is not null) && network is null)
+            throw new InvalidOperationException("KafkaUI/Schema registry cannot be started with null network");
         
-        KafkaNetwork = network;
         KafkaContainer = kafkaContainer ?? throw new ArgumentNullException(nameof(kafkaContainer));
+
+        KafkaNetwork = network;
         KafkaUiContainer = kafkaUiContainer;
+        SchemaRegistryContainer = schemaRegistryContainer;
     }
 
     /// <summary>
@@ -34,10 +38,22 @@ public class KafkaTestEnvironment
         if(KafkaNetwork is not null)
             await KafkaNetwork.CreateAsync(cancellationToken);
 
-        List<Task> containersToStart = [KafkaContainer.StartAsync(cancellationToken)];
+        await KafkaContainer.StartAsync(cancellationToken);
         if(KafkaUiContainer is not null)
-            containersToStart.Add(KafkaUiContainer.StartAsync(cancellationToken));
+            await KafkaUiContainer.StartAsync(cancellationToken);
 
-        await Task.WhenAll(containersToStart);
+        if(SchemaRegistryContainer is not null)
+            await SchemaRegistryContainer.StartAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Returns a string URL to a registry server
+    /// </summary>
+    public string? GetRegistryServer()
+    {
+        if (SchemaRegistryContainer is null)
+            return null;
+// TODO move port to const
+        return $"http://{SchemaRegistryContainer.Hostname}:{SchemaRegistryContainer.GetMappedPublicPort(8081)}";
     }
 }

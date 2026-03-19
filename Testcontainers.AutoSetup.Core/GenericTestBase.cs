@@ -6,6 +6,7 @@ using Testcontainers.AutoSetup.Core.Common.Enums;
 
 namespace Testcontainers.AutoSetup.Core;
 
+// TODO add an automatic containers removal after the failed build (assumming there is an error in containers setup)
 public abstract class GenericTestBase
 {
     protected ILogger? Logger { get; set; }

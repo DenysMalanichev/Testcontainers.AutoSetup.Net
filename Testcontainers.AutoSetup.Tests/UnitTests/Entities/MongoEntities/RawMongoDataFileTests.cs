@@ -9,7 +9,7 @@ public class RawMongoDataFileTests
     [Theory]
     [InlineData("testColl2", "testFile2", false)]
     [InlineData("testColl3", "testFile3", true)]
-    public async Task Ctor_InitializesCorrectValues_IfJsonFile(string collectionName,string fileName, bool isJsonArray)
+    public async Task Ctor_InitializesCorrectValues_IfJsonFile(string collectionName, string fileName, bool isJsonArray)
     {
         // Arrange & Act
         var mongoFile = RawMongoDataFile.FromJson(collectionName, fileName, isJsonArray);
