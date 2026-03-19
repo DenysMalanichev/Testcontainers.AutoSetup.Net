@@ -38,14 +38,12 @@ public class KafkaTestEnvironment
         if(KafkaNetwork is not null)
             await KafkaNetwork.CreateAsync(cancellationToken);
 
-        List<Task> containersToStart = [KafkaContainer.StartAsync(cancellationToken)];
+        await KafkaContainer.StartAsync(cancellationToken);
         if(KafkaUiContainer is not null)
-            containersToStart.Add(KafkaUiContainer.StartAsync(cancellationToken));
+            await KafkaUiContainer.StartAsync(cancellationToken);
 
         if(SchemaRegistryContainer is not null)
-            containersToStart.Add(SchemaRegistryContainer.StartAsync(cancellationToken));
-
-        await Task.WhenAll(containersToStart);
+            await SchemaRegistryContainer.StartAsync(cancellationToken);
     }
 
     /// <summary>
