@@ -140,7 +140,9 @@ public class KafkaSeederTests : IntegrationTestsBase
     {
         // Skip for CI runs
         if(EnvironmentHelper.IsCiRun())
-            Assert.True(true);
+        {
+            return;
+        }
 
         // Containers setup and seeding are done within the GlobalTestSetup
         // Arrange
